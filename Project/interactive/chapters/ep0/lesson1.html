@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ทดลอง Intro Service และเครื่องหมายคณิตศาสตร์</title>
+</head>
+<body>
+  <script data-lesson-app>
+    (() => {
+      const symbols = [
+        { text: "+", name: "บวก", x: -4.8 },
+        { text: "−", name: "ลบ", x: -1.6 },
+        { text: "×", name: "คูณ", x: 1.6 },
+        { text: "÷", name: "หาร", x: 4.8 }
+      ];
+
+      PuzzleLesson.define({
+        id: "ep0-lesson1-intro-service",
+        version: "1.0.0",
+        meta: {
+          worldType: "3d-world-space",
+          lessonId: "ep0-lesson1-intro-service",
+          title: "ทดลอง Intro และ World Option",
+          category: "ระบบทดสอบ",
+          subcategory: "GUI Service และเครื่องหมายมาตรฐาน",
+          description: "ทดสอบ Intro Service เครื่องหมายมาตรฐาน และเมนูคำสั่งที่ติดตามวัตถุ 3D",
+          keyResult: "ตรวจสอบการเปิดเนื้อหาเสริมและส่ง Event จาก World Option กลับไปควบคุมโมเดล",
+          background: "green",
+          camera: { fov: 43, startYaw: 0, startPitch: 46, startDistance: 18.5, minDistance: 10, maxDistance: 28, target: [0, .2, -.4] },
+          welcomeMessage: ["อ่านหน้าเนื้อหา Intro ที่เปิดขึ้นมา", "ปิด Intro เพื่อไปขั้นทดลอง", "คลิกแมวเพื่อเลือกคำสั่ง หรือคลิกเครื่องหมายเพื่อสลับสถานะ"],
+          tooltip: "คลิกน้องแมวเพื่อเปิด World Option แล้วเลือกให้หมุนหรือขยับ",
+          defaultValue: {},
+          editSchema: [],
+          howto: [
+            {
+              index: 0,
+              title: "อ่านเนื้อหาเพิ่มเติม",
+              type: "sequence",
+              desc: "Intro Service เปิดหน้าเรียนรู้ให้อัตโนมัติ ปิดหน้าต่างแล้วระบบจะไปขั้นถัดไป",
+              intro: { url: "./intro_lesson1.html", title: "รู้จักเครื่องหมายคณิตศาสตร์", label: "Intro จาก Step การสอน" }
+            },
+            {
+              index: 1,
+              title: "ทดลอง World Option",
+              type: "freestyle",
+              desc: "คลิกน้องแมวเพื่อเปิดเมนูคำสั่ง หรือคลิกเครื่องหมายเพื่อสลับสถานะ"
+            }
+          ],
+          quiz: [
+            { question: "คลิกเครื่องหมายบวก (+)", data: [{ key: "answer", value: "+" }] },
+            { question: "คลิกเครื่องหมายลบ (−)", data: [{ key: "answer", value: "−" }] },
+            { question: "คลิกเครื่องหมายคูณ (×)", data: [{ key: "answer", value: "×" }] },
+            { question: "คลิกเครื่องหมายหาร (÷)", data: [{ key: "answer", value: "÷" }] },
+            { question: "เลือกเครื่องหมายบวก (+)", data: [{ key: "answer", value: "+" }] }
+          ]
+        },
+
+        mount(context) {
+          this.context = context;
+          this.signs = [];
+          this.active = new Map();
+          this.cat = null;
+          this.catOption = null;
+          this.catX = 0;
+          this.catYaw = 0;
+          this.catMotionToken = 0;
+        },
+
+        async reset({ mode, question }) {
+          this.mode = mode;
+          this.answer = question?.data?.find(item => item.key === "answer")?.value || null;
+          this.signs = [];
+          this.active = new Map();
+          this.catOption = null;
+          this.catX = 0;
+          this.catYaw = 0;
+          this.catMotionToken += 1;
+
+          this.context.world.addZone({ name: "operator-stage", size: [13.8, .22, 7.4], position: [0, .11, .25], color: "#dff5e6" });
+          this.context.world.addCallout({ text: "เครื่องหมายมาตรฐาน", position: [0, 3.7, -2], anchor: [0, .25, -1.45], scale: [3.25, .82] });
+
+          for (const symbol of symbols) {
+            let handle = null;
+            handle = this.context.world.addOperatorSign({
+              text: symbol.text,
+              position: [symbol.x, .25, -1.45],
+              scale: [1.9, 1.9],
+              clickable: mode === "student-quiz",
+              selectionFeedback: false,
+              hoverMessage: `${symbol.name} (${symbol.text}) — คลิกเพื่อสลับสถานะ`,
+              onClick: () => this.toggleSymbol(symbol, handle)
+            });
+            this.signs.push({ symbol, handle });
+            this.active.set(symbol.text, false);
+          }
+
+          this.cat = await this.context.world.addLibraryObject({
+            asset: "animal/cute-cat",
+            name: "world-option-cat",
+            position: [0, .18, 2.35],
+            scale: .92,
+            targetSize: 2.35,
+            clickable: true,
+            selectionFeedback: false,
+            hoverMessage: "คลิกน้องแมวเพื่อเลือกคำสั่ง",
+            onClick: ({ handle }) => this.openCatOptions(handle)
+          });
+          this.catOption = this.context.ui.worldOption.attach(this.cat, {
+            id: "ep0-cat-actions",
+            scope: "scene",
+            visible: false,
+            placement: "right",
+            gap: 42,
+            worldOffset: [0, 1.35, 0],
+            title: "เลือกคำสั่ง",
+            message: "อยากให้น้องแมวทำอะไร?",
+            items: [
+              { id: "rotate", label: "↻  หมุนหนึ่งรอบ" },
+              { id: "move-left", label: "←  ขยับซ้าย" },
+              { id: "move-right", label: "→  ขยับขวา" }
+            ],
+            onSelect: event => this.runCatCommand(event.id)
+          });
+
+          this.context.ui.control.show({
+            id: "ep0-intro-control",
+            scope: "scene",
+            position: "middle-right",
+            tone: "default",
+            ariaLabel: "เนื้อหาเรียนรู้เพิ่มเติม",
+            items: [{ id: "open-intro", label: "เรียนรู้เพิ่มเติม", icon: "book.svg" }],
+            onAction: event => {
+              if (event.id !== "open-intro") return;
+              this.context.ui.intro.open({
+                url: "./intro_lesson1.html",
+                title: "รู้จักเครื่องหมายคณิตศาสตร์",
+                label: "เปิดจาก UI Control",
+                source: "control"
+              });
+            }
+          });
+          this.context.ui.setObjective(mode === "student-quiz" ? "คลิกเครื่องหมายตามโจทย์ หรือทดลองเมนูที่แมว" : "คลิกน้องแมวเพื่อทดลอง World Option");
+        },
+
+        openCatOptions(handle) {
+          this.catOption?.setTarget(handle).toggle();
+        },
+
+        runCatCommand(command) {
+          if (!this.cat) return;
+          if (command === "rotate") {
+            const token = ++this.catMotionToken, startedAt = performance.now(), startYaw = this.catYaw, duration = 720;
+            const frame = now => {
+              if (token !== this.catMotionToken || !this.cat) return;
+              const progress = Math.min(1, (now - startedAt) / duration), eased = 1 - Math.pow(1 - progress, 3);
+              this.cat.setRotation(0, startYaw + 360 * eased, 0);
+              if (progress < 1) requestAnimationFrame(frame);
+              else { this.catYaw = (startYaw + 360) % 360; this.cat.playCommit({ spark: false }); }
+            };
+            requestAnimationFrame(frame);
+            this.context.ui.toast("น้องแมวหมุนหนึ่งรอบ", "success");
+            return;
+          }
+          this.catMotionToken += 1;
+          this.catX = Math.max(-4, Math.min(4, this.catX + (command === "move-left" ? -1.4 : 1.4)));
+          this.cat.animateTo(this.catX, .18, 2.35, { duration: 560, arcHeight: .5 });
+          this.context.ui.toast(command === "move-left" ? "น้องแมวขยับไปทางซ้าย" : "น้องแมวขยับไปทางขวา", "info");
+        },
+
+        toggleSymbol(symbol, handle) {
+          const next = !this.active.get(symbol.text);
+          this.active.set(symbol.text, next);
+          handle.setState(next);
+          if (!next) handle.pulse();
+          if (this.mode === "student-quiz") {
+            this.context.quiz.answer(symbol.text === this.answer, { answerText: `${symbol.name} (${symbol.text})` });
+            return;
+          }
+          this.context.audio.play(next ? "success" : "onClick");
+          this.context.ui.toast(next ? `${symbol.name} เปลี่ยนเป็นสถานะสำเร็จแล้ว` : `${symbol.name} กลับสู่สถานะเดิม`, next ? "success" : "info");
+        },
+
+        onStep(index) {
+          const enabled = index === 1;
+          for (const { handle } of this.signs) handle.setClickable(enabled);
+          if (enabled) this.context.ui.toast("ทดลองคลิกเครื่องหมายทั้ง 4 แบบได้เลย", "success");
+        },
+
+        dispose() {
+          this.context.ui.intro.close({ notify: false, reason: "lesson-dispose" });
+          this.catMotionToken += 1;
+          this.catOption?.remove();
+          this.catOption = null;
+          this.cat = null;
+          this.signs = [];
+          this.active.clear();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

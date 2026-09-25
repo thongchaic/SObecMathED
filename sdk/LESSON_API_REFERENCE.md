@@ -67,10 +67,13 @@ world.addPrimitive({
 
 รูปทรงที่รองรับ:
 
-- พื้นฐาน: `box`, `rounded-box`, `sharp-box`, `sphere`, `hemisphere`, `cylinder`, `cone`, `capsule`, `circle`, `plane`, `ring`
+- พื้นฐาน: `box`, `rounded-box`, `sharp-box`, `sphere`, `hemisphere`, `cylinder`, `cone`, `capsule`, `circle`, `plane`, `arrow-flat`, `ring`
 - คณิตศาสตร์และโครงสร้าง: `half-cylinder`, `quarter-cylinder`, `sector`, `sector-flat`, `ring-sector`, `ring-sector-flat`, `tube`, `wedge`
 - รูปทรงหลายหน้า: `pyramid`, `prism`, `frustum`, `tetrahedron`, `octahedron`, `dodecahedron`, `icosahedron`, `diamond`
 - ตกแต่ง: `torus`, `torus-knot`, `star`, `heart`, `cross`
+- กำหนดรูปทรงเอง: `polygon`, `polygon-flat`, `polyhedron`, `lathe`, `spline-tube`
+
+ชื่อที่คุ้นเคยใช้เป็น alias ได้ด้วย เช่น `cube`, `cuboid`, `rectangle`, `rectangle-flat`, `triangle`, `semicircle`, `semi-cylinder`, `quarter-circle`, `pie`, `pie-slice`, `annular-sector`, `arc`, `disc`, `donut`, `extrude-polygon`, `custom-polyhedron` และ `path-tube`
 
 ตัวเลือก `geometry`:
 
@@ -86,6 +89,43 @@ world.addPrimitive({
 | `p`, `q` | `torus-knot` | จำนวนรอบของปม |
 | `openEnded` | ทรงกรวย/ทรงกระบอก/ปริซึม | เปิดฝาปลาย |
 | `radius` | `box`, `rounded-box` | ระดับความมนของมุม |
+| `vertices`, `holes` | `polygon`, `polygon-flat` | จุดขอบ `[x,z]` และวงช่องว่างภายใน |
+| `vertices`, `faces`/`indices` | `polyhedron` | จุด 3D และหน้าของ mesh |
+| `profile` | `lathe` | หน้าตัด `[radius,y]` ที่หมุนรอบแกน Y |
+| `path`, `tube`, `radialSegments`, `closed` | `spline-tube` | แนวเส้น 3D และความหนาของท่อ |
+| `normalize` | รูปทรงกำหนดเอง | ค่าเริ่มต้น `true`; จัดกึ่งกลางและ normalize ก่อนคูณ `size` |
+| `orientation` | รูปทรง `-flat`, `plane`, `circle`, `ring`, `arrow-flat` | `front`, `ground`/`xz` หรือ `side`/`yz` |
+
+ตัวอย่างรูปทรงอิสระที่มีช่องตรงกลาง:
+
+```js
+world.addPrimitive({
+  shape: "polygon",
+  geometry: {
+    vertices: [[-2,-1], [2,-1], [2,1], [0,2], [-2,1]],
+    holes: [[[-.45,-.25], [.45,-.25], [.45,.25], [-.45,.25]]]
+  },
+  size: [4, .6, 3],
+  position: [0, .3, 0],
+  color: "#70d8c3"
+});
+```
+
+ตัวอย่าง mesh 3D จาก vertices และ faces:
+
+```js
+world.addPrimitive({
+  shape: "polyhedron",
+  geometry: {
+    vertices: [[-1,0,-1], [1,0,-1], [1,0,1], [-1,0,1], [0,2,0]],
+    faces: [[0,1,4], [1,2,4], [2,3,4], [3,0,4], [0,3,2,1]]
+  },
+  size: [3, 3, 3],
+  color: "#ffb66e"
+});
+```
+
+รูปทรงแบนสร้างบนระนาบ `front` เพื่อรักษาบทเรียนเดิม หากต้องการวางราบกับพื้นไม่ต้องคำนวณ rotation เอง ให้กำหนด `geometry: { orientation: "ground" }` แล้วใช้ `size: [กว้าง, 1, ลึก]`
 
 ตัวอย่างเค้ก `1/8` ที่ทุกชิ้นเท่ากันทางคณิตศาสตร์ โดยไม่ต้องมีโมเดลใน catalog:
 
@@ -133,7 +173,7 @@ world.addGroup({
 
 ทุก part ใน `addGroup()` รองรับ `geometry` ชุดเดียวกับ `addPrimitive()` จึงประกอบจรวด เค้กหลายชั้น ตัวละคร ของเล่น ภาชนะ และอุปกรณ์การเรียนจาก procedural geometry ได้โดยไม่ต้องขอ Asset ID ใหม่
 
-ถ้าวัตถุคลิกได้แต่บทเรียนมีเอฟเฟกต์ Active ของตัวเอง ให้กำหนด `selectionFeedback: false` เพื่อไม่แสดงวง Hover และลูกศร Select ของระบบกลาง
+วัตถุ 3D ที่ตั้ง `clickable` หรือ `draggable` จะใช้กฎ Hover กลางเสมอ: ผิววัตถุเปลี่ยนเป็นสีขาวและมีวง Hover เพื่อบอกว่ากดหรือหยิบได้ หากบทเรียนมีสถานะ Active ของตัวเอง ให้กำหนด `selectionFeedback: false` เพื่อซ่อนเฉพาะลูกศร Select หลังคลิก โดย Hover สีขาวยังคงทำงาน
 
 ### `world.addConnector(options)`
 
@@ -204,7 +244,7 @@ meta: {
 `mount(context)` ได้ object แบบ read-only:
 
 - `context.world` — สร้างและควบคุม object ใน world space
-- `context.ui` — GUI Service กลาง ได้แก่ Question, Console, Top Message, Choice, Gizmo, World GUI System, Feedback, Dialog, Insight Dialog, Control, Hint และ Busy รวม compatibility objective/toast/progress
+- `context.ui` — GUI Service กลาง ได้แก่ Question, Console, Top Message, Choice, Gizmo, World Option, World GUI System, Clickme, Feedback, Dialog, Insight Dialog, Intro, Control, Hint และ Busy รวม compatibility objective/toast/progress
 - `context.audio.play(name)` — เล่น SFX ที่ระบบเตรียมไว้
 - `context.mode` — `teacher-lab`, `student-lab` หรือ `student-quiz`
 - `context.language` — ภาษาจากเว็บหลัก
@@ -300,6 +340,8 @@ Hit area โปร่งใสและไม่ถูกนำไปคำน�
 ### `world.addOperatorSign(options)`
 
 รองรับ `=`, `≠`, `<`, `>`, `≤`, `≥`, `+`, `-`, `×` และ `÷` คืน `OperatorHandle` ซึ่งเพิ่ม `setState(valid)` และ `pulse()` ตัวเครื่องหมายเป็น polygon 3D และใช้ฐานมาตรฐานเดียวกันทุกบท (`!=`, `<=`, `>=` ใช้เป็น alias ได้)
+
+กำหนด `clickable`, `onClick`, `hoverMessage`, `objectiveAction` และ `selectionFeedback` ได้เหมือน object แบบ clickable โดยไม่ต้องเข้าถึง internals ของฐานเครื่องหมาย
 
 ### `world.addWorldCounter(options)`
 
@@ -441,17 +483,26 @@ Handle ที่ `add...` คืนมามี:
 - `context.ui.topMessage` — ประกาศสั้นด้านบนที่ไม่ใช่โจทย์
 - `context.ui.choice` — ตัวเลือกที่กดได้เหนือ Console
 - `context.ui.gizmo` — GUI 2D ที่ติดตาม object หรือพิกัด World
+- `context.ui.worldOption` — popup คำสั่งแนวตั้งที่ติดตาม object 3D และส่ง Event กลับบทเรียน
 - `context.ui.worldGuiSystem` — ป้ายข้อมูลขนาดเล็กที่ยึดกับ object หรือพิกัด World
+- `context.ui.clickme` — มือแบ/มือกำบอกวัตถุที่ลาก/กดได้แบบ opt-in ตามที่ Admin/Dev ระบุ
 - `context.ui.feedback` — ผลลัพธ์สั้นแบบไม่บล็อก
 - `context.ui.dialog` — Popup แบบบล็อกสำหรับข้อความสำคัญ/การยืนยัน
 - `context.ui.insight` — Popup อธิบายพื้นที่หรือวัตถุที่ผู้เรียนกด รองรับ safe structured HTML
+- `context.ui.intro` — iframe เกือบเต็มหน้าจอสำหรับอ่านหรือทำ Interactive จาก URL ภายใน/ภายนอก และบล็อก interaction ของบทเรียนหลักจนกว่าจะปิด
 - `context.ui.control` — เมนูปุ่ม utility มุมขวาบน/กลาง/ล่าง ไม่ใช่คำตอบ
 - `context.ui.hint` — คำแนะนำผ่าน Mascot กลาง
 - `context.ui.busy` — Overlay ระหว่างรอ async task
 
 `context.ui.gizmo` ไม่ใช่ `world.addCallout()`: Gizmo ใช้กับ object/value/status แบบ Screen-space ส่วน Callout ใช้ป้ายและเส้นชี้พื้นที่ในฉาก
 
+`context.ui.worldOption.attach(target, { title, message, items, onSelect })` ใช้เมื่อการกด object ต้องเปิดรายการคำสั่งใกล้วัตถุ Handle รองรับ `show()`, `hide()`, `toggle()`, `setItems()`, `setDisabled()`, `setTarget()` และ `remove()`; ค่าเริ่มต้นจะปิด panel หลังเลือกหนึ่งคำสั่ง และปิดเมื่อกดพื้นที่ว่างของฉาก หากต้องบังคับให้ผู้เรียนเลือกคำสั่งให้ตั้ง `dismissible: false`
+
 `context.ui.worldGuiSystem` ใช้เมื่อข้อมูลสั้นต้องเกาะกับตำแหน่งหรือโมเดลโดยไม่สร้างวัตถุ 3D เพิ่ม รองรับ `attach(target, options)`, `at(position, options)`, `get(id)` และ `clear(scope)` ส่วน `debug` เป็นเครื่องมือ System-owned สำหรับทีม Dev บทเรียนห้ามเปิดเอง
+
+`context.ui.clickme.attach(handle, { size, scale, anchor: "bottom", offset: [0, 0, 0] })` ใช้เฉพาะ handle ของวัตถุ draggable/clickable ที่ Admin/Dev ขอให้ชี้ ไม่ใส่ทุกวัตถุเอง ระบบซ่อนระหว่างสอน/มือไกด์ไลน์/ลาก และกลับมาเมื่อวางพลาด; ใช้ `restoreFor(handle)` เมื่อย้ายวัตถุกลับเอง, `completeFor(handle)` เมื่อสำเร็จ, `clearAll()` เมื่อล้างฉาก ค่าหน้าตาตั้งที่ `mainWorldSetting.ui.clickme` ใน Runtime Setting (F6)
+
+`context.ui.intro.open({ url, title, label, source: "control" })` เปิดเนื้อหาเสริมโดยไม่ส่ง function ไปกลับกับหน้า iframe การปิดจาก Control ไม่เปลี่ยน Step หากกำหนด `howto[].intro = { url, title, label }` Runtime จะเปิดอัตโนมัติและเลื่อนไป Step ถัดไปเมื่อปิด เว็บไซต์ภายนอกต้องอนุญาตการ embed ผ่าน iframe
 
 ```js
 context.ui.question.show({ text: "4 + 2 = ?" });
@@ -472,6 +523,17 @@ context.ui.gizmo.attach(box, {
   text: "ลากกล่องนี้",
   worldOffset: [0, 1.2, 0]
 });
+
+const objectMenu = context.ui.worldOption.attach(cat, {
+  visible: false,
+  title: "เลือกคำสั่ง",
+  items: [
+    { id: "rotate", label: "หมุน" },
+    { id: "left", label: "ขยับซ้าย" }
+  ],
+  onSelect(event) { runCommand(event.id); }
+});
+// เรียก objectMenu.toggle() จาก onClick ของ cat
 
 context.ui.worldGuiSystem.attach(box, {
   id: "box-value",

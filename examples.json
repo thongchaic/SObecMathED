@@ -1,9 +1,24 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-07",
+  "generatedAt": "2026-09-24",
   "pathBase": "repository-root",
   "note": "Observed call names are search hints, not permission to copy old UI or internal APIs. Read current source and Master.",
   "lessons": [
+    {
+      "path": "Project/interactive/chapters/ep0/lesson1.html",
+      "linkFromRoot": "Project/interactive/chapters/ep0/lesson1.html",
+      "title": "ทดลอง Intro และ World Option",
+      "lessonId": "ep0-lesson1-intro-service",
+      "format": "lesson-package",
+      "observedCalls": [
+        "ui.control",
+        "ui.intro",
+        "ui.worldOption",
+        "world.addLibraryObject",
+        "world.addOperatorSign"
+      ],
+      "validation": "source-index-only; not runtime-certified"
+    },
     {
       "path": "Project/interactive/chapters/ep1/lesson1.html",
       "linkFromRoot": "Project/interactive/chapters/ep1/lesson1.html",

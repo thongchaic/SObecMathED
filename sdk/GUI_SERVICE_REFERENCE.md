@@ -33,6 +33,7 @@
 | ผลลัพธ์สั้น ๆ ที่หายเอง | `context.ui.feedback` |
 | Popup ที่ต้องให้ผู้เรียนอ่านหรือตัดสินใจ | `context.ui.dialog` |
 | คำอธิบายเชิงลึกของพื้นที่ในฉาก | `context.world.addCallout({ insight })` ซึ่งเปิด `context.ui.insight` ให้อัตโนมัติ |
+| หน้าอ่าน/Interactive จาก URL ภายในหรือภายนอก | `context.ui.intro` หรือ `howto[].intro` |
 | เมนูปุ่ม utility มุมขวาบน/กลาง/ล่าง | `context.ui.control` |
 | คำแนะนำผ่าน Mascot กลาง | `context.ui.hint` |
 | ปิด interaction ชั่วคราวระหว่างรอ async task | `context.ui.busy` |
@@ -262,6 +263,35 @@ context.ui.insight.show({
 
 attribute, event handler, style, script, iframe, link และ tag อื่นจะไม่ถูกนำไปแสดง บทเรียนจึงเปลี่ยนโครงสร้างเนื้อหาได้ แต่ไม่สามารถแทรก UI หรือโค้ดที่ข้ามระบบกลาง
 
+## World Option
+
+ใช้เมื่อผู้เรียนกดวัตถุแล้วต้องเลือกคำสั่งที่กระทำต่อวัตถุนั้น เมนูจะแสดงใกล้วัตถุ มีเส้นชี้กลับไปยังเป้าหมาย และจัดปุ่มเป็นแนวตั้ง:
+
+```js
+const menu = context.ui.worldOption.attach(cat, {
+  id: "cat-actions",
+  scope: "scene",
+  visible: false,
+  title: "เลือกคำสั่ง",
+  message: "อยากให้น้องแมวทำอะไร?",
+  items: [
+    { id: "rotate", label: "หมุน" },
+    { id: "left", label: "ขยับซ้าย" },
+    { id: "right", label: "ขยับขวา" }
+  ],
+  onSelect(event) {
+    if (event.id === "left") cat.animateTo(-2, .2, 0);
+  }
+});
+
+// เรียกจาก onClick ของ object
+menu.toggle();
+```
+
+`attach(target, options)` และ `show(target, options)` คืน `WorldOptionHandle` ซึ่งรองรับ `update()`, `setItems()`, `setDisabled()`, `setTarget()`, `show()`, `hide()`, `toggle()`, `close()` และ `remove()` ค่าเริ่มต้น `closeOnSelect: true` และแสดงได้ครั้งละหนึ่ง panel; ใช้ `multiple: true` เฉพาะกรณีที่จำเป็นจริง Event มี `id`, `value`, `item`, `target`, `handle` และ `sourceEvent` เมื่อกดพื้นที่ว่างของฉาก runtime จะปิด panel ให้อัตโนมัติ ยกเว้น panel ที่ตั้ง `dismissible: false`
+
+World Option ใช้สำหรับคำสั่งของ object ส่วน Choice Panel ใช้ตัวเลือกคำตอบกลางหน้าจอ และ Control Menu ใช้เครื่องมือประจำบทเรียนด้านขวา
+
 ## World GUI System
 
 ใช้ป้ายขนาดเล็กที่ยึดกับโมเดลหรือพิกัด World โดยยังอ่านตรงในหน้าจอ เหมาะกับชื่อ ค่าสั้น หรือคำอธิบายที่ต้องติดตามวัตถุ:
@@ -285,6 +315,60 @@ label.show();
 ใช้ `at([x, y, z], options)` สำหรับพิกัดคงที่, `attach(target, options)` สำหรับ Lesson Handle/model, `get(id)` เพื่ออ่าน handle และ `clear(scope)` เพื่อล้างตามอายุ UI Handle รองรับ `update()`, `setText()`, `setTarget()`, `show()`, `hide()` และ `remove()`
 
 Debug Area ที่แสดงพิกัด X/Z และ Transform Editor ใช้ระบบเดียวกันแต่เป็น System-owned tooling สำหรับทีม Dev บทเรียนห้ามเรียก `worldGuiSystem.debug` หรือจำลองเครื่องมือแก้ transform เอง
+
+## Clickme
+
+มือแบ/มือกำ 2D ติดตามวัตถุในฉากเพื่อบอกว่าลากหรือกดได้ ใช้แบบ **opt-in เฉพาะจุดที่ Admin/Dev ระบุ** ไม่ใส่อัตโนมัติทุก object หรือทุกบทเรียน วัตถุต้องเป็น `draggable` หรือ `clickable`:
+
+```js
+const cue = context.ui.clickme.attach(ballHandle, {
+  size: 34,                 // px; ไม่ส่งจะใช้ ui.clickme.size
+  anchor: "bottom",         // หรือ "top"
+  offset: [0, 0.14, 0]      // world units
+});
+
+// กรณี lesson ย้ายวัตถุกลับเองหลังวางผิด:
+context.ui.clickme.restoreFor(ballHandle);
+// เมื่อทำสำเร็จ:
+context.ui.clickme.completeFor(ballHandle);
+// หรือ cue.complete(); cue.remove();
+```
+
+ระบบซ่อนมือระหว่างขั้นสอน, ระหว่างมือไกด์ไลน์กำลังแสดง, ขณะลาก และเมื่อทำสำเร็จ ถ้าปล่อยผิดและวัตถุกลับที่เดิม มือจะแสดงอีกครั้ง จอสัมผัสใช้ `mobileOpacity` ตลอดเพราะไม่มี hover
+
+ตั้งค่ากลางที่ `mainWorldSetting.ui.clickme` ใน `Project/interactive/main-world-setting.js` หรือ F6: `size` (px), `scale` (ตัวคูณขนาดรวมแม้ lesson ส่ง `size`), `unhoverOpacity`, `hoverOpacity`, `mobileOpacity` (0–1), `animationTime` (ms/รอบมือแบ–มือกำ), `opacityTransitionTime` (ms) บทเรียนส่ง `scale` รายวัตถุได้ และจะคูณต่อจาก scale กลาง
+
+## Intro
+
+Intro Service เปิด URL ภายในหรือภายนอกใน iframe เกือบเต็มหน้าจอ ระหว่างเปิด ระบบบล็อก input, scroll, keyboard และ pointer ของบทเรียนหลัก หน้าใน iframe ทำงานภายในตัวเองและไม่มี protocol ส่ง function ไปกลับกับบทเรียน
+
+เปิดจาก Control เพื่ออ่านเสริมได้ดังนี้ การปิดจะกลับมาทำกิจกรรมเดิมโดยไม่เปลี่ยน Step:
+
+```js
+context.ui.intro.open({
+  url: "./intro_lesson.html",
+  title: "เรียนรู้เพิ่มเติม",
+  label: "เนื้อหาประกอบ",
+  source: "control"
+});
+```
+
+ขั้นสอนเปิดอัตโนมัติผ่าน metadata และการปิดจะถือว่าเรียน Step นี้จบ จากนั้น Runtime ไป Step ถัดไป:
+
+```js
+howto: [{
+  index: 0,
+  title: "อ่านเนื้อหาเพิ่มเติม",
+  type: "sequence",
+  desc: "อ่านแล้วกดปิดเพื่อไปต่อ",
+  intro: {
+    url: "https://example.org/lesson",
+    title: "ความรู้ก่อนเริ่ม"
+  }
+}]
+```
+
+เรียก `context.ui.intro.close({ notify: false })` เฉพาะตอน cleanup หากไม่ต้องการ trigger ผลของการปิด หน้า URL ภายนอกต้องอนุญาต iframe ด้วย `X-Frame-Options`/CSP; Intro Service ไม่สามารถข้าม policy ของเว็บไซต์ปลายทางได้
 
 ## Control
 

@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "3.0.0",
+  "sdkVersion": "3.3.0",
   "worldOwner": "main-world",
   "accessProfiles": {
     "teacherExternal": {
@@ -23,17 +23,23 @@
     "box", "rounded-box", "sharp-box", "sphere", "hemisphere",
     "cylinder", "half-cylinder", "quarter-cylinder", "cone", "pyramid", "prism", "frustum", "capsule",
     "sector", "sector-flat", "ring-sector", "ring-sector-flat", "tube",
-    "torus", "torus-knot", "circle", "plane", "ring", "star", "heart", "cross", "wedge",
-    "tetrahedron", "octahedron", "dodecahedron", "icosahedron", "diamond"
+    "torus", "torus-knot", "circle", "plane", "arrow-flat", "ring", "star", "heart", "cross", "wedge",
+    "tetrahedron", "octahedron", "dodecahedron", "icosahedron", "diamond",
+    "polygon", "polygon-flat", "polyhedron", "lathe", "spline-tube",
+    "cube", "cuboid", "rectangle", "rectangle-flat", "triangle", "semicircle", "semi-cylinder", "quarter-circle",
+    "pie", "pie-slice", "annular-sector", "arc", "disc", "donut", "extrude-polygon", "custom-polyhedron", "path-tube"
   ],
-  "interactions": ["drag", "click", "custom-hit-area", "actionable-callout"],
+  "interactions": ["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"],
   "guiServices": {
     "question": "context.ui.question",
     "console": "context.ui.console",
     "topMessage": "context.ui.topMessage",
     "choice": "context.ui.choice",
     "gizmo": "context.ui.gizmo",
+    "worldOption": "context.ui.worldOption",
     "worldGuiSystem": "context.ui.worldGuiSystem",
+    "clickme": "context.ui.clickme",
+    "intro": "context.ui.intro",
     "feedback": "context.ui.feedback",
     "dialog": "context.ui.dialog",
     "insight": "context.ui.insight",
@@ -52,6 +58,7 @@
     "worldCounter": "mainWorldSetting.ui.worldCounter",
     "worldGui": "mainWorldSetting.ui.worldGui",
     "worldGuiSystem": "mainWorldSetting.ui.worldGuiSystem",
+    "worldOption": "mainWorldSetting.ui.worldOption",
     "debugAreaTransformEditor": "system-owned via Runtime Setting F6",
     "loadingEntry": "mainWorldSetting.entry",
     "mascotCharacter": "mainWorldSetting.mascot",
@@ -76,12 +83,13 @@
   "backgrounds": ["green"],
   "assetCatalogVersion": "1.2.4",
   "libraryModelMaterialOptions": ["color", "opacity", "textureEnabled", "depthWrite", "roughness", "metalness", "textureLight"],
-  "standardAssetCount": 212,
+  "standardAssetCount": 214,
   "centralGridSettings": ["ground.gridColor", "ground.gridOpacity", "ground.ringColor"],
   "worldCalloutPurpose": "point-to-world-area-and-optionally-open-insight",
   "worldCounterPurpose": "display-numeric-count-on-world-surface",
   "worldGuiPurpose": "display-explanatory-text-on-world-surface; optionally actionable through insight/onClick",
   "gizmoPurpose": "screen-space-object-or-position-overlay",
+  "worldOptionPurpose": "vertical action popup anchored to a clicked 3D object and emitting lesson-defined events",
   "standardAssets": [
     "food/apple",
     "food/pizza",
@@ -94,7 +102,7 @@
     "environment/wooden-plate",
     "environment/picnic-blanket"
   ],
-  "operatorPrefab": ["<", ">", "=", "+", "-", "×", "÷"],
+  "operatorPrefab": ["<", ">", "=", "≠", "<=", ">=", "≤", "≥", "+", "-", "−", "×", "x", "X", "÷"],
   "questionUi": "context.ui.question.show",
   "compatibilityUi": ["context.ui.setQuestion", "context.ui.clearQuestion", "context.ui.setObjective", "context.ui.toast", "context.ui.setProgress"],
   "optionalFutureCapabilities": ["throw", "physics", "balance", "pour-state"]

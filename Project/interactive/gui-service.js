@@ -54,13 +54,13 @@ function safeInsightFragment(value, resolveAsset) {
 }
 
 export function createGuiService({ setting, elements, camera, iconUrl, resolveAsset, objectiveAction, animateConsole, typeText, getMode, onChoiceShow, onHintShow, onHintHide, playUiSound }) {
-  const scopes = new Map(), choices = new Map(), gizmos = new Map(), feedbacks = new Map(), dialogs = new Map(), controls = new Map(), controlEntries = new Map(), hints = new Map(), projected = new THREE.Vector3(), worldPoint = new THREE.Vector3(), viewPoint = new THREE.Vector3();
+  const scopes = new Map(), choices = new Map(), gizmos = new Map(), worldOptions = new Map(), feedbacks = new Map(), dialogs = new Map(), controls = new Map(), controlEntries = new Map(), hints = new Map(), projected = new THREE.Vector3(), worldPoint = new THREE.Vector3(), viewPoint = new THREE.Vector3();
   let sequence = 0, topMessageHandle = null, questionState = { label: setting.ui?.questionPanel?.label || "โจทย์", text: "", tone: "primary" };
   let lessonControlPhase = "lab";
   const motionDuration = Math.max(80, Number(setting.ui?.animation?.serviceExitDuration ?? 180));
   function showAnimated(element) { clearTimeout(element.__guiMotionTimer); element.hidden = true; element.classList.remove("is-leaving", "is-entering"); void element.offsetWidth; element.classList.add("is-entering"); element.hidden = false; element.__guiMotionTimer = setTimeout(() => element.classList.remove("is-entering"), 360); }
   function hideAnimated(element, after, remove = false) { clearTimeout(element.__guiMotionTimer); element.classList.remove("is-entering"); element.classList.add("is-leaving"); element.__guiMotionTimer = setTimeout(() => { element.classList.remove("is-leaving"); if (remove) element.remove(); else element.hidden = true; after?.(); }, motionDuration); }
-  const updateObservedSize = (element, width, height) => { const entry = gizmos.get(element.dataset.gizmoId); if (entry) { entry.width = width || 80; entry.height = height || 32; } };
+  const updateObservedSize = (element, width, height) => { const entry = element.dataset.worldOptionId ? worldOptions.get(element.dataset.worldOptionId) : gizmos.get(element.dataset.gizmoId); if (entry) { entry.width = width || 80; entry.height = height || 32; } };
   // ResizeObserver ใช้ลด layout read ระหว่าง render; fallback นี้รองรับ WebView รุ่นเก่าโดยวัดเพียงครั้งหลังสร้าง/แก้เนื้อหา
   const gizmoSizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(entries => { for (const item of entries) updateObservedSize(item.target, item.contentRect.width, item.contentRect.height); }) : {
     observe(element) { requestAnimationFrame(() => { const bounds = element.getBoundingClientRect(); updateObservedSize(element, bounds.width, bounds.height); }); },
@@ -74,7 +74,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   function clearAll() { for (const values of [...scopes.values()]) for (const handle of [...values]) handle.remove(); scopes.clear(); question.hide(); consoleService.reset(); }
 
   function applySettings() {
-    const root = document.documentElement, questionSetting = setting.ui?.questionPanel || {}, consoleSetting = setting.ui?.console || {}, topMessageSetting = setting.ui?.topMessage || {}, choiceSetting = setting.ui?.choice || {}, gizmoSetting = setting.ui?.gizmo || {}, feedbackSetting = setting.ui?.feedback || {}, dialogSetting = setting.ui?.dialog || {}, controlSetting = setting.ui?.control || {}, hintSetting = setting.ui?.hint || {}, busySetting = setting.ui?.busy || {}, desktop = consoleSetting.desktop || {}, mobile = consoleSetting.mobile || {};
+    const root = document.documentElement, questionSetting = setting.ui?.questionPanel || {}, consoleSetting = setting.ui?.console || {}, topMessageSetting = setting.ui?.topMessage || {}, choiceSetting = setting.ui?.choice || {}, gizmoSetting = setting.ui?.gizmo || {}, worldOptionSetting = setting.ui?.worldOption || {}, feedbackSetting = setting.ui?.feedback || {}, dialogSetting = setting.ui?.dialog || {}, controlSetting = setting.ui?.control || {}, hintSetting = setting.ui?.hint || {}, busySetting = setting.ui?.busy || {}, desktop = consoleSetting.desktop || {}, mobile = consoleSetting.mobile || {};
     const variables = {
       "--lesson-question-bg": questionSetting.background, "--lesson-question-border": questionSetting.borderColor, "--lesson-question-text": questionSetting.textColor, "--lesson-question-label": questionSetting.labelColor, "--lesson-question-icon-bg": questionSetting.iconBackground, "--lesson-question-radius": questionSetting.radius, "--lesson-question-font-size": questionSetting.fontSize, "--lesson-question-felt-bg": questionSetting.feltBackground, "--lesson-question-felt-border": questionSetting.feltBorderColor, "--lesson-question-felt-icon-bg": questionSetting.feltIconBackground,
       "--gui-console-width": desktop.width, "--gui-console-quiz-width": desktop.quizWidth, "--gui-console-bottom": desktop.bottom, "--gui-console-min-height": desktop.minHeight,
@@ -84,6 +84,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
       "--gui-choice-max-width": choiceSetting.maxWidth, "--gui-choice-gap": choiceSetting.gap, "--gui-choice-bottom-gap": choiceSetting.bottomGap, "--gui-choice-bg": choiceSetting.background, "--gui-choice-border": choiceSetting.borderColor, "--gui-choice-text": choiceSetting.textColor, "--gui-choice-selected": choiceSetting.selectedColor, "--gui-choice-radius": choiceSetting.radius,
       "--gui-choice-item-min-width": choiceSetting.itemMinWidth,
       "--gui-gizmo-bg": gizmoSetting.background, "--gui-gizmo-border": gizmoSetting.borderColor, "--gui-gizmo-text": gizmoSetting.textColor, "--gui-gizmo-radius": gizmoSetting.radius, "--gui-gizmo-font-size": gizmoSetting.fontSize,
+      "--gui-world-option-bg": worldOptionSetting.background, "--gui-world-option-border": worldOptionSetting.borderColor, "--gui-world-option-text": worldOptionSetting.textColor, "--gui-world-option-title": worldOptionSetting.titleColor, "--gui-world-option-radius": worldOptionSetting.radius, "--gui-world-option-button-bg": worldOptionSetting.buttonBackground, "--gui-world-option-button-hover": worldOptionSetting.buttonHover,
       "--gui-feedback-bg": feedbackSetting.background, "--gui-feedback-border": feedbackSetting.borderColor, "--gui-feedback-text": feedbackSetting.textColor, "--gui-feedback-radius": feedbackSetting.radius, "--gui-feedback-width": feedbackSetting.maxWidth,
       "--gui-dialog-bg": dialogSetting.background, "--gui-dialog-border": dialogSetting.borderColor, "--gui-dialog-text": dialogSetting.textColor, "--gui-dialog-radius": dialogSetting.radius, "--gui-dialog-width": dialogSetting.maxWidth,
       "--gui-control-bg": controlSetting.background, "--gui-control-border": controlSetting.borderColor, "--gui-control-text": controlSetting.textColor, "--gui-control-radius": controlSetting.radius, "--gui-control-edge": controlSetting.edge, "--gui-control-button-bg": controlSetting.buttonBackground, "--gui-control-button-hover": controlSetting.buttonHover, "--gui-control-button-radius": controlSetting.buttonRadius,
@@ -188,6 +189,49 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
     get(id) { return gizmos.get(String(id))?.handle || null; }, clear(scope) { if (scope) clearScope(scope); else for (const entry of [...gizmos.values()]) entry.handle.remove(); }
   });
 
+  function createWorldOption(target, value = {}) {
+    if (!target) throw new Error("GUI_WORLD_OPTION_TARGET_REQUIRED: attach ต้องมี Object หรือ LessonHandle");
+    const options = { placement: "right", clamp: true, closeOnSelect: true, dismissible: true, ...value };
+    const id = text(options.id) || `world-option-${++sequence}`, scope = normalizeScope(options.scope), root = document.createElement("section"), leader = document.createElement("i"), header = document.createElement("header"), copy = document.createElement("div"), title = document.createElement("strong"), message = document.createElement("p"), close = document.createElement("button"), itemsRoot = document.createElement("div");
+    const entry = { id, target, options, items: normalizeItems(options.items || []), root, leader, itemsRoot, visible: options.visible !== false, pendingShow: false, focusAfterShow: false, width: 210, height: 160, removed: false };
+    if (worldOptions.has(id)) worldOptions.get(id).handle.remove();
+    if (options.multiple !== true) for (const other of [...worldOptions.values()]) other.handle.remove();
+    root.className = "gui-world-option"; root.dataset.worldOptionId = id; root.dataset.tone = normalizeTone(options.tone || "primary"); root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "false"); leader.className = "gui-world-option-leader"; leader.hidden = true;
+    copy.className = "gui-world-option-copy"; title.className = "gui-world-option-title"; message.className = "gui-world-option-message"; close.className = "gui-world-option-close"; close.type = "button"; close.textContent = "×"; close.setAttribute("aria-label", "ปิดตัวเลือก"); itemsRoot.className = "gui-world-option-items"; copy.append(title, message); header.append(copy, close); root.append(header, itemsRoot); elements.gizmoLayer.append(leader, root); gizmoSizeObserver.observe(root);
+    function render() {
+      root.dataset.tone = normalizeTone(options.tone || "primary"); title.textContent = text(options.title) || "เลือกคำสั่ง"; message.textContent = text(options.message ?? options.text); message.hidden = !message.textContent; close.hidden = options.dismissible === false; root.setAttribute("aria-label", [title.textContent, message.textContent].filter(Boolean).join(": ")); itemsRoot.replaceChildren();
+      for (const item of entry.items) {
+        const button = document.createElement("button"); button.type = "button"; button.className = "gui-world-option-item"; button.dataset.optionValue = item.id; button.disabled = Boolean(item.disabled);
+        const media = choiceImage(item.icon, true) || choiceImage(item.image); if (media) button.append(media);
+        const label = document.createElement("span"); label.textContent = item.label; button.append(label);
+        button.addEventListener("pointerdown", event => event.stopPropagation());
+        button.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); if (button.disabled) return; playUiSound?.(); if (options.objectiveAction !== false) objectiveAction(); const payload = { id: item.id, value: item.value ?? item.id, item: { ...item }, target: entry.target, handle, sourceEvent: event }; safeCallback(item.onSelect, payload, `worldOption:${id}:${item.id}:item`); safeCallback(options.onSelect, payload, `worldOption:${id}:${item.id}`); if (options.closeOnSelect !== false) handle.hide(); });
+        itemsRoot.append(button);
+      }
+    }
+    function show() { if (entry.removed) return handle; if (options.multiple !== true) for (const other of worldOptions.values()) if (other !== entry) other.handle.hide(); entry.visible = true; entry.pendingShow = true; entry.focusAfterShow = options.autoFocus !== false; root.hidden = false; root.classList.add("is-preparing"); leader.hidden = true; return handle; }
+    function hide() { entry.visible = false; entry.pendingShow = false; entry.focusAfterShow = false; root.classList.remove("is-preparing"); leader.hidden = true; if (!root.hidden) hideAnimated(root); return handle; }
+    function remove() { if (entry.removed) return; entry.removed = true; entry.visible = false; entry.pendingShow = false; entry.focusAfterShow = false; root.classList.remove("is-preparing"); gizmoSizeObserver.unobserve(root); leader.remove(); if (worldOptions.get(id) === entry) worldOptions.delete(id); unregister(handle, scope); hideAnimated(root, null, true); }
+    const handle = Object.freeze({
+      id, scope,
+      update(next = {}) { Object.assign(options, next); if (next.items) entry.items = normalizeItems(next.items); render(); gizmoSizeObserver.observe(root); return this; },
+      setItems(items) { entry.items = normalizeItems(items); render(); return this; },
+      setDisabled(value, disabled = true) { const item = entry.items.find(option => option.id === String(value)); if (item) item.disabled = disabled; render(); return this; },
+      setTarget(next) { if (!next) throw new Error("GUI_WORLD_OPTION_TARGET_REQUIRED: setTarget ต้องมี Object หรือ LessonHandle"); entry.target = next; return this; },
+      show, hide, toggle() { return entry.visible ? hide() : show(); }, remove, close: hide,
+      get visible() { return entry.visible; }, get element() { return root; }
+    });
+    entry.handle = handle; close.addEventListener("pointerdown", event => event.stopPropagation()); close.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); playUiSound?.(); hide(); }); root.addEventListener("pointerdown", event => event.stopPropagation()); root.addEventListener("keydown", event => { if (event.key === "Escape" && options.dismissible !== false) { event.stopPropagation(); hide(); } }); worldOptions.set(id, entry); register(handle, scope); render(); if (entry.visible) show(); else root.hidden = true; return handle;
+  }
+  const worldOption = Object.freeze({
+    attach: createWorldOption,
+    show(target, options = {}) { return createWorldOption(target, { ...options, visible: true }); },
+    get(id) { return worldOptions.get(String(id))?.handle || null; },
+    dismiss() { for (const entry of worldOptions.values()) if (entry.visible && entry.options.dismissible !== false) entry.handle.hide(); },
+    hide() { for (const entry of worldOptions.values()) entry.handle.hide(); },
+    clear(scope) { if (scope) clearScope(scope); else for (const entry of [...worldOptions.values()]) entry.handle.remove(); }
+  });
+
   function normalizeServiceOptions(value, options = {}) { return typeof value === "string" ? { ...options, message: value } : { ...(value || {}) }; }
   function serviceMedia(source, isIcon = false) { const image = choiceImage(source, isIcon); if (image) image.className = "gui-service-icon"; return image; }
 
@@ -239,7 +283,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
     const visible = entry.requestedVisible && controlAllowed(entry);
     clearTimeout(entry.root.__guiMotionTimer);
     if (visible) {
-      elements.controlDock.hidden = false;
+      if (entry.root.parentElement === elements.controlDock) elements.controlDock.hidden = false;
       if (animate) showAnimated(entry.root);
       else { entry.root.classList.remove("is-leaving", "is-entering"); entry.root.hidden = false; }
     } else {
@@ -247,7 +291,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
       entry.root.hidden = true;
     }
     syncControlLayout();
-    elements.controlDock.hidden = ![...controlEntries.values()].some(value => !value.removed && !value.root.hidden);
+    elements.controlDock.hidden = ![...controlEntries.values()].some(value => !value.removed && !value.root.hidden && value.root.parentElement === elements.controlDock);
   }
   function setLessonControlPhase(value) {
     const phase = String(value || "lab");
@@ -260,7 +304,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   function createControl(value = {}) {
     const options = normalizeServiceOptions(value), id = text(options.id) || `control-${++sequence}`, scope = normalizeScope(options.scope, "scene"), root = document.createElement("nav"), itemsRoot = document.createElement("div"); let removed = false;
     const entry = { id, options, root, requestedVisible: true, removed: false };
-    controls.get(id)?.remove(); root.className = "gui-control"; root.dataset.controlId = id; root.setAttribute("aria-label", text(options.ariaLabel || options.title) || "เครื่องมือบทเรียน"); root.append(itemsRoot); elements.controlDock.append(root); elements.controlDock.hidden = false;
+    controls.get(id)?.remove(); root.className = "gui-control"; root.dataset.controlId = id; root.setAttribute("aria-label", text(options.ariaLabel || options.title) || "เครื่องมือบทเรียน"); root.append(itemsRoot); const mobileSkip = options.systemRole === "skip-teaching" && matchMedia("(max-width:760px), (orientation:portrait)").matches, host = mobileSkip ? elements.viewport : elements.controlDock; host.append(root); if (host === elements.controlDock) elements.controlDock.hidden = false;
     function render() { const requested = text(options.position) || "middle-right"; root.dataset.position = VALID_CONTROL_POSITIONS.has(requested) ? requested : "middle-right"; root.dataset.tone = normalizeTone(options.tone || "default"); itemsRoot.replaceChildren(); for (const item of normalizeItems(options.items || [])) { const button = document.createElement("button"); button.type = "button"; button.dataset.controlValue = item.id; button.disabled = Boolean(item.disabled); button.setAttribute("aria-label", item.ariaLabel || item.label); const media = serviceMedia(item.icon, true); if (media) button.append(media); const span = document.createElement("span"); span.textContent = item.label; button.append(span); button.addEventListener("click", () => { if (button.disabled) return; playUiSound?.(); if (options.objectiveAction === true) objectiveAction(); safeCallback(options.onAction, { id: item.id, value: item.value ?? item.id, item: { ...item }, handle }, `control:${id}`); }); itemsRoot.append(button); } syncControlLayout(); }
     function remove() { if (removed) return; removed = true; entry.removed = true; if (controls.get(id) === handle) controls.delete(id); if (controlEntries.get(id) === entry) controlEntries.delete(id); unregister(handle, scope); hideAnimated(root, () => { syncControlLayout(); if (!elements.controlDock.children.length) elements.controlDock.hidden = true; }, true); }
     const handle = Object.freeze({ id, scope, update(next = {}) { Object.assign(options, next); render(); syncControlVisibility(entry); return this; }, setItems(items) { options.items = items; render(); return this; }, setDisabled(value, disabled = true) { const items = normalizeItems(options.items || []), item = items.find(entry => entry.id === String(value)); if (item) item.disabled = disabled; options.items = items; render(); return this; }, show() { entry.requestedVisible = true; syncControlVisibility(entry, true); return this; }, hide() { entry.requestedVisible = false; syncControlVisibility(entry); return this; }, remove, get element() { return root; } }); controls.set(id, handle); controlEntries.set(id, entry); register(handle, scope); render(); syncControlVisibility(entry, true); return handle;
@@ -288,7 +332,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   const busy = Object.freeze({ show: createBusy, get current() { return busyHandle; }, hide() { busyHandle?.remove(); } });
 
   function updateGizmos() {
-    if (!gizmos.size) return; camera.updateMatrixWorld(); const rect = elements.viewport.getBoundingClientRect(), width = Math.max(1, rect.width), height = Math.max(1, rect.height), config = setting.ui?.gizmo || {}, margin = config.safeMargin ?? 14;
+    if (!gizmos.size && !worldOptions.size) return; camera.updateMatrixWorld(); const rect = elements.viewport.getBoundingClientRect(), width = Math.max(1, rect.width), height = Math.max(1, rect.height), config = setting.ui?.gizmo || {}, margin = config.safeMargin ?? 14;
     let safeTop = margin, safeBottom = height - margin; for (const element of [elements.topbar, elements.question]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeTop = Math.max(safeTop, bounds.bottom - rect.top + margin); } for (const element of [elements.choiceDock, elements.labConsole, elements.quizConsole]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeBottom = Math.min(safeBottom, bounds.top - rect.top - margin); } if (safeBottom - safeTop < 80) { safeTop = margin; safeBottom = height - margin; }
     for (const entry of gizmos.values()) {
       const { root, leader, options } = entry; if (!entry.visible) { leader.hidden = true; if (!root.classList.contains("is-leaving")) root.hidden = true; continue; } const target = targetObject(entry.target); let valid = true;
@@ -311,8 +355,28 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
         }
       }
     }
+    for (const entry of worldOptions.values()) {
+      const { root, leader, options } = entry; if (!entry.visible) { leader.hidden = true; if (!root.classList.contains("is-leaving")) root.hidden = true; continue; }
+      const target = targetObject(entry.target); let valid = true; if (Array.isArray(target)) worldPoint.fromArray(target); else if (target?.getWorldPosition) { if (!target.parent) valid = false; target.getWorldPosition(worldPoint); } else valid = false;
+      if (!valid) { root.hidden = leader.hidden = true; continue; }
+      const targetPoint = worldPoint.clone(), offset = options.worldOffset || [0, 0, 0]; worldPoint.x += offset[0] || 0; worldPoint.y += offset[1] || 0; worldPoint.z += offset[2] || 0; viewPoint.copy(worldPoint).applyMatrix4(camera.matrixWorldInverse); projected.copy(worldPoint).project(camera);
+      if (viewPoint.z >= -.01 || projected.z < -1 || projected.z > 1) { root.hidden = leader.hidden = true; continue; }
+      if (entry.pendingShow) { root.hidden = false; root.classList.add("is-preparing"); const measured = root.getBoundingClientRect(); entry.width = measured.width || entry.width; entry.height = measured.height || entry.height; }
+      const screenOffset = options.offset || [0, 0], elementWidth = entry.width, elementHeight = entry.height; let x = (projected.x * .5 + .5) * width + (screenOffset[0] || 0), y = (-projected.y * .5 + .5) * height + (screenOffset[1] || 0), placement = options.placement || "right", gap = options.gap ?? 34;
+      if (placement === "top") y -= elementHeight / 2 + gap; else if (placement === "bottom") y += elementHeight / 2 + gap; else if (placement === "left") x -= elementWidth / 2 + gap; else x += elementWidth / 2 + gap;
+      const rawX = x, rawY = y; if (options.clamp !== false) { x = clamp(x, margin + elementWidth / 2, width - margin - elementWidth / 2); y = clamp(y, safeTop + elementHeight / 2, safeBottom - elementHeight / 2); } root.classList.toggle("is-clamped", Math.abs(rawX - x) > 1 || Math.abs(rawY - y) > 1); root.style.transform = `translate3d(${Math.round(x)}px,${Math.round(y)}px,0) translate(-50%,-50%)`;
+      projected.copy(targetPoint).project(camera); const targetX = (projected.x * .5 + .5) * width, targetY = (-projected.y * .5 + .5) * height, dx = targetX - x, dy = targetY - y, distance = Math.hypot(dx, dy), halfWidth = elementWidth / 2, halfHeight = elementHeight / 2;
+      if (distance < 8) leader.hidden = true; else { const edgeRatio = Math.min(Math.abs(dx) > .001 ? halfWidth / Math.abs(dx) : Infinity, Math.abs(dy) > .001 ? halfHeight / Math.abs(dy) : Infinity, 1), startX = x + dx * edgeRatio, startY = y + dy * edgeRatio, length = Math.hypot(targetX - startX, targetY - startY); leader.hidden = length < 3; leader.style.left = `${Math.round(startX)}px`; leader.style.top = `${Math.round(startY)}px`; leader.style.width = `${Math.round(length)}px`; leader.style.transform = `rotate(${Math.atan2(targetY - startY, targetX - startX)}rad)`; }
+      if (entry.pendingShow) {
+        entry.pendingShow = false;
+        root.classList.remove("is-preparing");
+        showAnimated(root);
+        if (entry.focusAfterShow) queueMicrotask(() => { const first = entry.itemsRoot.querySelector("button:not(:disabled)"); try { first?.focus({ preventScroll: true }); } catch { first?.focus(); } });
+        entry.focusAfterShow = false;
+      } else root.hidden = false;
+    }
   }
 
   applySettings();
-  return Object.freeze({ question, console: consoleService, topMessage, choice, gizmo, feedback, dialog, insight, control, hint, busy, update: updateGizmos, clearScope, clearAll, applySettings, get counts() { return Object.freeze({ topMessages: topMessageHandle ? 1 : 0, choices: choices.size, gizmos: gizmos.size, feedbacks: feedbacks.size, dialogs: dialogs.size, controls: controls.size, hints: hints.size, busy: busyHandle ? 1 : 0 }); } });
+  return Object.freeze({ question, console: consoleService, topMessage, choice, gizmo, worldOption, feedback, dialog, insight, control, hint, busy, update: updateGizmos, clearScope, clearAll, applySettings, get counts() { return Object.freeze({ topMessages: topMessageHandle ? 1 : 0, choices: choices.size, gizmos: gizmos.size, worldOptions: worldOptions.size, feedbacks: feedbacks.size, dialogs: dialogs.size, controls: controls.size, hints: hints.size, busy: busyHandle ? 1 : 0 }); } });
 }

@@ -15,10 +15,13 @@
 | Top Message | `context.ui.topMessage` | `ui.topMessage` | ประกาศสั้นใต้ Topbar ไม่ใช่โจทย์ |
 | Choice Panel | `context.ui.choice` | `ui.choice` | ตัวเลือกคำตอบหรือ action เหนือ Console |
 | Gizmo | `context.ui.gizmo` | `ui.gizmo` | GUI 2D ที่ติดตาม object หรือพิกัด World |
+| World Option | `context.ui.worldOption` | `ui.worldOption` | Popup ตัวเลือกแนวตั้งที่ติดตาม object 3D และส่ง Event กลับบทเรียน |
 | World GUI System | `context.ui.worldGuiSystem` | `ui.worldGuiSystem` | ป้ายข้อมูลขนาดเล็กที่ยึดกับโมเดลหรือพิกัดในฉาก |
+| Clickme | `context.ui.clickme` | `ui.clickme` | มือแบ/มือกำชี้วัตถุ draggable/clickable แบบ opt-in เฉพาะที่ Admin/Dev ระบุ |
 | Feedback | `context.ui.feedback` | `ui.feedback` | สถานะสั้นแบบไม่บล็อกและปิดได้ |
 | Dialog | `context.ui.dialog` | `ui.dialog` | Popup ที่ต้องอ่าน ตัดสินใจ หรือยืนยัน |
 | Insight Dialog | `context.ui.insight` / เปิดผ่าน `world.addCallout({ insight })` | `ui.dialog` | เนื้อหาคำอธิบายเชิงลึก โดยพื้นที่ในฉากควรเปิดผ่าน Actionable World Callout |
+| Intro Service | `context.ui.intro` / `howto[].intro` | System-owned | iframe เกือบเต็มหน้าจอสำหรับเนื้อหาเสริมจาก URL; บล็อก interaction ของบทเรียนหลักจนกว่าจะปิด |
 | Control Menu | `context.ui.control` | `ui.control` | เมนูเครื่องมือมุมขวาบน/กลาง/ล่าง |
 | Mascot Hint | `context.ui.hint` | `ui.hint` | คำแนะนำผ่านกล่องคำพูด Mascot |
 | Busy Overlay | `context.ui.busy` | `ui.busy` | บล็อกฉากชั่วคราวระหว่างรอ async task |

@@ -10,6 +10,7 @@
 |---|---|
 | [lesson0.html](Project/interactive/chapters/lesson0.html) | ตัวอย่างหลัก: lifecycle, เปรียบเทียบจำนวน, drag/drop, Lab, Quiz และ cleanup |
 | [LESSON_OUTPUT_TEMPLATE.html](LESSON_OUTPUT_TEMPLATE.html) | โครง HTML หนึ่งไฟล์ พร้อมกิจกรรมลากกล่องพื้นฐาน เริ่มบทใหม่จากโครงนี้แล้วแทนเนื้อหาจริง |
+| [ep0/lesson1.html](Project/interactive/chapters/ep0/lesson1.html) | ทดสอบ Intro Service, Operator Sign แบบ clickable และ World Option บนแมว FBX จาก Catalog |
 | [lesson1.html](Project/interactive/chapters/lesson1.html) | บวก/ลบในสวนผลไม้ และการคำนวณจาก state; UI ในตัวอย่างเดิมต้องเทียบกับ GUI Service ปัจจุบันก่อนนำมาใช้ |
 | [lesson-library-demo.html](Project/interactive/chapters/lesson-library-demo.html) | สำรวจการใช้ Standard Asset Library; ตรวจ Asset ID กับ catalog จริงอีกครั้ง |
 | [ep1/lesson1.html](Project/interactive/chapters/ep1/lesson1.html) | สัญลักษณ์ วงเล็บ และลำดับการดำเนินการ |
@@ -58,6 +59,7 @@ HTML shell
 | feedback | [Feedback](sdk/GUI_SERVICE_REFERENCE.md#feedback) | ข้อความสถานะไม่บล็อก; ไม่เฉลย Quiz |
 | dialog | [Dialog](sdk/GUI_SERVICE_REFERENCE.md#dialog) | ยืนยันหรือข้อความจำเป็นที่บล็อกชั่วคราว |
 | insight | [Insight Dialog](sdk/GUI_SERVICE_REFERENCE.md#insight-dialog) | คำอธิบายเพิ่มเติมจากจุดที่กดได้ |
+| intro | [Intro](sdk/GUI_SERVICE_REFERENCE.md#intro) | เนื้อหาเสริมจาก URL แบบบล็อกฉากหลัก |
 | control | [Control](sdk/GUI_SERVICE_REFERENCE.md#control) | utility ของกิจกรรม สามตำแหน่งด้านขวา |
 | hint | [Hint](sdk/GUI_SERVICE_REFERENCE.md#hint) | คำใบ้ผ่าน Mascot กลาง |
 | busy | [Busy](sdk/GUI_SERVICE_REFERENCE.md#busy) | รอ async พร้อมปิดใน finally |

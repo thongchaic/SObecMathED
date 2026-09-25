@@ -52,6 +52,46 @@ function methodBody(source, methodName) {
   return "";
 }
 
+function callBodies(source, methodNames) {
+  const accepted = new Set(methodNames);
+  const bodies = [];
+  const calls = /\.\s*([A-Za-z_$][\w$]*)\s*\(/g;
+  let match;
+
+  while ((match = calls.exec(source))) {
+    if (!accepted.has(match[1])) continue;
+    const opening = match.index + match[0].lastIndexOf("(");
+    let depth = 1, quote = "", lineComment = false, blockComment = false, escaped = false;
+    let closedAt = -1;
+
+    for (let index = opening + 1; index < source.length; index += 1) {
+      const char = source[index], next = source[index + 1];
+      if (lineComment) { if (char === "\n") lineComment = false; continue; }
+      if (blockComment) { if (char === "*" && next === "/") { blockComment = false; index += 1; } continue; }
+      if (quote) {
+        if (escaped) { escaped = false; continue; }
+        if (char === "\\") { escaped = true; continue; }
+        if (char === quote) quote = "";
+        continue;
+      }
+      if (char === "/" && next === "/") { lineComment = true; index += 1; continue; }
+      if (char === "/" && next === "*") { blockComment = true; index += 1; continue; }
+      if (char === "\"" || char === "'" || char === "`") { quote = char; continue; }
+      if (char === "(") depth += 1;
+      if (char === ")") {
+        depth -= 1;
+        if (depth === 0) { closedAt = index; break; }
+      }
+    }
+
+    if (closedAt >= 0) {
+      bodies.push(source.slice(opening + 1, closedAt));
+      calls.lastIndex = closedAt + 1;
+    }
+  }
+  return bodies;
+}
+
 function stripArrowCallbacks(source) {
   let result = "";
   for (let index = 0; index < source.length;) {
@@ -256,15 +296,19 @@ if (html) {
     add("LESSON_OPERATOR_UNSUPPORTED", "validate", `addOperatorSign ไม่รองรับ ${unsupportedOperator[1]}; รองรับ = ≠ < > ≤ ≥ + - × ÷`);
   }
 
-  for (const match of html.matchAll(/\bshape\s*:\s*["']([^"']+)["']/g)) {
-    const shape = match[1].trim().toLowerCase().replace(/[_\s]+/g, "-");
-    if (!primitiveShapes.has(shape)) {
-      add(
-        "LESSON_PRIMITIVE_UNSUPPORTED",
-        "validate",
-        `ไม่พบ Procedural Shape: ${match[1]}`,
-        "เลือก shape จาก sdk/capabilities.json หรือ sdk/LESSON_API_REFERENCE.md; ห้ามสมมติชื่อรูปทรงใหม่"
-      );
+  // `shape` is also a common lesson-data field. Validate it only inside the
+  // public constructors that actually consume procedural shape definitions.
+  for (const callBody of callBodies(html, ["addPrimitive", "addGroup"])) {
+    for (const match of callBody.matchAll(/\bshape\s*:\s*["']([^"']+)["']/g)) {
+      const shape = match[1].trim().toLowerCase().replace(/[_\s]+/g, "-");
+      if (!primitiveShapes.has(shape)) {
+        add(
+          "LESSON_PRIMITIVE_UNSUPPORTED",
+          "validate",
+          `ไม่พบ Procedural Shape: ${match[1]}`,
+          "เลือก shape จาก sdk/capabilities.json หรือ sdk/LESSON_API_REFERENCE.md; ห้ามสมมติชื่อรูปทรงใหม่"
+        );
+      }
     }
   }
 
@@ -320,7 +364,7 @@ if (html) {
 const report = {
   ok: errors.length === 0,
   file: basename(file),
-  contractVersion: "1.3.0",
+  contractVersion: "1.4.0",
   profile,
   errors
 };

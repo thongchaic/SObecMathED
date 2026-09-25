@@ -87,8 +87,8 @@ source code ใน workspace เวอร์ชันปัจจุบันม
 - ห้ามแก้ material, geometry, renderer, scene, camera ภายใน หรือ `userData` ของ object โดยตรง
 - ถ้าต้องใช้ asset ให้ใช้เฉพาะไฟล์ที่มีอยู่จริงและ resolve ผ่าน API ของ runtime ห้ามสมมติ path
 - **Procedural First:** ก่อนสรุปว่าต้องติดต่อทีม Dev หรือขอ Asset ใหม่ ต้องตรวจรูปทรงทั้งหมดใน `sdk/LESSON_API_REFERENCE.md` และลองประกอบด้วย `world.addPrimitive()` / `world.addGroup()` ก่อน รูปทรง procedural ไม่ต้องลงทะเบียนใน Asset Catalog
-- ใช้ `sector`/`ring-sector` สำหรับเค้ก พิซซ่า เศษส่วน และกราฟวงกลม ใช้ `prism`/`pyramid`/`frustum` สำหรับเรขาคณิต และใช้รูปทรงตกแต่งประกอบ prototype ให้บทเรียนเล่นจบได้ ทีมหลักสามารถแทนด้วย FBX/Standard Asset ภายหลังโดยไม่เปลี่ยน learning logic
-- ติดต่อทีม Dev เฉพาะเมื่อรูปทรงและ interaction ที่ประกาศไว้ยังทำแกนการเรียนรู้ไม่ได้จริง เช่น physics, ของเหลว หรือการตัด mesh แบบอิสระ ห้ามหยุดเพียงเพราะไม่มีโมเดลสวยใน Catalog
+- ใช้ `sector`/`ring-sector` สำหรับเค้ก พิซซ่า เศษส่วน และกราฟวงกลม ใช้ `prism`/`pyramid`/`frustum` สำหรับเรขาคณิต และใช้ `polygon`/`polyhedron`/`lathe`/`spline-tube` เมื่อต้องกำหนดจุด หน้าตัด หรือแนวเส้นเอง ทีมหลักสามารถแทนด้วย FBX/Standard Asset ภายหลังโดยไม่เปลี่ยน learning logic
+- ติดต่อทีม Dev เฉพาะเมื่อรูปทรงและ interaction ที่ประกาศไว้ยังทำแกนการเรียนรู้ไม่ได้จริง เช่น physics หรือของเหลว ห้ามหยุดเพียงเพราะไม่มีโมเดลสวยใน Catalog
 
 ## UI กลางของบทเรียน
 
@@ -98,9 +98,13 @@ source code ใน workspace เวอร์ชันปัจจุบันม
 - โจทย์หลักที่ต้องอ่านคงที่ใช้ `context.ui.setQuestion(text)` ระบบจะแสดงเป็น screen-space UI ด้านบนและไม่หมุนตามกล้อง กรอบรักษาความกว้าง/ความสูง ไม่ทับ Header/Panel และลดขนาดอักษรให้พอดีไม่เกิน 2 บรรทัด บทเรียนส่งเฉพาะข้อความ
 - เป้าหมายย่อใน Main Console ด้านล่างใช้ `context.ui.setObjective(text)`
 - ข้อความ feedback ใช้ `context.ui.toast(text, type)` เพื่ออัปเดตสถานะใน Main Console ข้อความจะค้างจนกว่าจะมีสถานะใหม่หรือเปลี่ยน Step
-- GUI ใหม่ให้ใช้ Service กลาง `context.ui.question`, `console`, `topMessage`, `choice`, `gizmo`, `worldGuiSystem`, `feedback`, `dialog`, `insight`, `control`, `hint`, `busy` ห้ามสร้าง UI ซ้ำด้วย HTML/CSS หาก Public API รองรับแล้ว โดย `control.position` รองรับ `top-right`, `middle-right`, `bottom-right`
+- GUI ใหม่ให้ใช้ Service กลาง `context.ui.question`, `console`, `topMessage`, `choice`, `gizmo`, `worldOption`, `worldGuiSystem`, `clickme`, `feedback`, `dialog`, `insight`, `intro`, `control`, `hint`, `busy` ห้ามสร้าง UI ซ้ำด้วย HTML/CSS หาก Public API รองรับแล้ว โดย `control.position` รองรับ `top-right`, `middle-right`, `bottom-right`
 - `context.ui.choice.show()` ใช้สร้างตัวเลือกเหนือ Console และแจ้ง objective action ให้อัตโนมัติ ส่วน `context.ui.gizmo.attach()`/`at()` ใช้ข้อความ ตัวเลข icon หรือภาพ Screen-space ที่ติดตาม object/พิกัด World
 - `context.ui.worldGuiSystem.attach()`/`at()` ใช้ป้ายข้อมูลขนาดเล็กที่ยึดกับโมเดลหรือพิกัด เหมาะกับคำอธิบายสั้นบนฉาก; Debug Area และ Transform Editor เป็นเครื่องมือ System-owned สำหรับทีม Dev ไม่ใช่สิ่งที่ lesson ต้องเปิดเอง
+- `context.ui.worldOption.attach()` ใช้ popup ตัวเลือกแนวตั้งที่เปิดจาก object 3D และส่ง event ของคำสั่งกลับบทเรียน ห้ามสร้างเมนูเฉพาะบทเรียนทับความสามารถนี้
+- วัตถุ 3D ที่ `clickable` หรือ `draggable` ใช้ Hover กลางของ runtime อัตโนมัติ (ผิวขาวพร้อมวง Hover) ห้ามสร้าง Hover ซ้ำรายบทเรียน; `selectionFeedback: false` ซ่อนเฉพาะลูกศร Select หลังคลิกและไม่ปิด Hover
+- `context.ui.clickme.attach(handle, { size, scale, anchor, offset })` ใช้มือแบ/มือกำกับวัตถุ draggable/clickable **เฉพาะจุดที่ Admin/Dev ระบุ** ไม่เปิดอัตโนมัติ; ระบบซ่อนระหว่างสอน/เล่นมือไกด์ไลน์/กำลังลาก และกลับมาเมื่อวางไม่สำเร็จ ปรับค่าเริ่มต้นที่ `mainWorldSetting.ui.clickme` (size, scale, unhoverOpacity, hoverOpacity, mobileOpacity, animationTime, opacityTransitionTime)
+- `context.ui.intro.open({ url, title, source: "control" })` ใช้เปิดเนื้อหาเสริมจาก URL ภายใน/ภายนอกแบบเกือบเต็มจอและบล็อก interaction ของฉาก ห้ามสร้าง iframe/modal เอง; ขั้นสอนใช้ `howto[].intro` และเมื่อปิดจะไป Step ถัดไป ส่วนการเปิดจาก Control แล้วปิดจะไม่เปลี่ยน Step
 - `world.addCallout()` ใช้สำหรับป้ายพร้อมเส้นชี้ "พื้นที่" ในฉาก และใส่ `insight` ได้เพื่อให้ป้ายเป็นจุดกดเปิดคำอธิบายมาตรฐาน ห้ามซ่อน click action ไว้บนพื้นผิวที่มองไม่ออกว่ากดได้; Callout กับ Gizmo ยังมีหน้าที่ต่างกัน
 - ใช้ `world.addWorldCounter()` เมื่อต้องแสดงตัวเลขนับบนพื้นแบบ display-only และใช้ `world.addWorldGui()` เมื่อต้องวางข้อความอธิบายลงบนพื้น World GUI กดเปิด Insight ได้เมื่อกำหนด `insight` หรือ `onClick`; ใช้ interaction กลางนี้แทนการสร้างปุ่มซ้ำเอง
 - ใช้ GUI scope ให้เหมาะสม (`scene`, `step`, `question`, `lesson`, `manual`) เพื่อให้ runtime ล้าง UI ตาม lifecycle ได้เอง ดู signature และตัวอย่างล่าสุดใน `sdk/GUI_SERVICE_REFERENCE.md`
@@ -121,6 +125,7 @@ source code ใน workspace เวอร์ชันปัจจุบันม
 - Control ของบทเรียนถูก runtime ซ่อนระหว่างขั้นสอนทุกบทโดยอัตโนมัติ ช่วงนี้แสดงได้เฉพาะปุ่มข้ามการสอนของระบบ; Control จะกลับมาเมื่อเข้า Lab ขั้นสุดท้าย/การทดลองหรือ `student-quiz` และจะถูกซ่อนอีกครั้งเมื่อย้อนกลับไปขั้นสอน บทเรียนห้ามพยายามหลบกฎนี้ด้วย `handle.show()`
 - `hint` — คำแนะนำผ่าน Mascot กลาง ห้ามสร้าง speech bubble หรือตัวละครซ้ำ
 - `busy` — ปิด interaction ระหว่างรอ async task และต้องปิดใน `finally`
+- `intro` — หน้าอ่าน/Interactive จาก URL ภายในหรือภายนอก; เว็บไซต์ปลายทางต้องอนุญาตให้ embed ด้วย iframe
 
 วัตถุขนาดเล็กที่แตะยากสามารถกำหนด `hitArea`/`hitAreaOffset` และ `dragFromCenter` โดย hit area จะไม่ขยายโมเดลจริง เมื่อนำวัตถุออกจากฐานแล้วให้เรียก `handle.setHitArea(null)` และ `handle.setDragFromCenter(false)` หากต้องกลับไปใช้พื้นที่จับตามโมเดล
 
@@ -145,6 +150,8 @@ Topbar, Mode Badge, Quiz Badge, System Popup, Camera Controls, World Hint, Loadi
 - `editSchema`
 - `howto`
 - `quiz`
+
+Step ใน `howto` เพิ่ม `intro: { url, title?, label? }` ได้ หากต้องบังคับเปิดเนื้อหาเสริมอัตโนมัติ เมื่อผู้เรียนปิด Intro Runtime จะเลื่อนไป Step ถัดไป
 
 อย่าคัดลอกค่า Lesson 0 โดยไม่สัมพันธ์กับบทเรียนใหม่ ทุกค่าใน meta ต้องมีผลจริงต่อเนื้อหาหรือ UX ของบทนั้น
 

@@ -54,6 +54,8 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
     ├── main-world.html
     ├── main-world.js
     ├── gui-service.js
+    ├── clickme-service.js
+    ├── intro-service.js
     ├── world-gui-system.js
     ├── main-world-setting.js
     ├── runtime-setting-menu.js
@@ -78,7 +80,57 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
 
 Host เรียก EduSDK → ตรวจ `script[data-lesson-app]` → เปิด main-world → เรียก PuzzleLesson.define และ lifecycle → บทเรียนสร้างฉากผ่าน context ส่วน runtime ดูแล renderer, GUI, กล้อง, Lab, Quiz และการปิด บทเรียนจึงไม่สร้าง renderer, canvas หรือแผง UI กลางซ้ำ
 
-GUI ที่ใช้ได้มี question, console, topMessage, choice, gizmo, worldGuiSystem, feedback, dialog, insight, control, hint และ busy พร้อมตัวอย่างใน GUI Service Reference; `worldGuiSystem` ใช้ป้ายเล็กที่ยึดกับพิกัดหรือโมเดล ส่วน Callout, World Counter, World GUI, Target Focus และ Guideline ดูใน Public API
+### เปิดบทเรียนเต็มจอหรือภายใน Preview Panel
+
+EduSDK เปิดบทเรียนแบบเต็ม viewport เป็นค่าเริ่มต้น เพื่อรักษาพฤติกรรมเดิมของระบบ:
+
+```js
+EduSDK.init({
+  container: document.body,
+  mainWorldPath: "./Project/interactive/main-world.html"
+});
+
+EduSDK.openLesson({ ...lessonData, fullScreen: true }, onComplete, onClose);
+```
+
+หาก Frontend นำบทเรียนไปแสดงใน `iframe`, preview card หรือ panel ที่เล็กกว่าหน้าจอ ให้ส่ง element ของ panel เป็น `container` และกำหนด `fullScreen: false` ใน `lessonData`:
+
+```js
+const previewPanel = document.querySelector("#lesson-preview");
+
+EduSDK.init({
+  container: previewPanel,
+  mainWorldPath: "./Project/interactive/main-world.html"
+});
+
+EduSDK.openLesson({ ...lessonData, fullScreen: false }, onComplete, onClose);
+```
+
+กำหนดรูปแบบการแสดงผลด้วย `lessonData.fullScreen` ตอนเปิดบทเรียน โดยรับค่า boolean เท่านั้น: ใช้ `true` สำหรับบทเรียนเต็ม viewport และ `false` สำหรับ iframe, preview card หรือ panel ขนาดเล็ก หากไม่ส่งค่า ค่าเริ่มต้นของ SDK คือ `true`
+
+ในโหมด `false` SDK จะวัดพื้นที่จริงของ `container` ด้วย `ResizeObserver`, สร้าง virtual viewport อ้างอิง 1280×720 และย่อทั้ง Three.js, System UI และ Gizmos ด้วยสเกลเดียวกัน จึงไม่ควรแก้ขนาด UI หรือ Gizmos แยกในบทเรียนเพื่อชดเชย iframe ขนาดเล็ก เมื่อ panel เปลี่ยนขนาด SDK จะคำนวณ layout ใหม่ให้อัตโนมัติ เมื่อต้องเปิดบทเรียนใหม่ในรูปแบบอื่น ให้กำหนด `lessonData.fullScreen` ของครั้งนั้น
+
+ข้อกำหนดสำหรับ panel mode: `container` ต้องมีความกว้างและความสูงจริง ไม่ใช่ element ที่มีขนาดเป็นศูนย์ และควรให้ EduSDK เป็นผู้จัดการการย่อบทเรียน หลีกเลี่ยงการใช้ CSS `transform: scale(...)` ซ้ำที่ iframe หรือ canvas เพราะจะทำให้ pointer, UI และ Gizmos ถูกย่อสองครั้ง
+
+### Intro Service สำหรับเนื้อหาเสริม
+
+ใช้ `context.ui.intro` เมื่อต้องเปิดหน้าอ่านหรือ Interactive จาก URL ภายใน/ภายนอกใน iframe เกือบเต็มหน้าจอ ระบบจะบล็อกเมาส์ คีย์บอร์ด และการเลื่อนของบทเรียนหลักจนกว่าจะปิด ห้ามสร้าง iframe/modal ซ้ำใน Lesson HTML
+
+ขั้นสอนเปิดอัตโนมัติได้ด้วย `howto[].intro`; เมื่อผู้เรียนปิด ระบบไป Step ถัดไป:
+
+```js
+howto: [{
+  index: 0,
+  title: "อ่านเพิ่มเติม",
+  type: "sequence",
+  desc: "อ่านเนื้อหาแล้วปิดเพื่อไปต่อ",
+  intro: { url: "./intro.html", title: "เนื้อหาเพิ่มเติม" }
+}]
+```
+
+ปุ่ม Control เปิดเสริมได้ด้วย `context.ui.intro.open({ url, title, source: "control" })`; การปิดกรณีนี้ไม่เปลี่ยน Step หน้าเว็บปลายทางอาจปฏิเสธ iframe ผ่าน `X-Frame-Options` หรือ CSP ซึ่ง Host ไม่สามารถข้ามข้อจำกัดนั้นได้
+
+GUI ที่ใช้ได้มี question, console, topMessage, choice, gizmo, worldOption, worldGuiSystem, clickme, feedback, dialog, insight, intro, control, hint และ busy พร้อมตัวอย่างใน GUI Service Reference; `worldOption` ใช้เมนูคำสั่งแนวตั้งที่ติดตาม object, `worldGuiSystem` ใช้ป้ายเล็กที่ยึดกับพิกัดหรือโมเดล ส่วน `clickme` เป็นมือแบ/มือกำแบบ opt-in ที่ Admin/Dev ระบุให้ใช้กับวัตถุ draggable/clickable และตั้งค่าที่ `ui.clickme` ส่วน Callout, World Counter, World GUI, Target Focus และ Guideline ดูใน Public API
 
 Runtime เป็นผู้บังคับกฎ Control กลาง: ระหว่างขั้นสอนแสดงได้เฉพาะปุ่มข้ามการสอน เมื่อเข้า Lab ขั้นสุดท้าย/การทดลองหรือ Quiz จึงแสดง Control ของบทเรียน และเมื่อย้อนกลับไปขั้นสอนระบบต้องซ่อนให้อัตโนมัติ รูปลักษณ์บทเรียน 3D ปัจจุบันใช้ Storybook UI สีน้ำตาล/ครีม โดยคง felt environment เป็นฉากพื้นฐาน
 

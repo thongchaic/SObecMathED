@@ -432,7 +432,7 @@ export const mainWorldSetting = {
       firstMessageType: "instruction",      // ข้อความแรกเปิดอัตโนมัติ เพื่อไม่ให้เด็กพลาดคำแนะนำสำคัญ
       hintAutoRevealAfter: 10000,             // hint เปิดเองเมื่อไม่มี action ตามเวลานี้; 0 = ไม่เปิดเอง
       noticeLabel: "มีคำแนะนำใหม่",
-      typeIcons: { instruction: "book.svg", hint: "lightbulb.svg", optional: "lightbulb.svg" }
+      typeIcons: { instruction: "info-book.svg", hint: "lightbulb.svg", optional: "lightbulb.svg" }
     },
     idle: {
       blinkInterval: [2800, 5200],          // ช่วงสุ่มเวลากระพริบตา หน่วยมิลลิวินาที
@@ -554,6 +554,27 @@ export const mainWorldSetting = {
       fontSize: 14,
       safeMargin: 14,
       maxVisible: 24
+    },
+    // Popup คำสั่งแนวตั้งที่ยึดกับ Object 3D ผ่าน context.ui.worldOption
+    worldOption: {
+      background: "rgba(255, 250, 235, 0.97)",
+      borderColor: "rgba(255, 255, 255, 0.92)",
+      textColor: "#34415b",
+      titleColor: "#35256f",
+      radius: 20,
+      buttonBackground: "linear-gradient(145deg, #ffffff, #eef4ff)",
+      buttonHover: "linear-gradient(145deg, #fff3cf, #ebe5ff)"
+    },
+    // มือ Clickme เป็น opt-in: Admin/Dev เลือกวัตถุให้ lesson เรียก attach() เองเท่านั้น
+    // scale คูณต่อจาก size ของ lesson เพื่อปรับทุกบทเรียนจาก Runtime Setting (F6) ได้
+    clickme: {
+      size: 40,                 // ขนาดเริ่มต้น (px) เมื่อ lesson ไม่ส่ง size
+      scale: 1,                 // ตัวคูณขนาดทั้งหมด รวมถึง lesson ที่ส่ง size เอง
+      unhoverOpacity: 0.7,      // เมาส์ยังไม่ชี้
+      hoverOpacity: 1,          // เมาส์ชี้
+      mobileOpacity: 1,         // จอสัมผัสไม่มี hover จึงสว่างตลอด
+      animationTime: 900,       // เวลาสลับมือแบ/มือกำหนึ่งรอบ (ms)
+      opacityTransitionTime: 150 // เวลาเปลี่ยนความสว่าง (ms)
     },
     // ข้อความผลลัพธ์สั้น ๆ แบบไม่บล็อกหน้าจอ เช่น สำเร็จ/คำเตือน/ผิดพลาด
     feedback: {

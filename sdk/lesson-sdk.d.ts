@@ -8,9 +8,13 @@ export type PrimitiveShape =
   | "cylinder" | "half-cylinder" | "quarter-cylinder"
   | "cone" | "pyramid" | "prism" | "frustum" | "capsule"
   | "sector" | "sector-flat" | "ring-sector" | "ring-sector-flat" | "tube"
-  | "torus" | "torus-knot" | "circle" | "plane" | "ring"
+  | "torus" | "torus-knot" | "circle" | "plane" | "arrow-flat" | "ring"
   | "star" | "heart" | "cross" | "wedge"
-  | "tetrahedron" | "octahedron" | "dodecahedron" | "icosahedron" | "diamond";
+  | "tetrahedron" | "octahedron" | "dodecahedron" | "icosahedron" | "diamond"
+  | "polygon" | "polygon-flat" | "polyhedron" | "lathe" | "spline-tube"
+  | "cube" | "cuboid" | "rectangle" | "rectangle-flat" | "triangle"
+  | "semicircle" | "semi-cylinder" | "quarter-circle" | "pie" | "pie-slice"
+  | "annular-sector" | "arc" | "disc" | "donut" | "extrude-polygon" | "custom-polyhedron" | "path-tube";
 export type GuiScope = "lesson" | "scene" | "step" | "question" | "manual";
 export type GuiTone = "default" | "primary" | "info" | "success" | "warning" | "error";
 
@@ -80,6 +84,26 @@ export interface ProceduralGeometryOptions {
   openEnded?: boolean;
   /** ความมนของ box/rounded-box 0.01-0.24 */
   radius?: number;
+  /** จุดขอบของ polygon เป็น [x,z] หรือจุดของ polyhedron เป็น [x,y,z] */
+  vertices?: Vec2[] | Vec3[];
+  /** ช่องว่างภายใน polygon แต่ละวงมีอย่างน้อย 3 จุด */
+  holes?: Vec2[][];
+  /** หน้า polyhedron; แต่ละหน้ารองรับตั้งแต่สามจุดและระบบ triangulate ให้อัตโนมัติ */
+  faces?: number[][];
+  /** index สามเหลี่ยมแบบ flat สำหรับ polyhedron */
+  indices?: number[];
+  /** เส้นหน้าตัด [radius,y] สำหรับ lathe */
+  profile?: Vec2[];
+  /** แนวเส้น [x,y,z] สำหรับ spline-tube */
+  path?: Vec3[];
+  /** true เป็นค่าเริ่มต้น: จัดจุดให้อยู่กลางและ normalize ก่อนคูณ size */
+  normalize?: boolean;
+  /** แนวของรูปทรงแบน: front (XY), ground/xz หรือ side/yz */
+  orientation?: "front" | "ground" | "horizontal" | "xz" | "side" | "yz";
+  radialSegments?: number;
+  closed?: boolean;
+  curveType?: "centripetal" | "chordal" | "catmullrom";
+  tension?: number;
 }
 
 export interface PrimitivePart {
@@ -194,7 +218,7 @@ export interface LessonWorld {
     onHover?: (event: { hovered: boolean; handle: WorldGuiHandle; object: unknown }) => void;
     objectiveAction?: boolean; hoverMessage?: string; hitArea?: Vec3; hitAreaOffset?: Vec3;
   }): WorldGuiHandle;
-  addOperatorSign(options?: { text?: "<" | ">" | "=" | "+" | "-" | "−" | "×" | "÷"; position?: Vec3; scale?: Vec2 }): OperatorHandle;
+  addOperatorSign(options?: { text?: "<" | ">" | "=" | "≠" | "<=" | ">=" | "≤" | "≥" | "+" | "-" | "−" | "×" | "x" | "X" | "÷"; position?: Vec3; scale?: Vec2; clickable?: boolean; onClick?: LessonObjectOptions["onClick"]; hoverMessage?: string; objectiveAction?: boolean; selectionFeedback?: boolean }): OperatorHandle;
   addGuideline(options?: { from?: Vec3; fromObject?: unknown; to?: Vec3; color?: string | number }): LessonHandle;
   addLineRender(options?: { name?: string; from?: Vec3; to?: Vec3; color?: string | number; thickness?: number; opacity?: number; dashed?: boolean; dashSize?: number; gapSize?: number; arrow?: boolean; arrowSize?: number }): LessonHandle;
   addTargetFocus(options?: { position?: Vec3; radius?: number; color?: string | number; opacity?: number; animate?: boolean; rotateSpeed?: number; pulseScale?: number; opacityPulse?: number }): LessonHandle;
@@ -248,6 +272,23 @@ export interface HowToStep {
   title: string;
   type: "sequence" | "freestyle";
   desc: string;
+  intro?: IntroStepOptions;
+}
+
+export type IntroStepOptions = ({ url: string; src?: never } | { url?: never; src: string }) & {
+  title?: string;
+  label?: string;
+};
+
+export type IntroOpenOptions = IntroStepOptions & {
+  source?: "step" | "control" | string;
+  onClose?: (event: { reason: string; source: string }) => void;
+};
+
+export interface IntroHandle {
+  close(): boolean;
+  readonly isOpen: boolean;
+  readonly url: string;
 }
 
 export interface QuizQuestion {
@@ -301,6 +342,48 @@ export interface ChoiceHandle extends GuiHandle {
 
 export interface GizmoHandle extends GuiHandle {
   setTarget(target: LessonHandle | unknown): GizmoHandle;
+}
+
+export interface WorldOptionItem extends ChoiceItem {
+  onSelect?: (event: WorldOptionSelectEvent) => void;
+}
+
+export interface WorldOptionSelectEvent {
+  id: string;
+  value: unknown;
+  item: WorldOptionItem;
+  target: LessonHandle | unknown;
+  handle: WorldOptionHandle;
+  sourceEvent: Event;
+}
+
+export interface WorldOptionOptions {
+  id?: string;
+  scope?: GuiScope;
+  title?: string;
+  message?: string;
+  tone?: GuiTone;
+  placement?: "top" | "bottom" | "left" | "right";
+  worldOffset?: Vec3;
+  offset?: [number, number];
+  gap?: number;
+  visible?: boolean;
+  autoFocus?: boolean;
+  dismissible?: boolean;
+  closeOnSelect?: boolean;
+  multiple?: boolean;
+  objectiveAction?: boolean;
+  items: Array<WorldOptionItem | string | number>;
+  onSelect?: (event: WorldOptionSelectEvent) => void;
+}
+
+export interface WorldOptionHandle extends GuiHandle {
+  readonly visible: boolean;
+  setItems(items: Array<WorldOptionItem | string | number>): WorldOptionHandle;
+  setDisabled(value: string | number, disabled?: boolean): WorldOptionHandle;
+  setTarget(target: LessonHandle | unknown): WorldOptionHandle;
+  toggle(): WorldOptionHandle;
+  close(): WorldOptionHandle;
 }
 
 export interface WorldGuiSystemOptions {
@@ -444,12 +527,28 @@ export interface LessonUi {
     get(id: string): GizmoHandle | null;
     clear(scope?: GuiScope): void;
   };
+  readonly worldOption: {
+    attach(target: LessonHandle | unknown, options: WorldOptionOptions): WorldOptionHandle;
+    show(target: LessonHandle | unknown, options: WorldOptionOptions): WorldOptionHandle;
+    get(id: string): WorldOptionHandle | null;
+    dismiss(): void;
+    hide(): void;
+    clear(scope?: GuiScope): void;
+  };
   readonly worldGuiSystem: {
     at(position: Vec3, options?: WorldGuiSystemOptions): WorldGuiSystemHandle;
     attach(target: LessonHandle | unknown, options?: WorldGuiSystemOptions): WorldGuiSystemHandle;
     get(id: string): WorldGuiSystemHandle | null;
     clear(...scopes: GuiScope[]): void;
     readonly counts: { readonly labels: number; readonly debugLabels: number };
+  };
+  readonly clickme: {
+    attach(target: LessonHandle | unknown, options?: { size?: number; scale?: number; anchor?: "top" | "bottom"; offset?: Vec3 }): { complete(): void; restore(): void; remove(): void };
+    suspendFor(target: LessonHandle | unknown): void;
+    restoreFor(target: LessonHandle | unknown): void;
+    completeFor(target: LessonHandle | unknown): void;
+    finishFor(target: LessonHandle | unknown, options?: { completed?: boolean }): void;
+    clearAll(): void;
   };
   readonly feedback: {
     show(options: string | { id?: string; scope?: GuiScope; title?: string; message?: string; text?: string; icon?: string; tone?: GuiTone; duration?: number; dismissible?: boolean }): GuiHandle;
@@ -472,6 +571,12 @@ export interface LessonUi {
     explain(options: InsightOptions | string): DialogHandle;
     get(id: string): DialogHandle | null;
     close(): void;
+  };
+  readonly intro: {
+    open(options: IntroOpenOptions | string): IntroHandle;
+    close(options?: { notify?: boolean; reason?: string }): boolean;
+    readonly isOpen: boolean;
+    readonly element: HTMLElement;
   };
   readonly control: {
     show(options: { id?: string; scope?: GuiScope; ariaLabel?: string; tone?: GuiTone; position?: "top-right" | "middle-right" | "bottom-right"; items: ChoiceItem[]; objectiveAction?: boolean; onAction?: (event: { id: string; value: unknown; item: ChoiceItem; handle: ControlHandle }) => void }): ControlHandle;

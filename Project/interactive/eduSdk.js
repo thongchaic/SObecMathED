@@ -17,9 +17,14 @@
     setupTimer: null,
     openTimer: null,
     removeTimer: null,
+    layoutFrame: null,
+    containerObserver: null,
     resolveToken: 0,
     activeLesson: null,
-    previousBodyOverflow: ""
+    previousBodyOverflow: "",
+    previousContainerPosition: "",
+    containerPositionChanged: false,
+    fullScreen: true
   };
 
   const styleId = "edu-sdk-overlay-style";
@@ -82,6 +87,23 @@
         transform: translateY(0) scale(1);
       }
 
+      .edu-sdk-overlay.is-contained {
+        position: absolute;
+        overflow: hidden;
+      }
+
+      .edu-sdk-overlay.is-contained iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: 0 0;
+        transform: translateY(28px) scale(var(--edu-sdk-frame-enter-scale, .99));
+      }
+
+      .edu-sdk-overlay.is-contained.is-visible iframe {
+        transform: translateY(0) scale(var(--edu-sdk-frame-scale, 1));
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .edu-sdk-overlay,
         .edu-sdk-overlay iframe { transition-duration: 1ms; }
@@ -101,6 +123,81 @@
     state.openTimer = null;
   }
 
+  function restoreContainerPosition() {
+    if (!state.containerPositionChanged || !state.container) return;
+    state.container.style.position = state.previousContainerPosition;
+    state.containerPositionChanged = false;
+  }
+
+  function stopContainerObserver() {
+    state.containerObserver?.disconnect();
+    state.containerObserver = null;
+    global.cancelAnimationFrame?.(state.layoutFrame);
+    state.layoutFrame = null;
+  }
+
+  function containedMetrics() {
+    const bounds = state.container?.getBoundingClientRect?.() || {};
+    const width = Math.max(1, Number(bounds.width) || state.container?.clientWidth || global.innerWidth || 1);
+    const height = Math.max(1, Number(bounds.height) || state.container?.clientHeight || global.innerHeight || 1);
+    const referenceWidth = Math.max(1, Number(state.options?.embeddedReferenceWidth) || 1280);
+    const referenceHeight = Math.max(1, Number(state.options?.embeddedReferenceHeight) || 720);
+    const minimumScale = Math.min(1, Math.max(.1, Number(state.options?.embeddedMinimumScale) || .2));
+    const scale = Math.min(1, Math.max(minimumScale, Math.min(width / referenceWidth, height / referenceHeight)));
+    return { width, height, scale, logicalWidth: Math.ceil(width / scale), logicalHeight: Math.ceil(height / scale) };
+  }
+
+  function applyFrameLayout() {
+    if (!state.overlay || !state.lessonFrame) return;
+    const contained = state.fullScreen === false;
+    state.overlay.classList.toggle("is-contained", contained);
+    state.overlay.dataset.fullScreen = String(!contained);
+    if (!contained) {
+      state.lessonFrame.style.width = "100%";
+      state.lessonFrame.style.height = "100%";
+      state.lessonFrame.style.removeProperty?.("--edu-sdk-frame-scale");
+      state.lessonFrame.style.removeProperty?.("--edu-sdk-frame-enter-scale");
+      restoreContainerPosition();
+      document.body.style.overflow = "hidden";
+      return;
+    }
+
+    const computedPosition = global.getComputedStyle?.(state.container)?.position;
+    if (!state.containerPositionChanged && (!computedPosition || computedPosition === "static")) {
+      state.previousContainerPosition = state.container.style.position || "";
+      state.container.style.position = "relative";
+      state.containerPositionChanged = true;
+    }
+    const metrics = containedMetrics();
+    state.lessonFrame.style.width = `${metrics.logicalWidth}px`;
+    state.lessonFrame.style.height = `${metrics.logicalHeight}px`;
+    state.lessonFrame.style.setProperty?.("--edu-sdk-frame-scale", String(metrics.scale));
+    state.lessonFrame.style.setProperty?.("--edu-sdk-frame-enter-scale", String(metrics.scale * .99));
+    document.body.style.overflow = state.previousBodyOverflow;
+  }
+
+  function scheduleFrameLayout() {
+    if (state.layoutFrame != null) return;
+    const schedule = global.requestAnimationFrame || (callback => global.setTimeout(callback, 0));
+    state.layoutFrame = schedule(() => { state.layoutFrame = null; applyFrameLayout(); });
+  }
+
+  function startContainerObserver() {
+    stopContainerObserver();
+    if (state.fullScreen !== false || typeof global.ResizeObserver !== "function" || !state.container) return;
+    state.containerObserver = new global.ResizeObserver(scheduleFrameLayout);
+    state.containerObserver.observe(state.container);
+  }
+
+  // true (ค่าเริ่มต้น) เปิดเต็ม viewport แบบเดิม
+  // false ใช้ขนาด panel ของ host และสร้าง virtual viewport เพื่อรักษาสัดส่วน UI/3D/Gizmos
+  function onfullScreen(value = true) {
+    state.fullScreen = value !== false;
+    applyFrameLayout();
+    startContainerObserver();
+    return state.fullScreen;
+  }
+
   function failSetup(error) {
     resetFrameTimers();
     state.setupFrame?.remove();
@@ -114,11 +211,13 @@
     state.openTimer = null;
     global.clearTimeout(state.removeTimer);
     state.removeTimer = null;
+    stopContainerObserver();
     state.overlay?.remove();
     state.overlay = null;
     state.lessonFrame = null;
     state.activeLesson = null;
     document.body.style.overflow = state.previousBodyOverflow;
+    restoreContainerPosition();
     if (state.status !== "error") state.status = "ready";
   }
 
@@ -417,6 +516,7 @@
           path: lessonUrl.href
         },
         language: state.options.language ?? "th",
+        fullScreen: state.fullScreen,
         lessonHtml: isExternal ? undefined : detection.html
       }
     };
@@ -446,7 +546,8 @@
     state.container.append(state.overlay);
 
     state.previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    applyFrameLayout();
+    startContainerObserver();
     state.status = "opening";
     global.requestAnimationFrame(() => state.overlay?.classList.add("is-visible"));
 
@@ -481,6 +582,10 @@
 
     try {
       validateLessonData(lessonData);
+      const hasLessonFullScreen = Object.prototype.hasOwnProperty.call(lessonData, "fullScreen");
+      if (hasLessonFullScreen && typeof lessonData.fullScreen !== "boolean") {
+        throw createError("INVALID_FULLSCREEN_VALUE", "lessonData.fullScreen ต้องเป็น true หรือ false");
+      }
       const lessonUrl = new URL(lessonData.path, document.baseURI);
 
       if (lessonUrl.origin !== global.location.origin) {
@@ -501,6 +606,7 @@
         localDetection = { type: "main-world", html: options.html };
       }
 
+      if (hasLessonFullScreen) onfullScreen(lessonData.fullScreen);
       state.status = "resolving";
       const resolveToken = ++state.resolveToken;
 
@@ -531,9 +637,11 @@
     state.resolveToken += 1;
     resetFrameTimers();
     global.clearTimeout(state.removeTimer);
+    stopContainerObserver();
     state.setupFrame?.remove();
     state.overlay?.remove();
     document.body.style.overflow = state.previousBodyOverflow;
+    restoreContainerPosition();
     state.status = "idle";
   }
 
@@ -555,6 +663,8 @@
 
   global.EduSDK = Object.freeze({
     init,
+    onfullScreen,
+    onFullScreen: onfullScreen,
     openLesson,
     closeLesson,
     destroy,

@@ -5,6 +5,8 @@ const { mainWorldSetting: setting } = await import(`./main-world-setting.js?v=${
 const runtimeSettingTools = await import(`./runtime-setting-menu.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const guiServiceTools = await import(`./gui-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const worldGuiSystemTools = await import(`./world-gui-system.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const clickmeServiceTools = await import(`./clickme-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const introServiceTools = await import(`./intro-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const runtimeSettingBaseline = runtimeSettingTools.applyStoredRuntimeSetting(setting);
 // ใช้ token เดียวตลอดอายุของ runtime เพื่อไม่ให้ asset เดียวกันถูกดาวน์โหลดซ้ำในหน้าเดียว
 // เมื่อ isCache=false การเปิด runtime รอบใหม่จะสร้าง timestamp ใหม่โดยอัตโนมัติ
@@ -28,7 +30,7 @@ const elements = {
 
 const runtime = {
   sessionId: 0, lesson: null, meta: null, lessonData: null, lessonUrl: null, context: null,
-  mode: "student-lab", language: "th", values: {}, stepIndex: 0, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, lastOpenPayload: null
+  mode: "student-lab", language: "th", fullScreen: true, values: {}, stepIndex: 0, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, lastOpenPayload: null
 };
 
 function syncDebugHud() {
@@ -59,6 +61,7 @@ setUiVariable("--camera-controls-bg", setting.ui.cameraControls?.background); se
 setUiVariable("--world-hint-bg", setting.ui.worldHint?.background); setUiVariable("--world-hint-border", setting.ui.worldHint?.borderColor); setUiVariable("--world-hint-text", setting.ui.worldHint?.textColor); setUiVariable("--world-hint-radius", setting.ui.worldHint?.radius, "px"); setUiVariable("--world-hint-left", setting.ui.worldHint?.left, "px"); setUiVariable("--world-hint-bottom", setting.ui.worldHint?.bottom, "px"); setUiVariable("--world-hint-max-width", setting.ui.worldHint?.maxWidth); setUiVariable("--world-hint-font-size", setting.ui.worldHint?.fontSize, "px");
 document.documentElement.dataset.uiTheme = setting.ui.theme || "default";
 function runtimeAssetUrl(path, base = import.meta.url) { const url = new URL(path, base); url.searchParams.set("assetVersion", runtimeAssetVersion); return url.href; }
+function introContentUrl(path) { const url = new URL(path, runtime.lessonUrl || import.meta.url); if (url.origin === location.origin) url.searchParams.set("assetVersion", runtimeAssetVersion); return url.href; }
 async function loadLessonAssetLibrary() {
   try {
     const response = await fetch(runtimeAssetUrl("./assets/library/catalog.json"));
@@ -176,13 +179,41 @@ function syncQuestionPanelBounds() {
   panel.style.setProperty("--runtime-question-left", `${panelLeft}px`);
   panel.style.setProperty("--runtime-question-width", `${panelWidth}px`);
 }
+function questionNeedsMultipleLines() {
+  const text = elements.lessonQuestionText;
+  if (!text.clientWidth || !text.textContent.trim()) return false;
+  const style = getComputedStyle(text), probe = document.createElement("span");
+  probe.textContent = text.textContent;
+  Object.assign(probe.style, {
+    position: "absolute", visibility: "hidden", pointerEvents: "none",
+    inset: "auto", width: `${text.clientWidth}px`, height: "auto",
+    minHeight: "0", maxHeight: "none", boxSizing: style.boxSizing,
+    padding: style.padding, border: "0", margin: "0", display: "block",
+    whiteSpace: "normal", overflow: "visible", overflowWrap: "break-word",
+    fontFamily: style.fontFamily, fontSize: style.fontSize,
+    fontWeight: style.fontWeight, fontStyle: style.fontStyle,
+    letterSpacing: style.letterSpacing, lineHeight: style.lineHeight,
+    textAlign: style.textAlign
+  });
+  elements.lessonQuestion.append(probe);
+  const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.3;
+  const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  const contentHeight = Math.max(0, probe.scrollHeight - padding);
+  probe.remove();
+  return contentHeight > lineHeight * 1.45;
+}
 function fitLessonQuestion() {
   const text = elements.lessonQuestionText;
-  if (!usesFittedQuestionUi() || !text.getClientRects().length || !text.textContent.trim()) return;
+  if (!usesFittedQuestionUi()) return;
+  if (!text.getClientRects().length || !text.textContent.trim()) {
+    elements.lessonQuestion.classList.remove("is-multiline-question");
+    return;
+  }
   text.style.removeProperty("font-size");
   text.scrollLeft = 0;
   text.classList.remove("is-marquee");
   text.classList.toggle("is-long", Array.from(text.textContent.trim()).length > 58);
+  elements.lessonQuestion.classList.toggle("is-multiline-question", questionNeedsMultipleLines());
   const style = getComputedStyle(text), base = parseFloat(style.fontSize);
   const minimum = matchMedia("(max-width:760px),(orientation:portrait)").matches ? 13 : 14;
   let size = base;
@@ -338,6 +369,12 @@ const guiService = guiServiceTools.createGuiService({
     consoleTitle: elements.stepTitle, consoleMessage: elements.stepDescription, quizMessage: elements.question, consoleIcon: elements.consoleStateImage
   },
   camera, iconUrl, resolveAsset: path => runtimeAssetUrl(path, runtime.lessonUrl || import.meta.url), objectiveAction, animateConsole, typeText, getMode: () => runtime.mode, onChoiceShow: () => showStepOption(null), onHintShow: option => queueStepOption(option), onHintHide: () => queueStepOption(null), playUiSound: uiSound
+});
+const introService = introServiceTools.createIntroService({
+  mount: document.body,
+  lockTarget: elements.runtime,
+  resolveUrl: introContentUrl,
+  playUiSound: uiSound
 });
 
 const lighting = setting.lighting || {}, hemisphereLight = new THREE.HemisphereLight(lighting.skyColor || "#e8f8ff", lighting.groundColor || "#c8d8c7", lighting.hemisphere ?? 1.15); scene.add(hemisphereLight); if ((lighting.ambient ?? 0) > 0) scene.add(new THREE.AmbientLight(lighting.ambientColor || "#dcecff", lighting.ambient)); const keyLight = new THREE.DirectionalLight(0xffffff, lighting.key ?? 1.35); keyLight.position.fromArray(shadowSetting.lightPosition || [-6, 19, 7]); keyLight.castShadow = renderer.shadowMap.enabled; const compactShadowViewport = matchMedia("(max-width: 760px)").matches, requestedShadowMapSize = compactShadowViewport ? (shadowSetting.mobileMapSize || 1024) : (shadowSetting.desktopMapSize || 2048), shadowMapSize = Math.min(requestedShadowMapSize, renderer.capabilities.maxTextureSize); keyLight.shadow.mapSize.set(shadowMapSize, shadowMapSize); keyLight.shadow.intensity = shadowSetting.intensity ?? .52; keyLight.shadow.radius = shadowSetting.radius ?? 2; keyLight.shadow.bias = shadowSetting.bias ?? -.00015; keyLight.shadow.normalBias = shadowSetting.normalBias ?? .018; Object.assign(keyLight.shadow.camera, shadowSetting.camera || { left: -12.5, right: 12.5, top: 10.5, bottom: -10.5, near: 2, far: 32 }); keyLight.shadow.camera.updateProjectionMatrix(); scene.add(keyLight); const fillLight = new THREE.DirectionalLight(lighting.fillColor || "#c8c5ff", lighting.fill ?? .42); fillLight.position.set(8, 7, -7); scene.add(fillLight); rimLight = new THREE.DirectionalLight(lighting.rimColor || "#fff0c7", lighting.rim ?? .55); scene.add(rimLight, rimLight.target); updateRimLight(); const mintLight = new THREE.PointLight(0x6de2c1, lighting.mint ?? .14, 30, 2); mintLight.position.set(7, 7, 8); scene.add(mintLight); const peachLight = new THREE.PointLight(0xffb384, lighting.peach ?? .12, 25, 2); peachLight.position.set(-8, 5, -5); scene.add(peachLight);
@@ -681,6 +718,19 @@ const worldGuiSystem = worldGuiSystemTools.createWorldGuiSystem({
   getObjects: () => lessonGroup.children,
   markSceneActive
 });
+const clickme = clickmeServiceTools.createClickmeService({
+  THREE, viewport: elements.viewport, camera, setting,
+  isActionPhase: () => {
+    if (!runtime.lesson || runtime.completed) return false;
+    if (runtime.mode === "student-quiz") return Boolean(runtime.quiz?.acceptingAnswers);
+    const steps = runtime.meta?.howto || [];
+    if (!steps.length) return true;
+    return steps[runtime.stepIndex]?.type === "freestyle" || runtime.stepIndex === steps.length - 1;
+  },
+  isGuideActive: () => Boolean(dragCue),
+  isReturning: object => animations.get(object)?.kind === "return",
+  getHovered: () => hovered
+});
 function toggleDebugArea(force) { return worldGuiSystem.debug.toggle(force); }
 function decorRandom(index, salt = 0) { const value = Math.sin((index + 1) * 12.9898 + (salt + 1) * 78.233) * 43758.5453; return value - Math.floor(value); }
 function createMathSymbolDecor(entry) {
@@ -771,10 +821,11 @@ function restoreObjectSurface(object) { forEachObjectMaterial(object, value => {
 function applyObjectHighlight(object, state = "none") { if (!object) return; restoreObjectSurface(object); if (state === "none" || highlightSetting.enabled === false) return; const style = highlightSetting[state]; if (!style) return; const tint = new THREE.Color(style.tint || "#ffffff"), strength = clamp(style.strength ?? .12, 0, 1); forEachObjectMaterial(object, value => { const surface = rememberHighlightSurface(value), textured = Boolean(value.map); value.color.copy(surface.baseHighlightColor).lerp(tint, strength); if (value.emissive && surface.baseHighlightEmissive) { if (textured) setHighlightEmissiveMap(value, solidWhiteHighlightTexture); value.emissive.copy(surface.baseHighlightEmissive).lerp(tint, Math.min(.55, strength * 1.8)); value.emissiveIntensity = surface.baseHighlightEmissiveIntensity + (textured ? (style.texturedEmissiveStrength ?? style.emissiveStrength ?? 0) : (style.emissiveStrength ?? 0)); } }); }
 function isActionableCallout(object) { return Boolean(object?.userData?.worldCallout?.actionable); }
 function usesSelectionFeedback(object) { return Boolean(object && object.userData?.selectionFeedback !== false && !isActionableCallout(object)); }
+function usesInteractiveHoverFeedback(object) { return Boolean(object && (object.userData?.draggable || object.userData?.clickable) && !isActionableCallout(object) && object.userData?.interactionStyle !== "world-gui"); }
 function setWorldCalloutHovered(object, value) { const callout = object?.userData?.worldCallout; if (!callout?.actionable || callout.hovered === value) return; callout.hovered = value; elements.canvas.classList.toggle("is-hovering-callout", value); markSceneActive(); }
 function currentHighlightObject() { const object = selected || hovered; return usesSelectionFeedback(object) ? object : null; }
 function updateHighlightStyle() {
-  const hoverObject = usesSelectionFeedback(hovered) ? hovered : null;
+  const hoverObject = usesInteractiveHoverFeedback(hovered) ? hovered : null;
   const selectedObject = usesSelectionFeedback(selected) ? selected : null;
   highlightRoot.visible = Boolean((hoverObject || selectedObject) && highlightSetting.enabled !== false);
   elements.canvas.classList.toggle("is-hovering-object", Boolean(hoverObject));
@@ -789,7 +840,7 @@ function updateHighlightStyle() {
 }
 function updateHighlightBounds(now = performance.now()) {
   if (!highlightRoot.visible) return;
-  const hoverObject = usesSelectionFeedback(hovered) ? hovered : null;
+  const hoverObject = usesInteractiveHoverFeedback(hovered) ? hovered : null;
   const selectedObject = usesSelectionFeedback(selected) ? selected : null;
   const ring = highlightSetting.ring || {};
   if (hoverObject && highlightRing.visible) {
@@ -847,19 +898,19 @@ function setHovered(object) {
   if (isActionableCallout(previous)) setWorldCalloutHovered(previous, false);
   else if (previous) applyObjectHighlight(previous, "none");
   if (isActionableCallout(object)) setWorldCalloutHovered(object, true);
-  else if (object && object.userData?.selectionFeedback !== false) applyObjectHighlight(object, "hover");
+  else if (usesInteractiveHoverFeedback(object)) applyObjectHighlight(object, "hover");
   updateHighlightStyle();
   updateHighlightBounds();
   markSceneActive();
 }
 function disposeObject(object) { object.traverse(child => { child.userData?.domElement?.remove?.(); child.userData?.worldUiTexture?.dispose?.(); child.geometry?.dispose?.(); if (Array.isArray(child.material)) child.material.forEach(m => m.dispose?.()); else child.material?.dispose?.(); }); }
 function setDisplayHovered(object) { if (hoveredDisplay === object) return; if (hoveredDisplay?.material) hoveredDisplay.material.opacity = hoveredDisplay.userData.idleOpacity; hoveredDisplay = object; if (object?.material) object.material.opacity = object.userData.hoverOpacity; }
-function clearWorld() { setHovered(null); setDisplayHovered(null); setSelected(null); hideDragCue(); removeDragGuideline(); animations.clear(); commitFlashes.clear(); activeGuidelines.clear(); targetFocusEffects.clear(); worldCallouts.clear(); worldGuiSystem.clearAll(); spawnSequence = 0; runtime.sceneEntered = false; runtime.lessonSceneInitialized = false; for (const child of [...lessonGroup.children]) { lessonGroup.remove(child); disposeObject(child); } interactive.length = 0; uiDisplays.length = 0; while (effectGroup.children.length) { const child = effectGroup.children.pop(); disposeObject(child); } markSceneActive(); }
+function clearWorld() { setHovered(null); setDisplayHovered(null); setSelected(null); hideDragCue(); removeDragGuideline(); animations.clear(); commitFlashes.clear(); activeGuidelines.clear(); targetFocusEffects.clear(); worldCallouts.clear(); worldGuiSystem.clearAll(); clickme.clearAll(); spawnSequence = 0; runtime.sceneEntered = false; runtime.lessonSceneInitialized = false; for (const child of [...lessonGroup.children]) { lessonGroup.remove(child); disposeObject(child); } interactive.length = 0; uiDisplays.length = 0; while (effectGroup.children.length) { const child = effectGroup.children.pop(); disposeObject(child); } markSceneActive(); }
 
 function startCommitFlash(object) { const config = setting.object.commit; if (!config?.enabled || !object) return; restoreObjectSurface(object); const materials = []; forEachObjectMaterial(object, material => { if (!material.transparent) materials.push(material); }); if (!materials.length) return; commitFlashes.set(object, { start: performance.now(), duration: config.duration || 780, flashes: config.flashes || 3, color: new THREE.Color(config.color || "#ffffff"), materials: [...new Set(materials)].map(material => ({ material, baseColor: material.color.clone(), emissive: material.emissive?.clone(), emissiveIntensity: material.emissiveIntensity })) }); }
 
 function syncInteractive(object) { const enabled = Boolean(object.userData.draggable || object.userData.clickable), index = interactive.indexOf(object); if (enabled && index < 0) interactive.push(object); if (!enabled && index >= 0) { interactive.splice(index, 1); if (hovered === object) setHovered(null); if (selected === object) setSelected(null); } }
-function makeHandle(mesh) { const changed = () => markSceneActive(); const cancelAnimation = () => { const previous = animations.get(mesh); if (previous?.kind === "spawn" || previous?.kind === "drop") mesh.scale.setScalar(1); animations.delete(mesh); }; const clearHighlight = () => { if (hovered === mesh) setHovered(null); if (selected === mesh) setSelected(null); }; const handle = { object3D: mesh, setPosition(x, y, z) { cancelAnimation(); mesh.position.set(x, y, z); mesh.userData.groundY = y; changed(); }, setRotation(x = 0, y = 0, z = 0) { mesh.rotation.set(THREE.MathUtils.degToRad(x), THREE.MathUtils.degToRad(y), THREE.MathUtils.degToRad(z)); changed(); }, setScale(x = 1, y = x, z = x) { const visual = mesh.userData.visualRoot || mesh; visual.scale.set(x, y, z); changed(); }, animateTo(x, y, z, { duration = 620, delay = 0, arcHeight = .7 } = {}) { cancelAnimation(); animations.set(mesh, { kind: "move", start: performance.now() + delay, duration, from: mesh.position.clone(), to: new THREE.Vector3(x, y, z), arcHeight }); mesh.userData.groundY = y; markSceneActive(); }, stopAnimation() { cancelAnimation(); changed(); }, playCommit() { startCommitFlash(mesh); screenSpark(mesh); markSceneActive(); }, setHighlighted(value) { applyObjectHighlight(mesh, value ? "hover" : "none"); changed(); }, setColor(color) { forEachObjectMaterial(mesh, value => { value.color.set(color); rememberHighlightSurface(value).baseHighlightColor.copy(value.color); }); markSceneActive(); }, setVisible(value) { mesh.visible = value; if (!value) clearHighlight(); changed(); }, setDraggable(value) { mesh.userData.draggable = Boolean(value); syncInteractive(mesh); }, setClickable(value) { mesh.userData.clickable = Boolean(value); syncInteractive(mesh); }, setHitArea(size = null, offset = [0, 0, 0]) { setInteractionHitArea(mesh, size, offset); markSceneActive(); }, setDragFromCenter(value) { mesh.userData.dragFromCenter = Boolean(value); }, remove() { clearHighlight(); commitFlashes.delete(mesh); activeGuidelines.delete(mesh); mesh.parent?.remove(mesh); const index = interactive.indexOf(mesh); if (index >= 0) interactive.splice(index, 1); disposeObject(mesh); changed(); } }; mesh.userData.lessonHandle = handle; return Object.freeze(handle); }
+function makeHandle(mesh) { const changed = () => markSceneActive(); const cancelAnimation = () => { const previous = animations.get(mesh); if (previous?.kind === "spawn" || previous?.kind === "drop") mesh.scale.setScalar(1); animations.delete(mesh); }; const clearHighlight = () => { if (hovered === mesh) setHovered(null); if (selected === mesh) setSelected(null); }; const handle = { object3D: mesh, setPosition(x, y, z) { cancelAnimation(); mesh.position.set(x, y, z); mesh.userData.groundY = y; changed(); }, setRotation(x = 0, y = 0, z = 0) { mesh.rotation.set(THREE.MathUtils.degToRad(x), THREE.MathUtils.degToRad(y), THREE.MathUtils.degToRad(z)); changed(); }, setScale(x = 1, y = x, z = x) { const visual = mesh.userData.visualRoot || mesh; visual.scale.set(x, y, z); changed(); }, animateTo(x, y, z, { duration = 620, delay = 0, arcHeight = .7 } = {}) { cancelAnimation(); animations.set(mesh, { kind: "move", start: performance.now() + delay, duration, from: mesh.position.clone(), to: new THREE.Vector3(x, y, z), arcHeight }); mesh.userData.groundY = y; markSceneActive(); }, stopAnimation() { cancelAnimation(); changed(); }, playCommit(options = {}) { startCommitFlash(mesh); if (options.spark !== false) screenSpark(mesh); markSceneActive(); }, setHighlighted(value) { applyObjectHighlight(mesh, value ? "hover" : "none"); changed(); }, setColor(color) { forEachObjectMaterial(mesh, value => { value.color.set(color); rememberHighlightSurface(value).baseHighlightColor.copy(value.color); }); markSceneActive(); }, setVisible(value) { mesh.visible = value; if (!value) clearHighlight(); changed(); }, setDraggable(value) { mesh.userData.draggable = Boolean(value); syncInteractive(mesh); }, setClickable(value) { mesh.userData.clickable = Boolean(value); syncInteractive(mesh); }, setHitArea(size = null, offset = [0, 0, 0]) { setInteractionHitArea(mesh, size, offset); markSceneActive(); }, setDragFromCenter(value) { mesh.userData.dragFromCenter = Boolean(value); }, remove() { clearHighlight(); commitFlashes.delete(mesh); activeGuidelines.delete(mesh); mesh.parent?.remove(mesh); const index = interactive.indexOf(mesh); if (index >= 0) interactive.splice(index, 1); disposeObject(mesh); changed(); } }; mesh.userData.lessonHandle = handle; return Object.freeze(handle); }
 function queueSpawn(object, enabled = true) { if (!enabled || !setting.object.spawn.enabled) return; object.userData.spawnable = true; object.scale.setScalar(.001); if (runtime.sceneEntered) animations.set(object, { kind: "spawn", start: performance.now(), duration: setting.object.spawn.duration }); }
 function playWorldEntrance() { let index = 0; lessonGroup.traverse(object => { if (object.userData.spawnable) { object.scale.setScalar(.001); animations.set(object, { kind: "spawn", start: performance.now() + index++ * setting.object.spawn.stagger, duration: setting.object.spawn.duration }); } }); }
 function updateGuideline(line) { const from = line.userData.fromObject ? line.userData.fromObject.getWorldPosition(new THREE.Vector3()) : line.userData.guideFrom.clone(), to = line.userData.guideTo, middle = new THREE.Vector3((from.x + to.x) / 2, Math.max(from.y, to.y) + 2.3, (from.z + to.z) / 2), curve = new THREE.QuadraticBezierCurve3(from, middle, to), points = curve.getPoints(40), direction = points.at(-1).clone().sub(points.at(-2)).normalize(); line.geometry.setFromPoints(points); line.computeLineDistances(); line.userData.arrow.position.copy(to).addScaledVector(direction, -line.userData.arrowOffset); line.userData.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); }
@@ -941,12 +992,21 @@ function lessonMaterial(options = {}) { const color = options.color || "#ffffff"
 const SUPPORTED_PRIMITIVE_SHAPES = Object.freeze([
   "box", "rounded-box", "sharp-box", "sphere", "hemisphere", "cylinder", "half-cylinder", "quarter-cylinder",
   "cone", "pyramid", "prism", "frustum", "capsule", "sector", "sector-flat", "ring-sector", "ring-sector-flat",
-  "tube", "torus", "torus-knot", "circle", "plane", "ring", "star", "heart", "cross", "wedge",
-  "tetrahedron", "octahedron", "dodecahedron", "icosahedron", "diamond"
+  "tube", "torus", "torus-knot", "circle", "plane", "arrow-flat", "ring", "star", "heart", "cross", "wedge",
+  "tetrahedron", "octahedron", "dodecahedron", "icosahedron", "diamond",
+  "polygon", "polygon-flat", "polyhedron", "lathe", "spline-tube",
+  "cube", "cuboid", "rectangle", "rectangle-flat", "triangle", "semicircle", "semi-cylinder", "quarter-circle",
+  "pie", "pie-slice", "annular-sector", "arc", "disc", "donut", "extrude-polygon", "custom-polyhedron", "path-tube"
 ]);
+const PRIMITIVE_SHAPE_ALIASES = Object.freeze({
+  cube: "sharp-box", cuboid: "sharp-box", rectangle: "sharp-box", "rectangle-flat": "plane", triangle: "wedge",
+  semicircle: "half-cylinder", "semi-cylinder": "half-cylinder", "quarter-circle": "quarter-cylinder",
+  pie: "sector", "pie-slice": "sector", "annular-sector": "ring-sector", arc: "ring-sector", disc: "circle",
+  donut: "torus", "extrude-polygon": "polygon", "custom-polyhedron": "polyhedron", "path-tube": "spline-tube"
+});
 function proceduralNumber(value, fallback, min, max) { const numeric = Number(value); return clamp(Number.isFinite(numeric) ? numeric : fallback, min, max); }
 function proceduralInteger(value, fallback, min, max) { return Math.round(proceduralNumber(value, fallback, min, max)); }
-function normalizedPrimitiveShape(value = "box") { return String(value || "box").trim().toLowerCase().replace(/[_\s]+/g, "-"); }
+function normalizedPrimitiveShape(value = "box") { const normalized = String(value || "box").trim().toLowerCase().replace(/[_\s]+/g, "-"); return PRIMITIVE_SHAPE_ALIASES[normalized] || normalized; }
 function extrudedLessonShape(shape, curveSegments = 16) {
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: 1, steps: 1, curveSegments, bevelEnabled: false });
   geometry.translate(0, 0, -.5);
@@ -973,6 +1033,61 @@ function sectorShape(startAngle, angle, innerRadius = 0) {
 function polygonShape(vertices) { const shape = new THREE.Shape(); vertices.forEach(([x, y], index) => index ? shape.lineTo(x, y) : shape.moveTo(x, y)); shape.closePath(); return shape; }
 function starShape(points, innerRadius = .23) { const vertices = []; for (let index = 0; index < points * 2; index++) { const radius = index % 2 ? innerRadius : .5, angle = -Math.PI / 2 + index * Math.PI / points; vertices.push([Math.cos(angle) * radius, Math.sin(angle) * radius]); } return polygonShape(vertices); }
 function heartShape() { const shape = new THREE.Shape(); shape.moveTo(0, -.45); shape.bezierCurveTo(-.58, -.08, -.56, .34, -.25, .4); shape.bezierCurveTo(-.08, .44, 0, .31, 0, .2); shape.bezierCurveTo(0, .31, .08, .44, .25, .4); shape.bezierCurveTo(.56, .34, .58, -.08, 0, -.45); shape.closePath(); return shape; }
+function proceduralPointList(value, dimensions, fallback, minimum, label) {
+  const source = value == null ? fallback : value;
+  if (!Array.isArray(source) || source.length < minimum) throw new Error(`LESSON_GEOMETRY_${label}_INVALID: ต้องมีอย่างน้อย ${minimum} จุด`);
+  return source.map((point, index) => {
+    if (!Array.isArray(point) || point.length < dimensions) throw new Error(`LESSON_GEOMETRY_${label}_INVALID: จุดที่ ${index + 1} ต้องมี ${dimensions} ค่า`);
+    const tuple = point.slice(0, dimensions).map(Number);
+    if (tuple.some(number => !Number.isFinite(number))) throw new Error(`LESSON_GEOMETRY_${label}_INVALID: จุดที่ ${index + 1} มีค่าที่ไม่ใช่ตัวเลข`);
+    return tuple;
+  });
+}
+function normalizePointAxes(points, dimensions, enabled = true) {
+  if (!enabled) return points.map(point => [...point]);
+  const min = Array(dimensions).fill(Infinity), max = Array(dimensions).fill(-Infinity);
+  for (const point of points) for (let axis = 0; axis < dimensions; axis++) { min[axis] = Math.min(min[axis], point[axis]); max[axis] = Math.max(max[axis], point[axis]); }
+  return points.map(point => point.map((value, axis) => { const span = max[axis] - min[axis]; return span > 1e-7 ? (value - (min[axis] + max[axis]) * .5) / span : 0; }));
+}
+function customPolygonShape(options = {}) {
+  const fallback = [[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]], outerRaw = proceduralPointList(options.vertices, 2, fallback, 3, "VERTICES"), normalize = options.normalize !== false;
+  const min = [Infinity, Infinity], max = [-Infinity, -Infinity];
+  for (const point of outerRaw) for (let axis = 0; axis < 2; axis++) { min[axis] = Math.min(min[axis], point[axis]); max[axis] = Math.max(max[axis], point[axis]); }
+  const transform = point => point.map((value, axis) => { if (!normalize) return value; const span = max[axis] - min[axis]; return span > 1e-7 ? (value - (min[axis] + max[axis]) * .5) / span : 0; });
+  const shape = polygonShape(outerRaw.map(transform));
+  for (const holeValue of Array.isArray(options.holes) ? options.holes : []) {
+    const holePoints = proceduralPointList(holeValue, 2, null, 3, "HOLES").map(transform), hole = new THREE.Path();
+    holePoints.forEach(([x, y], index) => index ? hole.lineTo(x, y) : hole.moveTo(x, y)); hole.closePath(); shape.holes.push(hole);
+  }
+  return shape;
+}
+function orientFlatGeometry(geometry, orientation = "front") {
+  const value = String(orientation || "front").toLowerCase();
+  if (value === "ground" || value === "xz" || value === "horizontal") geometry.rotateX(-Math.PI / 2);
+  else if (value === "side" || value === "yz") geometry.rotateY(Math.PI / 2);
+  return geometry;
+}
+function customPolyhedronGeometry(options = {}) {
+  const defaultVertices = [[.5, .5, .5], [-.5, -.5, .5], [-.5, .5, -.5], [.5, -.5, -.5]], vertices = normalizePointAxes(proceduralPointList(options.vertices, 3, defaultVertices, 4, "VERTICES"), 3, options.normalize !== false);
+  let indices = options.indices;
+  if (!Array.isArray(indices) && Array.isArray(options.faces)) indices = options.faces.flatMap(face => { if (!Array.isArray(face) || face.length < 3) return []; const result = []; for (let index = 1; index < face.length - 1; index++) result.push(face[0], face[index], face[index + 1]); return result; });
+  if (!Array.isArray(indices)) indices = [0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3];
+  indices = indices.map(Number);
+  if (!indices.length || indices.length % 3 || indices.some(index => !Number.isInteger(index) || index < 0 || index >= vertices.length)) throw new Error("LESSON_GEOMETRY_FACES_INVALID: indices ต้องเป็นชุดสามเหลี่ยมที่อ้างถึง vertices ที่มีอยู่");
+  const positions = []; for (const index of indices) positions.push(...vertices[index]);
+  const geometry = new THREE.BufferGeometry(); geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3)); geometry.computeVertexNormals(); geometry.computeBoundingSphere(); return geometry;
+}
+function latheGeometry(options = {}, segments = 32) {
+  const fallback = [[0, -.5], [.38, -.48], [.5, -.2], [.42, .35], [.18, .5], [0, .5]], raw = proceduralPointList(options.profile, 2, fallback, 2, "PROFILE");
+  const maxRadius = Math.max(...raw.map(point => Math.abs(point[0])), 1e-7), minY = Math.min(...raw.map(point => point[1])), maxY = Math.max(...raw.map(point => point[1])), height = Math.max(maxY - minY, 1e-7), normalize = options.normalize !== false;
+  const points = raw.map(([radius, y]) => new THREE.Vector2(normalize ? Math.abs(radius) / maxRadius * .5 : Math.abs(radius), normalize ? (y - (minY + maxY) * .5) / height : y));
+  return new THREE.LatheGeometry(points, segments, THREE.MathUtils.degToRad(proceduralNumber(options.startAngle, 0, -360, 360)), THREE.MathUtils.degToRad(proceduralNumber(options.angle, 360, 1, 360)));
+}
+function splineTubeGeometry(options = {}, segments = 32, tubeRatio = .16) {
+  const fallback = [[-.5, 0, 0], [-.2, .18, .1], [.2, -.12, -.1], [.5, 0, 0]], points = normalizePointAxes(proceduralPointList(options.path, 3, fallback, 2, "PATH"), 3, options.normalize !== false).map(point => new THREE.Vector3(...point));
+  const curve = new THREE.CatmullRomCurve3(points, Boolean(options.closed), options.curveType || "centripetal", proceduralNumber(options.tension, .5, 0, 1));
+  return new THREE.TubeGeometry(curve, Math.max(8, segments), proceduralNumber(options.tube, tubeRatio, .01, .45) * .5, proceduralInteger(options.radialSegments, 8, 3, 32), Boolean(options.closed));
+}
 function primitiveGeometry(shape = "box", definition = {}) {
   const normalized = normalizedPrimitiveShape(shape), geometryOptions = { ...definition, ...(definition.geometry || {}) }, segments = proceduralInteger(geometryOptions.segments, 32, 6, 96), sides = proceduralInteger(geometryOptions.sides, normalized === "pyramid" ? 4 : 6, 3, 32), points = proceduralInteger(geometryOptions.points, 5, 3, 16), startAngle = THREE.MathUtils.degToRad(proceduralNumber(geometryOptions.startAngle, 0, -360, 360)), requestedAngle = proceduralNumber(geometryOptions.angle, 90, 1, 360), angle = THREE.MathUtils.degToRad(requestedAngle), innerRatio = proceduralNumber(geometryOptions.innerRadius, .56, .04, .94), tubeRatio = proceduralNumber(geometryOptions.tube, .16, .03, .45), openEnded = Boolean(geometryOptions.openEnded);
   switch (normalized) {
@@ -989,15 +1104,16 @@ function primitiveGeometry(shape = "box", definition = {}) {
     case "frustum": return new THREE.CylinderGeometry(.5 * proceduralNumber(geometryOptions.topRadius, .62, 0, 1), .5 * proceduralNumber(geometryOptions.bottomRadius, 1, .01, 1), 1, sides, 1, openEnded);
     case "capsule": return new THREE.CapsuleGeometry(.3, .4, Math.max(4, Math.round(segments / 4)), Math.max(8, Math.round(segments / 2)));
     case "sector": return extrudedLessonShape(sectorShape(startAngle, angle), segments);
-    case "sector-flat": return new THREE.ShapeGeometry(sectorShape(startAngle, angle), segments);
+    case "sector-flat": return orientFlatGeometry(new THREE.ShapeGeometry(sectorShape(startAngle, angle), segments), geometryOptions.orientation);
     case "ring-sector": return extrudedLessonShape(sectorShape(startAngle, angle, innerRatio * .5), segments);
-    case "ring-sector-flat": return new THREE.ShapeGeometry(sectorShape(startAngle, angle, innerRatio * .5), segments);
+    case "ring-sector-flat": return orientFlatGeometry(new THREE.ShapeGeometry(sectorShape(startAngle, angle, innerRatio * .5), segments), geometryOptions.orientation);
     case "tube": return extrudedLessonShape(sectorShape(0, Math.PI * 2, innerRatio * .5), segments);
     case "torus": return new THREE.TorusGeometry(.5 - tubeRatio * .5, tubeRatio * .5, Math.max(6, Math.round(segments / 3)), segments);
     case "torus-knot": return new THREE.TorusKnotGeometry(.36, tubeRatio * .25, Math.max(48, segments * 2), Math.max(6, Math.round(segments / 3)), proceduralInteger(geometryOptions.p, 2, 1, 8), proceduralInteger(geometryOptions.q, 3, 1, 12));
-    case "circle": return new THREE.CircleGeometry(.5, segments);
-    case "plane": return new THREE.PlaneGeometry(1, 1);
-    case "ring": return new THREE.RingGeometry(innerRatio * .5, .5, segments);
+    case "circle": return orientFlatGeometry(new THREE.CircleGeometry(.5, segments), geometryOptions.orientation);
+    case "plane": return orientFlatGeometry(new THREE.PlaneGeometry(1, 1), geometryOptions.orientation);
+    case "arrow-flat": return orientFlatGeometry(new THREE.ShapeGeometry(polygonShape([[-.12, -.6], [.12, -.6], [.12, .18], [.34, .18], [0, .64], [-.34, .18], [-.12, .18]]), segments), geometryOptions.orientation);
+    case "ring": return orientFlatGeometry(new THREE.RingGeometry(innerRatio * .5, .5, segments), geometryOptions.orientation);
     case "star": return extrudedLessonShape(starShape(points, proceduralNumber(geometryOptions.innerRadius, .46, .12, .9) * .5), segments);
     case "heart": return extrudedLessonShape(heartShape(), segments);
     case "cross": return extrudedLessonShape(polygonShape([[-.16, -.5], [.16, -.5], [.16, -.16], [.5, -.16], [.5, .16], [.16, .16], [.16, .5], [-.16, .5], [-.16, .16], [-.5, .16], [-.5, -.16], [-.16, -.16]]), segments);
@@ -1006,10 +1122,15 @@ function primitiveGeometry(shape = "box", definition = {}) {
     case "octahedron": case "diamond": return new THREE.OctahedronGeometry(.5);
     case "dodecahedron": return new THREE.DodecahedronGeometry(.5);
     case "icosahedron": return new THREE.IcosahedronGeometry(.5);
+    case "polygon": return extrudedLessonShape(customPolygonShape(geometryOptions), segments);
+    case "polygon-flat": return orientFlatGeometry(new THREE.ShapeGeometry(customPolygonShape(geometryOptions), segments), geometryOptions.orientation);
+    case "polyhedron": return customPolyhedronGeometry(geometryOptions);
+    case "lathe": return latheGeometry(geometryOptions, segments);
+    case "spline-tube": return splineTubeGeometry(geometryOptions, segments, tubeRatio);
     default: throw new Error(`LESSON_PRIMITIVE_UNSUPPORTED: addPrimitive ไม่รองรับรูปทรง ${shape}`);
   }
 }
-function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "circle", "ring", "sector-flat", "ring-sector-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
+function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "arrow-flat", "circle", "ring", "sector-flat", "ring-sector-flat", "polygon-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
 function prepareLessonVisual(root, interactionRoot) { root.traverse(child => { if (!child.userData.isLessonDecoration) child.userData.interactionRoot = interactionRoot; }); forEachObjectMaterial(root, value => rememberHighlightSurface(value)); }
 function setInteractionHitArea(root, size = null, offset = [0, 0, 0]) { const previous = root.userData.interactionHitArea; if (previous) { root.remove(previous); previous.geometry?.dispose?.(); previous.material?.dispose?.(); root.userData.interactionHitArea = null; } if (!Array.isArray(size) || size.length < 3 || size.some(value => Number(value) <= 0)) return; const hitArea = new THREE.Mesh(new THREE.BoxGeometry(...size.map(Number)), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })); hitArea.name = `${root.name || "lesson-object"}-hit-area`; hitArea.position.fromArray(offset); Object.assign(hitArea.userData, { isLessonDecoration: true, interactionRoot: root }); root.add(hitArea); root.userData.interactionHitArea = hitArea; }
 function configureLessonObject(root, visual, options = {}) { const position = options.position || [0, 0, 0], rotation = options.rotation || [0, 0, 0], scale = options.scale ?? 1, scaleValues = Array.isArray(scale) ? scale : [scale, scale, scale]; root.name = options.name || root.name || "lesson-object"; root.position.fromArray(position); root.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); visual.scale.multiply(new THREE.Vector3(...scaleValues)); Object.assign(root.userData, { visualRoot: visual, draggable: Boolean(options.draggable), clickable: Boolean(options.clickable || options.onClick), tapToClick: Boolean(options.tapToClick), tapClickTolerance: Number.isFinite(options.tapClickTolerance) ? Math.max(1, options.tapClickTolerance) : 7, selectionFeedback: options.selectionFeedback !== false, dragAxis: options.dragAxis || setting.interaction.defaultDragAxis, dragLiftHeight: options.dragLiftHeight, dragFromCenter: Boolean(options.dragFromCenter), hoverMessage: options.hoverMessage || "", guideTarget: options.guideTarget || null, onHover: typeof options.onHover === "function" ? options.onHover : null, onDrag: options.onDrag || null, onDrop: options.onDrop || null, onClick: options.onClick || null, objectiveAction: options.objectiveAction, groundY: position[1], debugTargetSize: options.targetSize, debugAreaHidden: options.debugAreaHidden === true }); prepareLessonVisual(visual, root); setInteractionHitArea(root, options.hitArea, options.hitAreaOffset); lessonGroup.add(root); queueSpawn(root, options.spawn !== false); const handle = makeHandle(root); syncInteractive(root); return handle; }
@@ -1028,18 +1149,59 @@ function configureWorldDisplay(root, visual, options = {}) {
   root.name = options.name || "world-display"; root.position.fromArray(position); root.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); visual.scale.set(...scaleValues); Object.assign(root.userData, { visualRoot: visual, draggable: false, clickable: false, groundY: position[1], worldDisplay: true }); root.add(visual); lessonGroup.add(root); queueSpawn(root); return makeHandle(root);
 }
 function addWorldCounter(options = {}) {
-  const config = setting.ui.worldCounter || {}, digits = clamp(Math.round(options.digits ?? 2), 1, config.maxDigits ?? 6), spacing = options.digitSpacing ?? config.digitSpacing ?? .76, digitWidth = config.digitWidth ?? .58, digitDepth = config.digitDepth ?? .82, paddingX = config.paddingX ?? .42, paddingZ = config.paddingZ ?? .28, width = Math.max(1.1, digits * spacing + paddingX * 2), depth = digitDepth + paddingZ * 2, baseHeight = config.baseHeight ?? .16, faceHeight = config.faceHeight ?? .08, root = new THREE.Group(), visual = new THREE.Group(), segments = [];
+  const config = setting.ui.worldCounter || {};
+  const digits = clamp(Math.round(options.digits ?? 2), 1, config.maxDigits ?? 6);
+  const decimalPlaces = clamp(Math.round(options.decimalPlaces ?? 0), 0, 3);
+  const spacing = options.digitSpacing ?? config.digitSpacing ?? .76;
+  const pointSpacing = decimalPlaces ? spacing * .48 : 0;
+  const digitWidth = config.digitWidth ?? .58, digitDepth = config.digitDepth ?? .82;
+  const paddingX = config.paddingX ?? .42, paddingZ = config.paddingZ ?? .28;
+  // Build the longer plate at its final dimensions; scaling would stretch its rounded corners.
+  const slotCount = digits + decimalPlaces;
+  const width = Math.max(1.1, slotCount * spacing + pointSpacing + paddingX * 2);
+  const depth = digitDepth + paddingZ * 2, baseHeight = config.baseHeight ?? .16;
+  const faceHeight = config.faceHeight ?? .08, root = new THREE.Group(), visual = new THREE.Group(), segments = [];
   const base = new THREE.Mesh(new RoundedBoxGeometry(width, baseHeight, depth, 6, Math.min(.16, depth * .12)), lessonMaterial({ color: options.edgeColor || config.edgeColor || "#527a48", roughness: config.roughness ?? .62, clearcoat: config.clearcoat ?? .22 })), middle = new THREE.Mesh(new RoundedBoxGeometry(width * .95, faceHeight, depth * .9, 6, Math.min(.14, depth * .1)), lessonMaterial({ color: options.baseColor || config.baseColor || "#6b9b55", roughness: config.roughness ?? .62, clearcoat: config.clearcoat ?? .22 })), face = new THREE.Mesh(new RoundedBoxGeometry(width * .86, faceHeight, depth * .78, 6, Math.min(.12, depth * .09)), lessonMaterial({ color: options.faceColor || config.faceColor || "#f3f1cf", roughness: .72 }));
   base.position.y = baseHeight / 2; middle.position.y = baseHeight + faceHeight / 2; face.position.y = baseHeight + faceHeight * 1.5;
   for (const part of [base, middle, face]) { part.castShadow = Boolean(shadowSetting.lessonCast); part.receiveShadow = shadowSetting.lessonReceive !== false; }
   visual.add(base, middle, face);
   const segmentColor = options.digitColor || config.digitColor || "#315d35", segmentY = baseHeight + faceHeight * 2 + (config.segmentHeight ?? .08) * .52, horizontalLength = digitWidth * .72, verticalLength = digitDepth * .39, segmentThickness = config.segmentThickness ?? .095, segmentHeight = config.segmentHeight ?? .08;
-  for (let digitIndex = 0; digitIndex < digits; digitIndex++) {
-    const digit = new THREE.Group(), x = (digitIndex - (digits - 1) / 2) * spacing, horizontal = z => createPrimitivePart({ shape: "box", position: [0, segmentY, z], size: [horizontalLength, segmentHeight, segmentThickness], color: segmentColor, material: { roughness: .4, emissive: options.digitEmissive || config.digitEmissive || "#173a1f", emissiveIntensity: config.digitEmissiveIntensity ?? .16 } }), vertical = (offsetX, z) => createPrimitivePart({ shape: "box", position: [offsetX, segmentY, z], size: [segmentThickness, segmentHeight, verticalLength], color: segmentColor, material: { roughness: .4, emissive: options.digitEmissive || config.digitEmissive || "#173a1f", emissiveIntensity: config.digitEmissiveIntensity ?? .16 } });
+  for (let digitIndex = 0; digitIndex < slotCount; digitIndex++) {
+    const digit = new THREE.Group(), x = (digitIndex - (slotCount - 1) / 2) * spacing + (decimalPlaces && digitIndex >= digits ? pointSpacing / 2 : decimalPlaces ? -pointSpacing / 2 : 0), horizontal = z => createPrimitivePart({ shape: "box", position: [0, segmentY, z], size: [horizontalLength, segmentHeight, segmentThickness], color: segmentColor, material: { roughness: .4, emissive: options.digitEmissive || config.digitEmissive || "#173a1f", emissiveIntensity: config.digitEmissiveIntensity ?? .16 } }), vertical = (offsetX, z) => createPrimitivePart({ shape: "box", position: [offsetX, segmentY, z], size: [segmentThickness, segmentHeight, verticalLength], color: segmentColor, material: { roughness: .4, emissive: options.digitEmissive || config.digitEmissive || "#173a1f", emissiveIntensity: config.digitEmissiveIntensity ?? .16 } });
     digit.position.x = x; const digitSegments = [horizontal(-digitDepth * .45), vertical(digitWidth * .4, -digitDepth * .23), vertical(digitWidth * .4, digitDepth * .23), horizontal(digitDepth * .45), vertical(-digitWidth * .4, digitDepth * .23), vertical(-digitWidth * .4, -digitDepth * .23), horizontal(0)]; digit.add(...digitSegments); visual.add(digit); segments.push({ group: digit, parts: digitSegments });
   }
+  let decimalPoint = null;
+  if (decimalPlaces) {
+    decimalPoint = createPrimitivePart({ shape: "sphere", size: [.16, segmentHeight * 1.2, .16],
+      position: [0, segmentY, digitDepth * .4], color: segmentColor,
+      material: { roughness: .4, emissive: options.digitEmissive || config.digitEmissive || "#173a1f", emissiveIntensity: config.digitEmissiveIntensity ?? .16 } });
+    visual.add(decimalPoint);
+  }
   const baseHandle = configureWorldDisplay(root, visual, { mobileScale: config.mobileScale ?? 1, ...options, name: options.name || "world-counter" }); let value = 0;
-  const renderValue = next => { const upper = 10 ** digits - 1; value = clamp(Math.round(Number(next) || 0), 0, upper); const raw = String(value), text = options.leadingZero ? raw.padStart(digits, "0") : raw, firstVisible = digits - text.length; segments.forEach((digit, index) => { const visible = options.leadingZero || index >= firstVisible; digit.group.visible = visible; if (!visible) return; const numeric = Number(text[index - firstVisible]); digit.parts.forEach((part, partIndex) => { part.visible = Boolean(sevenSegmentMasks[numeric]?.[partIndex]); }); }); const offset = options.leadingZero ? 0 : -firstVisible * spacing / 2; segments.forEach(digit => { digit.group.position.x = digit.group.userData.baseX + offset; }); markSceneActive(); return value; };
+  const renderValue = next => {
+    const upper = decimalPlaces ? 10 ** digits - 10 ** -decimalPlaces : 10 ** digits - 1;
+    value = clamp(Math.round((Number(next) || 0) * 10 ** decimalPlaces) / 10 ** decimalPlaces, 0, upper);
+    const fixed = decimalPlaces ? value.toFixed(decimalPlaces) : String(value);
+    const [integer, fraction = ""] = fixed.split(".");
+    const text = `${options.leadingZero ? integer.padStart(digits, "0") : integer}${fraction}`;
+    const firstVisible = slotCount - text.length;
+    segments.forEach((digit, index) => {
+      const visible = index >= firstVisible;
+      digit.group.visible = visible;
+      if (!visible) return;
+      const numeric = Number(text[index - firstVisible]);
+      digit.parts.forEach((part, partIndex) => { part.visible = Boolean(sevenSegmentMasks[numeric]?.[partIndex]); });
+    });
+    const offset = -firstVisible * spacing / 2;
+    segments.forEach(digit => { digit.group.position.x = digit.group.userData.baseX + offset; });
+    if (decimalPoint) {
+      const before = segments[slotCount - decimalPlaces - 1].group.position.x;
+      const after = segments[slotCount - decimalPlaces].group.position.x;
+      decimalPoint.position.x = (before + after) / 2;
+    }
+    markSceneActive();
+    return value;
+  };
   segments.forEach(digit => { digit.group.userData.baseX = digit.group.position.x; });
   const handle = Object.freeze({ ...baseHandle, setValue: renderValue, getValue: () => value, digits }); renderValue(options.value ?? 0); root.userData.lessonHandle = handle; return handle;
 }
@@ -1480,7 +1642,7 @@ function addConnector({ name = "connector", from = [0, 0, 0], to = [0, 0, 1], co
 }
 const world = Object.freeze({
   clear() { guiService.clearScope("scene", "step", "question"); clearWorld(); },
-  capabilities: Object.freeze({ version: "3.1.0", objects: Object.freeze(["primitive", "group", "text3d", "label", "library", "model", "zone", "callout", "connector", "worldCounter", "worldGui", "guideline", "lineRender"]), primitiveShapes: Object.freeze(SUPPORTED_PRIMITIVE_SHAPES), interactions: Object.freeze(["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"]), modelFormats: Object.freeze(["glb", "gltf", "fbx"]) }),
+  capabilities: Object.freeze({ version: "3.3.0", objects: Object.freeze(["primitive", "group", "text3d", "label", "library", "model", "zone", "callout", "connector", "worldCounter", "worldGui", "guideline", "lineRender"]), primitiveShapes: Object.freeze(SUPPORTED_PRIMITIVE_SHAPES), interactions: Object.freeze(["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"]), modelFormats: Object.freeze(["glb", "gltf", "fbx"]) }),
   assets: Object.freeze({ version: lessonAssetLibrary.version, list() { return Object.entries(lessonAssetLibrary.assets).map(([id, value]) => ({ id, name: value.name || id, type: value.type, tags: [...(value.tags || [])] })); }, get(id) { const value = libraryAsset(id); return JSON.parse(JSON.stringify({ id, ...value })); }, preloadImages(paths = []) { return preloadLessonTextures(paths, runtime.lessonUrl || import.meta.url); } }),
   addObject,
   addPrimitive,
@@ -1560,7 +1722,7 @@ const world = Object.freeze({
     return handle;
   },
   addLabel(options = {}) { return this.addCallout({ ...options, anchor: options.anchor || [options.position?.[0] || 0, .2, options.position?.[2] || 0] }); },
-  addOperatorSign({ text = "=", position = [0, .2, -1], scale = [2.45, 2.45] } = {}) {
+  addOperatorSign({ text = "=", position = [0, .2, -1], scale = [2.45, 2.45], clickable = false, onClick = null, hoverMessage = "", objectiveAction: operatorObjectiveAction = true, selectionFeedback = true } = {}) {
     if (!SUPPORTED_OPERATOR_SIGNS.includes(text)) throw new Error(`LESSON_OPERATOR_UNSUPPORTED: addOperatorSign ไม่รองรับเครื่องหมาย ${text}`);
     // Build once at the reference size, then scale the entire visual, including bar spacing.
     // Scaling individual meshes alone leaves =, ÷ and comparison offsets unscaled.
@@ -1590,9 +1752,12 @@ const world = Object.freeze({
     for (const part of [edge, base, topPlate]) { part.castShadow = Boolean(shadowSetting.lessonCast); part.receiveShadow = shadowSetting.lessonReceive !== false; }
     visual.add(edge, base, topPlate, symbol); visual.scale.setScalar(visualScale);
     group.position.set(...position); group.add(visual);
-    Object.assign(group.userData, { visualRoot: visual, operatorBase: base, operatorEdge: edge, operatorParts: parts });
+    Object.assign(group.userData, { visualRoot: visual, operatorBase: base, operatorEdge: edge, operatorParts: parts, onClick, hoverMessage, objectiveAction: operatorObjectiveAction, selectionFeedback });
     lessonGroup.add(group); setOperatorAppearance(group, "neutral"); queueSpawn(group);
-    return Object.freeze({ ...makeHandle(group), pulse() { pulseOperator(group); }, setState(valid) { const next = valid ? "valid" : "neutral", changed = group.userData.operatorState !== next; setOperatorAppearance(group, next); if (changed && valid) pulseOperator(group); } });
+    const baseHandle = makeHandle(group);
+    group.userData.clickable = Boolean(clickable || typeof onClick === "function");
+    if (typeof syncInteractive === "function") syncInteractive(group);
+    return Object.freeze({ ...baseHandle, pulse() { pulseOperator(group); }, setState(valid) { const next = valid ? "valid" : "neutral", changed = group.userData.operatorState !== next; setOperatorAppearance(group, next); if (changed && valid) pulseOperator(group); } });
   },
   addGuideline(options = {}) { return makeHandle(createGuideline(options)); },
   addLineRender(options = {}) { return makeHandle(createLineRender(options)); },
@@ -1648,7 +1813,14 @@ function interactiveHit() {
   return resolved.find(hit => isActionableCallout(hit.object)) || resolved[0] || null;
 }
 function snapshot() { const points = [...pointers.values()]; return { yaw: cameraState.yaw, pitch: cameraState.pitch, distance: cameraState.distance, points, pinch: points.length === 2 ? Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) : 0 }; }
-elements.canvas.addEventListener("pointerdown", event => { if (elements.runtime.classList.contains("web-page-mode")) return; event.preventDefault(); elements.canvas.setPointerCapture(event.pointerId); rayFrom(event); const hit = interactiveHit(); if (hit?.object.userData.draggable) { if (hit.object.userData.objectiveAction !== false) objectiveAction(); dragged = hit.object; dragPointerId = event.pointerId; dragged.userData.dragOrigin = dragged.position.clone(); dragged.userData.dragStartClient = { x: event.clientX, y: event.clientY }; hideDragCue(); setSelected(dragged); setHovered(dragged); audio.play("onClick"); if (dragged.userData.guideTarget) dragGuideline = createGuideline({ fromObject: dragged, to: dragged.userData.guideTarget, parent: effectGroup }); const axis = dragged.userData.dragAxis; if (axis === "xy") dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), dragged.position); else dragPlane.set(new THREE.Vector3(0, 1, 0), 0); if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) { if (dragged.userData.dragFromCenter) dragOffset.set(0, 0, 0); else dragOffset.copy(dragged.position).sub(dragPoint); } dragged.position.y += dragged.userData.dragLiftHeight ?? setting.object.motion.liftHeight; elements.canvas.classList.add("is-dragging-object"); return; } if (hit?.object.userData.clickable) { if (hit.object.userData.objectiveAction !== false) objectiveAction(); if (isActionableCallout(hit.object) || hit.object.userData.selectionFeedback === false) { setSelected(null); setHovered(hit.object); } else { setSelected(hit.object); setHovered(hit.object); } audio.play("onClick"); hit.object.userData.onClick?.({ handle: hit.object.userData.lessonHandle, object: hit.object, hitPoint: { x: hit.point.x, y: hit.point.y, z: hit.point.z } }); return; } pauseDragCue(); setSelected(null); setHovered(null); pointers.set(event.pointerId, { x: event.clientX, y: event.clientY }); orbit = snapshot(); });
+elements.canvas.addEventListener("pointerdown", event => {
+  if (elements.runtime.classList.contains("web-page-mode")) return;
+  rayFrom(event);
+  const target = interactiveHit()?.object;
+  if (target?.userData.draggable) clickme.suspendFor(target);
+  else if (target?.userData.clickable) clickme.completeFor(target);
+}, { capture: true });
+elements.canvas.addEventListener("pointerdown", event => { if (elements.runtime.classList.contains("web-page-mode")) return; event.preventDefault(); elements.canvas.setPointerCapture(event.pointerId); rayFrom(event); const hit = interactiveHit(); if (hit?.object.userData.draggable) { if (hit.object.userData.objectiveAction !== false) objectiveAction(); dragged = hit.object; dragPointerId = event.pointerId; dragged.userData.dragOrigin = dragged.position.clone(); dragged.userData.dragStartClient = { x: event.clientX, y: event.clientY }; hideDragCue(); setSelected(dragged); setHovered(dragged); audio.play("onClick"); if (dragged.userData.guideTarget) dragGuideline = createGuideline({ fromObject: dragged, to: dragged.userData.guideTarget, parent: effectGroup }); const axis = dragged.userData.dragAxis; if (axis === "xy") dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), dragged.position); else dragPlane.set(new THREE.Vector3(0, 1, 0), 0); if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) { if (dragged.userData.dragFromCenter) dragOffset.set(0, 0, 0); else dragOffset.copy(dragged.position).sub(dragPoint); } dragged.position.y += dragged.userData.dragLiftHeight ?? setting.object.motion.liftHeight; elements.canvas.classList.add("is-dragging-object"); return; } if (hit?.object.userData.clickable) { if (hit.object.userData.objectiveAction !== false) objectiveAction(); if (isActionableCallout(hit.object) || hit.object.userData.selectionFeedback === false) { setSelected(null); setHovered(hit.object); } else { setSelected(hit.object); setHovered(hit.object); } audio.play("onClick"); hit.object.userData.onClick?.({ handle: hit.object.userData.lessonHandle, object: hit.object, hitPoint: { x: hit.point.x, y: hit.point.y, z: hit.point.z } }); return; } guiService.worldOption.dismiss(); pauseDragCue(); setSelected(null); setHovered(null); pointers.set(event.pointerId, { x: event.clientX, y: event.clientY }); orbit = snapshot(); });
 elements.canvas.addEventListener("pointermove", event => { if (!dragged && pointers.size === 0) { rayFrom(event); setHovered(interactiveHit()?.object || null); setDisplayHovered(raycaster.intersectObjects(uiDisplays, false)[0]?.object || null); } if (dragged && event.pointerId === dragPointerId) { rayFrom(event); setDisplayHovered(null); if (raycaster.ray.intersectPlane(dragPlane, dragPoint)) { const next = dragPoint.clone().add(dragOffset), axis = dragged.userData.dragAxis || "xz", limit = setting.ground.radius - setting.interaction.dragPadding; if (axis.includes("x")) dragged.position.x = clamp(next.x, -limit, limit); if (axis.includes("y")) dragged.position.y = clamp(next.y, .2, 9); if (axis.includes("z")) dragged.position.z = clamp(next.z, -limit, limit); dragged.userData.onDrag?.({ x: dragged.position.x, y: dragged.position.y, z: dragged.position.z }); } return; } if (!pointers.has(event.pointerId) || !orbit) return; pointers.set(event.pointerId, { x: event.clientX, y: event.clientY }); const points = [...pointers.values()]; if (points.length === 1) { cameraState.yaw = orbit.yaw - (points[0].x - orbit.points[0].x) * setting.interaction.rotateSpeed; cameraState.pitch = clamp(orbit.pitch + (points[0].y - orbit.points[0].y) * setting.interaction.tiltSpeed, THREE.MathUtils.degToRad(cameraConfig.minPitch), THREE.MathUtils.degToRad(cameraConfig.maxPitch)); } else if (points.length === 2 && orbit.pinch > 0) { const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y); cameraState.distance = clamp(orbit.distance * orbit.pinch / Math.max(distance, 1), cameraConfig.minDistance, cameraMaxDistance()); } updateCamera(); });
 function endPointer(event) {
   if (event.pointerId === dragPointerId) {
@@ -1658,6 +1830,7 @@ function endPointer(event) {
     if (object.userData.tapToClick && dragDistance < object.userData.tapClickTolerance) {
       object.position.copy(origin);
       object.userData.onClick?.({ handle: object.userData.lessonHandle, object, hitPoint: { x: object.position.x, y: object.position.y, z: object.position.z } });
+      clickme.completeFor(object);
       removeDragGuideline();
       setHovered(null);
       dragged = null; dragPointerId = null; elements.canvas.classList.remove("is-dragging-object");
@@ -1678,6 +1851,7 @@ function endPointer(event) {
     } else {
       animations.set(object, { kind: "return", start: performance.now(), duration: setting.object.motion.returnDuration, from: object.position.clone(), to: origin });
     }
+    clickme.finishFor(object, { completed: committed });
     // การลากไม่ควรทิ้งสถานะ Hover ไว้หลังปล่อย วัตถุจึงคืนสีปกติเมื่อ
     // Commit Flash จบ และจะขาวอีกครั้งเมื่อมี pointermove กลับมาชี้จริง ๆ เท่านั้น
     setHovered(null);
@@ -1777,6 +1951,7 @@ renderer.setAnimationLoop(now => {
   if (atmospherePoints) { atmospherePoints.rotation.y += .0006 * (delta / 16.67); atmospherePoints.position.y = Math.sin(now * .0007) * .18; }
   for (const object of atmosphereGroup.children) if (object.userData.windTrail) { object.position.x += object.userData.windTrail.speed * delta * .48; if (object.position.x > 18) object.position.x = -18; }
   worldGuiSystem.update(now);
+  clickme.update();
   if (!elements.runtime.classList.contains("web-page-mode")) renderer.render(scene, camera);
 });
 
@@ -1914,7 +2089,7 @@ function syncRevisedIcons() {
     const name = img.dataset.icon || original.split("/").at(-1)?.split("?")[0];
     if (!revisedIconShapes[name]) continue;
     if (!img.dataset.uiOriginalSrc) img.dataset.uiOriginalSrc = original;
-    img.src = revised ? `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0759ed" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${revisedIconShapes[name]}</svg>`)}` : original;
+    img.src = revised ? `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#55213f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${revisedIconShapes[name]}</svg>`)}` : original;
   }
 }
 const labMenuToggle = $("#lab-menu-toggle"), labMenuOverlay = $("#lab-menu-overlay"), labToolsToggle = $("#lab-tools-toggle");
@@ -2084,8 +2259,42 @@ function syncLabSkipControl() {
     }
   });
 }
-async function setStep(index) { const steps = runtime.meta.howto; if (!steps.length) return; guiService.clearScope("step"); clearTypewriters(); runtime.stepIndex = clamp(index, 0, steps.length - 1); const step = steps[runtime.stepIndex], finalLabStep = runtime.stepIndex === steps.length - 1, freestyle = step.type === "freestyle" || finalLabStep; guiService.control.setLessonPhase(finalLabStep ? "lab" : "teaching"); guiService.console.reset(); elements.howto.classList.toggle("is-freestyle", freestyle); elements.consoleState.classList.toggle("is-hand", freestyle); elements.consoleStateImage.src = iconUrl(freestyle ? "hand.svg" : "book.svg"); elements.stepCounter.textContent = `${runtime.stepIndex + 1} / ${steps.length}`; typeText(elements.stepTitle, step.title); typeText(elements.stepDescription, step.desc); $("#previous-step").disabled = runtime.stepIndex === 0; $("#next-step").disabled = runtime.stepIndex === steps.length - 1; syncLabSkipControl(); queueStepOption(step.option); animateConsole(); await runtime.lesson.onStep?.(runtime.stepIndex, step, lessonPayload()); if (!runtime.sceneEntered) { world.playEntrance(); runtime.sceneEntered = true; } }
-function showInformation() { uiSound(); const tags = Array.isArray(runtime.lessonData.tags) ? runtime.lessonData.tags : [], category = [runtime.lessonData.category, runtime.lessonData.subcategory].filter(Boolean).join(" · ") || "บทเรียนเสริมทักษะ"; showModal(`<div class="info-dialog"><header class="modal-hero">${iconMarkup("book.svg")}<div><span class="mode-badge">${escapeHtml(modeLabel(runtime.mode))}</span><h2>${escapeHtml(runtime.lessonData.title)}</h2></div></header><div class="info-topic">${iconMarkup("book.svg")}<div><h3>เรื่องที่กำลังเรียน</h3><p>${escapeHtml(runtime.meta.description)}</p></div></div><div class="info-topic">${iconMarkup("category.svg")}<div><h3>หมวดการเรียนรู้</h3><p>${escapeHtml(category)}</p><div class="tag-list">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div></div><div class="info-topic is-target">${iconMarkup("target.svg")}<div><h3>เป้าหมายของบทเรียน</h3><p>${escapeHtml(runtime.meta.keyResult)}</p></div></div></div>`); }
+async function setStep(index) {
+  const steps = runtime.meta.howto;
+  if (!steps.length) return;
+  introService.close({ notify: false, reason: "step-change" });
+  guiService.clearScope("step");
+  clearTypewriters();
+  runtime.stepIndex = clamp(index, 0, steps.length - 1);
+  const activeStepIndex = runtime.stepIndex, step = steps[activeStepIndex], finalLabStep = activeStepIndex === steps.length - 1, freestyle = step.type === "freestyle" || finalLabStep;
+  guiService.control.setLessonPhase(finalLabStep ? "lab" : "teaching");
+  guiService.console.reset();
+  elements.howto.classList.toggle("is-freestyle", freestyle);
+  elements.consoleState.classList.toggle("is-hand", freestyle);
+  elements.consoleStateImage.src = iconUrl(freestyle ? "hand.svg" : "book.svg");
+  elements.stepCounter.textContent = `${activeStepIndex + 1} / ${steps.length}`;
+  typeText(elements.stepTitle, step.title);
+  typeText(elements.stepDescription, step.desc);
+  $("#previous-step").disabled = activeStepIndex === 0;
+  $("#next-step").disabled = finalLabStep;
+  syncLabSkipControl();
+  queueStepOption(step.option);
+  animateConsole();
+  await runtime.lesson.onStep?.(activeStepIndex, step, lessonPayload());
+  if (!runtime.sceneEntered) { world.playEntrance(); runtime.sceneEntered = true; }
+  if (step.intro?.url || step.intro?.src) {
+    const sessionId = runtime.sessionId;
+    introService.open({
+      ...step.intro,
+      source: "step",
+      onClose: () => {
+        if (runtime.sessionId !== sessionId || runtime.stepIndex !== activeStepIndex) return;
+        if (activeStepIndex < steps.length - 1) void setStep(activeStepIndex + 1);
+      }
+    });
+  }
+}
+function showInformation() { uiSound(); const tags = Array.isArray(runtime.lessonData.tags) ? runtime.lessonData.tags : [], category = [runtime.lessonData.category, runtime.lessonData.subcategory].filter(Boolean).join(" · ") || "บทเรียนเสริมทักษะ"; showModal(`<div class="info-dialog"><header class="modal-hero">${iconMarkup("info-book.svg")}<div><span class="mode-badge">${escapeHtml(modeLabel(runtime.mode))}</span><h2>${escapeHtml(runtime.lessonData.title)}</h2></div></header><div class="info-topic">${iconMarkup("info-book.svg")}<div><h3>เรื่องที่กำลังเรียน</h3><p>${escapeHtml(runtime.meta.description)}</p></div></div><div class="info-topic">${iconMarkup("info-category.svg")}<div><h3>หมวดการเรียนรู้</h3><p>${escapeHtml(category)}</p><div class="tag-list">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div></div><div class="info-topic is-target">${iconMarkup("info-target.svg")}<div><h3>เป้าหมายของบทเรียน</h3><p>${escapeHtml(runtime.meta.keyResult)}</p></div></div></div>`); }
 function editorFieldVisible(field, values) { const rule = field.showWhen; if (!rule?.key) return true; const accepted = Array.isArray(rule.values) ? rule.values : [rule.value]; return accepted.some(value => String(value) === String(values[rule.key])); }
 function editorFieldMarkup(field) { const key = escapeHtml(field.key), value = runtime.values[field.key] ?? "", range = field.option || [], min = field.min ?? range[0] ?? 0, max = field.max ?? range[1] ?? 100, help = field.help ? `<em class="editor-help">${escapeHtml(field.help)}</em>` : "", primaryClass = field.key === "problemType" ? " is-primary" : ""; if (field.type === "dropdown") { const options = (field.option || []).map(item => { const option = item && typeof item === "object" ? item : { value: item, label: item }; return `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`; }).join(""); return `<label class="editor-field${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><select data-edit="${key}">${options}</select>${help}</label>`; } if (field.type === "slider") return `<label class="editor-field is-slider${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><output data-range-output="${key}">${escapeHtml(value)}</output><input data-edit="${key}" type="range" value="${escapeHtml(value)}" min="${escapeHtml(min)}" max="${escapeHtml(max)}" step="${escapeHtml(field.step ?? 1)}"><small><i>${escapeHtml(min)}</i><i>${escapeHtml(max)}</i></small>${help}</label>`; return `<label class="editor-field${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><input data-edit="${key}" type="number" value="${escapeHtml(value)}" min="${escapeHtml(min)}" max="${escapeHtml(max)}" step="${escapeHtml(field.step ?? 1)}">${help}</label>`; }
 function showEditor() { uiSound(); const fields = runtime.meta.editSchema.map(editorFieldMarkup).join(""); showModal(`<div class="editor-dialog"><header class="editor-hero"><span class="editor-kicker">✦ TEACHER TOOLS</span><h2>สร้างตัวอย่างโจทย์</h2><p>เลือกแบบโจทย์ก่อน ระบบจะแสดงเฉพาะตัวเลขที่ต้องปรับ</p></header><div class="editor-guide"><b>1</b><span>เลือกแบบโจทย์</span><i>→</i><b>2</b><span>ปรับตัวเลข</span><i>→</i><b>3</b><span>กดนำไปใช้</span></div><div class="editor-grid">${fields}</div></div>`, { primaryLabel: "นำโจทย์นี้ไปใช้", onPrimary: async () => { for (const input of elements.modal.querySelectorAll("[data-edit]")) { const schema = runtime.meta.editSchema.find(item => item.key === input.dataset.edit); runtime.values[input.dataset.edit] = schema?.type === "dropdown" ? input.value : Number(input.value); } closeModal(); await resetLessonScene(); await setStep(0); showToast("สร้างตัวอย่างโจทย์ใหม่แล้ว", "success"); } }); elements.modal.querySelector(".modal-card")?.classList.add("editor-modal"); const currentEditorValues = () => { const values = { ...runtime.values }; for (const input of elements.modal.querySelectorAll("[data-edit]")) values[input.dataset.edit] = input.tagName === "SELECT" ? input.value : Number(input.value); return values; }; const syncEditorFields = () => { const values = currentEditorValues(); for (const root of elements.modal.querySelectorAll("[data-editor-field]")) { const schema = runtime.meta.editSchema.find(item => item.key === root.dataset.editorField); root.hidden = !editorFieldVisible(schema || {}, values); } }; for (const input of elements.modal.querySelectorAll('input[type="range"][data-edit]')) input.addEventListener("input", () => { const output = elements.modal.querySelector(`[data-range-output="${CSS.escape(input.dataset.edit)}"]`); if (output) output.value = input.value; }); elements.modal.querySelector('select[data-edit="problemType"]')?.addEventListener("change", syncEditorFields); syncEditorFields(); }
@@ -2100,9 +2309,9 @@ async function showQuestion(index) { const quiz = runtime.quiz; if (index >= qui
 function answerQuiz(correct, details = {}) { const quiz = runtime.quiz; if (!quiz?.acceptingAnswers) return false; const question = quiz.questions[quiz.index]; quiz.pendingAnswer = { questionIndex: quiz.index, question: question.question, correct: Boolean(correct), ...details }; objectiveAction(); return true; }
 function commitQuizAnswer() { const quiz = runtime.quiz, question = quiz.questions[quiz.index], answer = quiz.pendingAnswer || { questionIndex: quiz.index, question: question.question, correct: false, skipped: true }; quiz.answers.push(answer); if (answer.correct) quiz.score += 1; }
 function answerSummary(answer) { if (answer?.skipped) return "ไม่ได้ตอบ"; if (typeof answer?.answerText === "string" && answer.answerText.trim()) return answer.answerText; if (answer?.leftCount != null && answer?.rightCount != null) return `${answer.leftCount} ${answer.operator} ${answer.rightCount}`; return "ยังไม่ได้วางคำตอบ"; }
-function finishQuiz() { const quiz = runtime.quiz; runtime.completed = true; const durationMs = Date.now() - quiz.startedAt; audio.play("completeLesson"); celebrate(); const minutes = Math.floor(durationMs / 60000), seconds = Math.floor(durationMs % 60000 / 1000), percent = Math.round(quiz.score / quiz.questions.length * 100), review = quiz.questions.map((question, index) => { const answer = quiz.answers.find(item => item.questionIndex === index), correct = answer?.correct; return `<li class="${correct ? "correct" : "wrong"}"><b>${correct ? "✓" : "×"}</b><div><strong>${escapeHtml(question.question)}</strong><span>คำตอบที่วาง: ${escapeHtml(answerSummary(answer))}</span></div></li>`; }).join(""); showModal(`<div class="quiz-result"><header class="result-hero">${iconMarkup("trophy.svg")}<div><span>MISSION COMPLETE</span><h2>${percent >= 80 ? "ยอดเยี่ยมมาก!" : "เก่งมาก ลองอีกครั้งได้เสมอ"}</h2><p>ใช้เวลา ${minutes} นาที ${seconds} วินาที</p></div><div class="result-score"><strong>${quiz.score}</strong><small>/ ${quiz.questions.length}</small></div></header><div class="result-stars">${[1, 2, 3].map(star => `<i class="${percent >= star * 30 ? "earned" : ""}">★</i>`).join("")}</div><h3 class="review-title">คำตอบและผลแต่ละข้อ</h3><ol class="review-list">${review}</ol></div>`, { dismissible: false, primaryLabel: "ตกลง", onPrimary: () => { const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers }; postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); postToHost("lesson.closeRequested"); } }); }
+function finishQuiz() { const quiz = runtime.quiz; runtime.completed = true; const durationMs = Date.now() - quiz.startedAt; audio.play("completeLesson"); celebrate(); const minutes = Math.floor(durationMs / 60000), seconds = Math.floor(durationMs % 60000 / 1000), percent = Math.round(quiz.score / quiz.questions.length * 100), review = quiz.questions.map((question, index) => { const answer = quiz.answers.find(item => item.questionIndex === index), correct = answer?.correct; return `<li class="${correct ? "correct" : "wrong"}"><b>${iconMarkup(correct ? "result-correct.svg" : "result-wrong.svg")}</b><div><strong>${escapeHtml(question.question)}</strong><span>คำตอบที่วาง: ${escapeHtml(answerSummary(answer))}</span></div></li>`; }).join(""); showModal(`<div class="quiz-result"><header class="result-hero"><div class="result-trophy">${iconMarkup("result-trophy.svg")}</div><div><span>ภารกิจสำเร็จ</span><h2>${percent >= 80 ? "ยอดเยี่ยมมาก!" : "ทำครบแล้ว เก่งมาก!"}</h2><p>ใช้เวลา ${minutes} นาที ${seconds} วินาที</p></div><div class="result-score"><strong>${quiz.score}</strong><small>/ ${quiz.questions.length}</small></div></header><div class="result-stars" aria-label="ได้รับ ${Math.min(3, Math.floor(percent / 30))} ดาว">${[1, 2, 3].map(star => `<i class="${percent >= star * 30 ? "earned" : ""}">★</i>`).join("")}</div><h3 class="review-title">คำตอบและผลแต่ละข้อ</h3><ol class="review-list">${review}</ol></div>`, { dismissible: false, primaryLabel: "ตกลง", onPrimary: () => { const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers }; postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); postToHost("lesson.closeRequested"); } }); }
 async function beginQuiz() { closeModal(); runtime.completed = false; runtime.quiz = { questions: shuffle(runtime.meta.quiz).slice(0, Math.min(5, runtime.meta.quiz.length)), index: 0, score: 0, answers: [], pendingAnswer: null, acceptingAnswers: false, startedAt: Date.now() }; await showQuestion(0); }
-function readyQuiz() { const art = runtimeAssetUrl(setting.entry.quizWelcomeImagePath || setting.entry.loadingImagePath || setting.entry.imagePath); showModal(`<div class="quiz-welcome"><div class="quiz-welcome-art"><img src="${art}" alt="" /><span class="mode-badge">PRE-TEST</span></div><div class="quiz-welcome-copy"><span class="quiz-eyebrow">PUZZLE CHALLENGE</span><h2>พร้อมเริ่มภารกิจทดสอบหรือยัง?</h2><p>ลองตอบหรือทำโจทย์อย่างน้อยหนึ่งครั้ง แล้วจึงส่งคำตอบเพื่อไปข้อต่อไป เราจะสรุปคะแนนพร้อมกันเมื่อทำครบ</p><div class="quiz-rules"><div>${iconMarkup("question.svg")}<b>${Math.min(5, runtime.meta.quiz.length)} ข้อ</b><small>สุ่มจาก ${runtime.meta.quiz.length} ข้อ</small></div><div>${iconMarkup("next.svg")}<b>ลองก่อนส่ง</b><small>ตอบถูกหรือผิดก็ส่งได้</small></div><div>${iconMarkup("trophy.svg")}<b>สรุปท้ายเกม</b><small>ดูคะแนนพร้อมกัน</small></div></div></div></div>`, { dismissible: false, primaryLabel: "เริ่มภารกิจ", onPrimary: beginQuiz }); }
+function readyQuiz() { const art = runtimeAssetUrl(setting.entry.quizWelcomeImagePath || setting.entry.loadingImagePath || setting.entry.imagePath); showModal(`<div class="quiz-welcome"><div class="quiz-welcome-art"><img src="${art}" alt="" /><span class="mode-badge">PRE-TEST</span></div><div class="quiz-welcome-copy"><div class="quiz-divider"><span>ภารกิจทดสอบก่อนเรียน</span></div><h2>พร้อมเริ่มภารกิจทดสอบหรือยัง?</h2><p>ลองตอบหรือทำโจทย์อย่างน้อยหนึ่งครั้ง แล้วจึงส่งคำตอบเพื่อไปข้อต่อไป เราจะสรุปคะแนนพร้อมกันเมื่อทำครบ</p><div class="quiz-rules"><div>${iconMarkup("quiz-rule-count.svg")}<b>${Math.min(5, runtime.meta.quiz.length)} ข้อ</b><small>สุ่มจาก ${runtime.meta.quiz.length} ข้อ</small></div><div>${iconMarkup("quiz-rule-try.svg")}<b>ลองก่อนส่ง</b><small>ตอบถูกหรือผิดก็ส่งได้</small></div><div>${iconMarkup("quiz-rule-trophy.svg")}<b>สรุปท้ายเกม</b><small>ดูคะแนนพร้อมกัน</small></div></div></div></div>`, { dismissible: false, primaryLabel: "เริ่มภารกิจ", onPrimary: beginQuiz }); }
 
 const lessonUi = Object.freeze({
   question: guiService.question,
@@ -2110,10 +2319,13 @@ const lessonUi = Object.freeze({
   topMessage: guiService.topMessage,
   choice: guiService.choice,
   gizmo: guiService.gizmo,
+  worldOption: guiService.worldOption,
   worldGuiSystem,
+  clickme,
   feedback: guiService.feedback,
   dialog: guiService.dialog,
   insight: guiService.insight,
+  intro: introService,
   control: guiService.control,
   hint: guiService.hint,
   busy: guiService.busy,
@@ -2124,8 +2336,8 @@ const lessonUi = Object.freeze({
   clearQuestion() { setLessonQuestion(""); },
   setProgress(current, total) { postToHost("lesson.progress", { current, total }); }
 });
-function createContext(root, language) { return Object.freeze({ world, assets: world.assets, capabilities: world.capabilities, ui: lessonUi, audio: Object.freeze({ play: name => audio.play(name) }), root, lessonData: runtime.lessonData, mode: runtime.mode, language, resolveAsset: path => runtimeAssetUrl(path, runtime.lessonUrl), objectiveAction, quiz: Object.freeze({ answer: answerQuiz }), complete(result = {}) { if (!runtime.completed) { runtime.completed = true; audio.play("completeLesson"); celebrate(); } postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); } }); }
-async function closeLesson() { runtime.sessionId += 1; try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.className = "mascot-guide"; elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
+function createContext(root, language) { return Object.freeze({ world, assets: world.assets, capabilities: world.capabilities, ui: lessonUi, audio: Object.freeze({ play: name => audio.play(name) }), root, lessonData: runtime.lessonData, mode: runtime.mode, language, resolveAsset: path => runtimeAssetUrl(path, runtime.lessonUrl), objectiveAction, quiz: Object.freeze({ answer: answerQuiz }), complete(result = {}) { clickme.clearAll(); if (!runtime.completed) { runtime.completed = true; audio.play("completeLesson"); celebrate(); } postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); } }); }
+async function closeLesson() { runtime.sessionId += 1; introService.close({ notify: false, reason: "lesson-close" }); try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.className = "mascot-guide"; elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
 const lessonFailureStages = {
   receive: ["การรับไฟล์บทเรียน", "ตรวจว่าไฟล์ HTML ที่เลือกอ่านได้ครบและไม่ว่าง"],
   fetch: ["การโหลดไฟล์บทเรียน", "ตรวจ path, ชื่อไฟล์, ตัวพิมพ์เล็ก–ใหญ่ และ HTTP status"],
@@ -2169,6 +2381,8 @@ function createLessonFailure(error, stage, lessonData) {
 
 async function openLesson(payload) {
   const { lessonData, language, lessonHtml } = payload;
+  runtime.fullScreen = payload.fullScreen !== false;
+  elements.runtime.dataset.fullScreen = String(runtime.fullScreen);
   const sessionId = runtime.sessionId + 1;
   await closeLesson();
   runtime.lastOpenPayload = payload;

@@ -45,7 +45,31 @@
         "tooltip": { "type": "string" },
         "defaultValue": { "type": "object" },
         "editSchema": { "type": "array", "items": { "type": "object" } },
-        "howto": { "type": "array", "items": { "type": "object" } },
+        "howto": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["index", "title", "type", "desc"],
+            "properties": {
+              "index": { "type": "integer", "minimum": 0 },
+              "title": { "type": "string" },
+              "type": { "enum": ["sequence", "freestyle"] },
+              "desc": { "type": "string" },
+              "intro": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "minLength": 1 },
+                  "src": { "type": "string", "minLength": 1 },
+                  "title": { "type": "string" },
+                  "label": { "type": "string" }
+                },
+                "anyOf": [{ "required": ["url"] }, { "required": ["src"] }],
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": true
+          }
+        },
         "quiz": { "type": "array", "items": { "type": "object" } }
       },
       "additionalProperties": true

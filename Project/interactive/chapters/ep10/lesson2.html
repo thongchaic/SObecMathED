@@ -536,7 +536,7 @@
             dragFromCenter: true,
             hitArea: [2.5, 1.25, 2.5],
             hitAreaOffset: [0, .45, 0],
-            guideTarget: this.mode === "student-quiz" ? null : [LAYOUT.answerX + LAYOUT.stackOffsetX, .25, LAYOUT.stackZ],
+            guideTarget: [LAYOUT.answerX + LAYOUT.stackOffsetX, .25, LAYOUT.stackZ],
             hoverMessage: "",
             onHover: active => { if (active) this.sourceGizmo?.show(); else this.sourceGizmo?.hide(); },
             onDrag: () => this.sourceGizmo?.show(),
@@ -546,6 +546,7 @@
           this.sourceGizmo = this.context.ui.gizmo.attach(handle, { id: "source-charge-hint", scope: "step", type: "label", text: "เพิ่มตัวยกกำลัง", placement: "top", worldOffset: [0, 1.05, 0], clamp: true });
           this.sourceGizmo.hide();
           this.sourceTray = handle;
+          this.context.world.showDragCue(handle,[LAYOUT.answerX + LAYOUT.stackOffsetX,.25,LAYOUT.stackZ]);
           return handle;
         },
 

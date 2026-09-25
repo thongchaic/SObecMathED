@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-25 — Runtime 3.3.0 Free-form Procedural Geometry
+
+- เพิ่ม `polygon`, `polygon-flat`, `polyhedron`, `lathe` และ `spline-tube` สำหรับสร้างโมเดลจาก vertices, holes, faces, profile และ path ขณะ runtime
+- เพิ่ม alias ชื่อรูปทรงที่ใช้บ่อย เช่น `cube`, `triangle`, `pie-slice`, `donut`, `extrude-polygon` และ `path-tube`
+- เพิ่ม `geometry.orientation` เพื่อวางรูปทรงแบนบนระนาบ `front`, `ground`/`xz` หรือ `side`/`yz` โดยไม่ต้องคำนวณ rotation เอง
+- ลงทะเบียน `arrow-flat` ที่ runtime รองรับอยู่แล้วให้ครบใน capabilities, types, validator และเอกสาร
+- ปรับ validator ให้ไม่ตีความข้อความข้อมูลทั่วไปที่ใช้ property `shape` เป็น Procedural Geometry
+
+## 2026-09-24 — 0.3.0 World Option Service
+
+- เพิ่ม `context.ui.worldOption` สำหรับ popup ตัวเลือกแนวตั้งที่ติดตาม object 3D พร้อม title, message, disabled state และ event `onSelect`
+- เพิ่ม `mainWorldSetting.ui.worldOption` เพื่อควบคุมรูปลักษณ์ส่วนกลางและ lifecycle scope แบบเดียวกับ GUI Service อื่น
+- เพิ่มแมว FBX จาก Standard Asset Library ใน `ep0/lesson1` เพื่อทดสอบคำสั่งหมุน ขยับซ้าย และขยับขวา
+- ปรับ animation เปิด World Option ให้คำนวณตำแหน่งเกาะวัตถุเสร็จก่อนแสดงผล พร้อม motion ของ panel และรายการคำสั่งที่นุ่มขึ้น
+- เพิ่มการปิด World Option เมื่อกดพื้นที่ว่างของฉาก โดยยังรองรับ `dismissible: false` สำหรับกิจกรรมที่บังคับให้เลือกคำสั่ง
+- กำหนดกฎกลางให้วัตถุ 3D ที่ `clickable` หรือ `draggable` แสดง Hover สีขาวและวง Hover แม้ตั้ง `selectionFeedback: false`; ค่านี้ใช้ซ่อนเฉพาะสถานะ Select หลังคลิก
+- sync runtime, CSS, SDK, types, capabilities, GUI Catalog และ regression test
+
+## 2026-09-24 — 0.2.0 Intro Service and Embedded Lesson Options
+
+- เพิ่ม `context.ui.intro` สำหรับเปิดเนื้อหาเสริมจาก URL ภายใน/ภายนอกใน iframe เกือบเต็มหน้าจอ พร้อมบล็อก input ของบทเรียนหลัก
+- เพิ่ม `howto[].intro` สำหรับ Step ที่เปิด Intro อัตโนมัติและไป Step ถัดไปเมื่อปิด โดยการเปิดจาก `ui.control` จะไม่เปลี่ยน Step
+- เพิ่ม `lessonData.fullScreen` เป็นตำแหน่งเดียวสำหรับกำหนด Fullscreen/Preview โดยไม่เพิ่ม argument ให้ `openLesson`; ค่าเริ่มต้นยังเป็น `true`
+- เพิ่ม click options ให้ `world.addOperatorSign()` และเพิ่ม `ep0/lesson1` เป็นตัวอย่าง Intro/Operator interaction
+- sync runtime, CSS, SDK, types, capabilities, contract, UI Catalog, examples และ source manifest จาก owner project
+
 ## 2026-09-18 — 0.1.10 NPC Jump-only Success
 
 - ตัด scale animation ออกจากท่าดีใจเมื่อตอบถูกใน `ep3/lesson3`
