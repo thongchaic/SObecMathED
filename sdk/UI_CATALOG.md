@@ -11,6 +11,7 @@
 | ชื่อมาตรฐาน | API ของบทเรียน | Setting | ใช้สำหรับ |
 |---|---|---|---|
 | Question Panel | `context.ui.question` | `ui.questionPanel` | โจทย์หลักด้านบน ใช้กรอบคงที่ไม่ทับ Header/Panel และย่ออักษรให้พอดีไม่เกิน 2 บรรทัด |
+| GUI Answer | `context.ui.guiAnswer` | `ui.guiAnswer` | คำตอบหรือผลรวมที่ต่อจาก Question Panel พร้อมสถานะถูก/ผิด |
 | Main Console | `context.ui.console` | `ui.console` | Objective, ขั้นตอน และสถานะหลักด้านล่าง |
 | Top Message | `context.ui.topMessage` | `ui.topMessage` | ประกาศสั้นใต้ Topbar ไม่ใช่โจทย์ |
 | Choice Panel | `context.ui.choice` | `ui.choice` | ตัวเลือกคำตอบหรือ action เหนือ Console |
@@ -24,6 +25,7 @@
 | Intro Service | `context.ui.intro` / `howto[].intro` | System-owned | iframe เกือบเต็มหน้าจอสำหรับเนื้อหาเสริมจาก URL; บล็อก interaction ของบทเรียนหลักจนกว่าจะปิด |
 | Control Menu | `context.ui.control` | `ui.control` | เมนูเครื่องมือมุมขวาบน/กลาง/ล่าง |
 | Mascot Hint | `context.ui.hint` | `ui.hint` | คำแนะนำผ่านกล่องคำพูด Mascot |
+| Step Gate | `context.ui.steps.setNextEnabled()` | System-owned | ปลดล็อกปุ่มถัดไปของ Step ที่กำหนด `requiresCompletion` |
 | Busy Overlay | `context.ui.busy` | `ui.busy` | บล็อกฉากชั่วคราวระหว่างรอ async task |
 
 รายละเอียด signature และตัวอย่างอยู่ใน `GUI_SERVICE_REFERENCE.md`

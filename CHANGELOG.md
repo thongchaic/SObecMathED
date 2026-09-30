@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-30 — 0.4.0 Runtime 3.4.0 Guided Steps and Shared Operator Prefab
+
+- เพิ่ม Step gate ด้วย `howto[].requiresCompletion` และ `context.ui.steps.setNextEnabled()` พร้อมปิดการข้ามช่วงที่มีขั้นบังคับ
+- ระบุ `howto[].option` เป็น contract ของบทพูด Mascot รายขั้น รองรับ `instruction`, `hint` และ `feedback`
+- เพิ่ม `world.addLineRender({ points, closed })` สำหรับเส้นหลายช่วงและกรอบ polygon พร้อมคำแนะนำให้ยกเส้นเหนือพื้นเพื่อเลี่ยง z-fighting
+- เพิ่ม `world.camera.focus({ position, normal })` สำหรับ eased transition ที่คง zoom และยกเลิกได้เมื่อผู้เรียนควบคุมกล้อง
+- เพิ่ม `meta.editRestartStep` เพื่อให้ Teacher Tools กลับเข้า Step ที่กำหนดหลังปรับโจทย์
+- ลงทะเบียน `context.ui.guiAnswer` และแนวทางแสดงหลัง `onDrop` เมื่อ realtime ระหว่างลากทำให้ panel กระพริบ
+- บันทึก lifecycle ของ ClickMe ให้จบ cue เมื่อกิจกรรมครบ เพื่อไม่ให้มือชี้ต่อหลังคำตอบสำเร็จ
+- ปรับ prefab `world.addOperatorSign()` ให้ลดเฉพาะความหนาแกน Y ผ่าน `mainWorldSetting.lessonGraphics.operatorBase.heightScale` โดยคง footprint ของเครื่องหมาย
+- sync README, Master, Public API, GUI Reference, UI Catalog, types, capabilities, contract/schema, template, runtime/settings snapshots และ source manifest จาก owner project
+
 ## 2026-09-25 — Runtime 3.3.0 Free-form Procedural Geometry
 
 - เพิ่ม `polygon`, `polygon-flat`, `polyhedron`, `lathe` และ `spline-tube` สำหรับสร้างโมเดลจาก vertices, holes, faces, profile และ path ขณะ runtime

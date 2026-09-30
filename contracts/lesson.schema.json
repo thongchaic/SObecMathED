@@ -45,6 +45,7 @@
         "tooltip": { "type": "string" },
         "defaultValue": { "type": "object" },
         "editSchema": { "type": "array", "items": { "type": "object" } },
+        "editRestartStep": { "type": "integer", "minimum": 0 },
         "howto": {
           "type": "array",
           "items": {
@@ -55,6 +56,17 @@
               "title": { "type": "string" },
               "type": { "enum": ["sequence", "freestyle"] },
               "desc": { "type": "string" },
+              "requiresCompletion": { "type": "boolean" },
+              "option": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "type": { "enum": ["instruction", "hint", "feedback"] },
+                  "header": { "type": "string" },
+                  "message": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": false
+              },
               "intro": {
                 "type": "object",
                 "properties": {

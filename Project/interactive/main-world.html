@@ -85,7 +85,7 @@
     <button id="lab-tools-toggle" type="button" aria-label="เปิดเครื่องมือบทเรียน" aria-controls="gui-control-dock" aria-expanded="false" hidden>◀</button>
     <section class="world-viewport" id="world-viewport" aria-label="พื้นที่บทเรียน">
       <canvas id="world-canvas" aria-label="ฉากสามมิติ"></canvas>
-      <nav class="debug-hud" id="debug-hud" aria-label="เครื่องมือทดสอบ" hidden>
+      <nav class="debug-hud" id="debug-hud" aria-label="สลับโหมดบทเรียน" hidden>
         <button type="button" data-debug-action="refresh" title="Refresh และกลับเข้าบทเรียนเดิม (F4)" aria-label="Refresh และกลับเข้าบทเรียนเดิม">
           <img data-icon="reset.svg" alt="" />
         </button>
@@ -93,7 +93,8 @@
           <img data-icon="edit.svg" alt="" />
         </button>
         <button type="button" data-debug-action="switch-mode" title="สลับไป Quiz" aria-label="สลับไป Quiz">
-          <img data-debug-mode-icon data-icon="trophy.svg" alt="" />
+          <img data-debug-mode-icon data-icon="switch-symbol.svg" alt="" />
+          <span class="preview-switch-copy"><small>โหมดปัจจุบัน · Lab</small><strong>ไป Quiz</strong></span>
         </button>
       </nav>
       <div class="scene-vignette" aria-hidden="true"></div>
@@ -134,6 +135,13 @@
         <span class="lesson-question-icon" aria-hidden="true"><img data-icon="question.svg" alt="" /></span>
         <div><small id="lesson-question-label">โจทย์</small>
           <p id="lesson-question-text"></p>
+        </div>
+      </section>
+      <section class="gui-answer" id="gui-answer" hidden aria-live="polite" aria-atomic="true">
+        <span class="gui-answer-icon" aria-hidden="true"><img id="gui-answer-icon" data-icon="question.svg" alt="" /></span>
+        <div class="gui-answer-copy"><small id="gui-answer-label">คำตอบ</small><p id="gui-answer-text"></p></div>
+        <div class="gui-answer-particles" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
         </div>
       </section>
       <div class="world-hint" id="world-hint">ลากวัตถุไปยังพื้นที่เป้าหมาย</div>
@@ -182,26 +190,28 @@
       <button class="entry-close" id="entry-close" type="button" aria-label="ยกเลิกการเปิดบทเรียน"><img
           data-icon="back-chevron.svg" alt="" /></button>
       <div class="entry-art" aria-hidden="true"></div>
-      <div class="entry-card">
-        <div class="entry-visual" aria-hidden="true">
-          <span class="entry-cloud entry-cloud-a"></span>
-          <span class="entry-cloud entry-cloud-b"></span>
-          <span class="entry-star entry-star-a">✦</span>
-          <span class="entry-star entry-star-b">✦</span>
-          <img id="entry-character" alt="" />
-          <span class="entry-visual-label">LET'S LEARN!</span>
+      <div class="entry-card entry-glass-card">
+        <div class="entry-book-mark" aria-hidden="true">
+          <img data-runtime-asset="./assets/image/loading-icon-book.webp" alt="" />
         </div>
         <div class="entry-content">
           <div class="entry-heading">
-            <span class="entry-eyebrow">PUZZLE WORKSHOP</span>
+            <span class="entry-eyebrow"><i aria-hidden="true"></i><span id="entry-category">บทเรียนคณิตศาสตร์</span></span>
             <h2 id="entry-title">กำลังเตรียมพื้นที่เรียนรู้</h2>
           </div>
-          <div class="entry-welcome" id="entry-welcome"></div>
-          <div class="entry-progress-meta"><span>กำลังเตรียมบทเรียน</span><strong id="entry-progress-value">8%</strong>
-          </div>
-          <div class="entry-progress"><i id="entry-progress-bar"></i></div>
-          <p id="entry-status">กำลังตรวจสอบระบบ…</p>
+          <div class="entry-welcome" id="entry-welcome" aria-hidden="true"></div>
         </div>
+      </div>
+      <div class="entry-loader-panel">
+        <p class="entry-loader-title">กำลังเตรียมบทเรียน...</p>
+        <div class="entry-loader-row">
+          <div class="entry-progress" id="entry-progress-track">
+            <i id="entry-progress-bar"></i>
+            <span class="entry-dino-runner" aria-hidden="true"></span>
+          </div>
+          <strong class="entry-progress-value" id="entry-progress-value">8%</strong>
+        </div>
+        <p class="entry-status" id="entry-status">กำลังตรวจสอบระบบ…</p>
       </div>
       <section class="runtime-failure" id="runtime-failure" role="alertdialog" aria-modal="true" aria-labelledby="runtime-failure-title" hidden>
         <div class="runtime-failure-mark" aria-hidden="true">!</div>

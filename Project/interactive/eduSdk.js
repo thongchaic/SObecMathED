@@ -306,7 +306,16 @@
       notifyError(createError("LESSON_LOAD_ERROR", payload?.message || "บทเรียนรายงานข้อผิดพลาด"));
     }
 
-    if (type === "lesson.retestRequested") state.options?.onRetestRequested?.(activeLesson.data, payload || {});
+    if (type === "lesson.retestRequested") {
+      const nextMode = payload?.mode;
+      if (activeLesson.data.preview === true && ["teacher-lab", "student-quiz"].includes(nextMode)) {
+        const nextData = { ...activeLesson.data, mode: nextMode };
+        const { onComplete, onClose, runtimePayload } = activeLesson;
+        sendToLesson("host.closeLesson");
+        removeLessonOverlay();
+        openLesson(nextData, onComplete, onClose, runtimePayload.lessonHtml ? { html: runtimePayload.lessonHtml } : {});
+      } else if (activeLesson.data.preview !== true) state.options?.onRetestRequested?.(activeLesson.data, payload || {});
+    }
     if (type === "lesson.closeRequested") closeLesson();
     return true;
   }
@@ -586,6 +595,9 @@
       if (hasLessonFullScreen && typeof lessonData.fullScreen !== "boolean") {
         throw createError("INVALID_FULLSCREEN_VALUE", "lessonData.fullScreen ต้องเป็น true หรือ false");
       }
+      if (Object.prototype.hasOwnProperty.call(lessonData, "preview") && typeof lessonData.preview !== "boolean") {
+        throw createError("INVALID_PREVIEW_VALUE", "lessonData.preview ต้องเป็น true หรือ false");
+      }
       const lessonUrl = new URL(lessonData.path, document.baseURI);
 
       if (lessonUrl.origin !== global.location.origin) {
@@ -646,14 +658,14 @@
   }
 
   function handleRetestShortcut(event) {
-    if (event.key !== "F4") return;
+    if (event.key !== "F4" || state.activeLesson?.data.preview === true) return;
     event.preventDefault();
     state.options?.onRetestRequested?.(state.activeLesson?.data ?? null);
   }
 
   function handleRuntimeShortcut(event) {
     if (event.key === "F4") return handleRetestShortcut(event);
-    if (event.key !== "F6" || state.activeLesson?.external || !state.lessonFrame || !["opening", "open"].includes(state.status)) return;
+    if (event.key !== "F6" || state.activeLesson?.data.preview === true || state.activeLesson?.external || !state.lessonFrame || !["opening", "open"].includes(state.status)) return;
     event.preventDefault();
     sendToLesson("host.toggleRuntimeSetting");
   }

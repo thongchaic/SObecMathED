@@ -220,7 +220,7 @@ export interface LessonWorld {
   }): WorldGuiHandle;
   addOperatorSign(options?: { text?: "<" | ">" | "=" | "≠" | "<=" | ">=" | "≤" | "≥" | "+" | "-" | "−" | "×" | "x" | "X" | "÷"; position?: Vec3; scale?: Vec2; clickable?: boolean; onClick?: LessonObjectOptions["onClick"]; hoverMessage?: string; objectiveAction?: boolean; selectionFeedback?: boolean }): OperatorHandle;
   addGuideline(options?: { from?: Vec3; fromObject?: unknown; to?: Vec3; color?: string | number }): LessonHandle;
-  addLineRender(options?: { name?: string; from?: Vec3; to?: Vec3; color?: string | number; thickness?: number; opacity?: number; dashed?: boolean; dashSize?: number; gapSize?: number; arrow?: boolean; arrowSize?: number }): LessonHandle;
+  addLineRender(options?: { name?: string; from?: Vec3; to?: Vec3; points?: Vec3[]; closed?: boolean; color?: string | number; opacity?: number; occludedOpacity?: number; dashed?: boolean; arrow?: boolean }): LessonHandle;
   addTargetFocus(options?: { position?: Vec3; radius?: number; color?: string | number; opacity?: number; animate?: boolean; rotateSpeed?: number; pulseScale?: number; opacityPulse?: number }): LessonHandle;
   showDragCue(handle: LessonHandle, to: Vec3): void;
   hideDragCue(): void;
@@ -229,6 +229,7 @@ export interface LessonWorld {
   readonly camera: {
     reset(): void;
     configure(options?: CameraOptions): void;
+    focus(options: { position: Vec3; normal: Vec3 }): void;
   };
 }
 
@@ -272,6 +273,8 @@ export interface HowToStep {
   title: string;
   type: "sequence" | "freestyle";
   desc: string;
+  requiresCompletion?: boolean;
+  option?: { type?: "instruction" | "hint" | "feedback"; header?: string; message: string };
   intro?: IntroStepOptions;
 }
 
@@ -311,6 +314,7 @@ export interface LessonMeta {
   tooltip?: string;
   defaultValue: Record<string, unknown>;
   editSchema: EditSchemaItem[];
+  editRestartStep?: number;
   howto: HowToStep[];
   quiz: QuizQuestion[];
 }
@@ -493,11 +497,24 @@ export interface ChoiceOptions {
 }
 
 export interface LessonUi {
+  readonly steps: {
+    setNextEnabled(enabled: boolean): void;
+  };
   readonly question: {
     show(options: string | { label?: string; text: string; tone?: GuiTone }): unknown;
     update(options: { label?: string; text?: string; tone?: GuiTone }): unknown;
     hide(): unknown;
     remove(): unknown;
+  };
+  readonly guiAnswer: {
+    show(options?: string | { label?: string; text?: string; icon?: string; state?: "neutral" | "correct" | "wrong"; celebrate?: boolean }): unknown;
+    update(options?: string | { label?: string; text?: string; icon?: string; state?: "neutral" | "correct" | "wrong"; celebrate?: boolean }): unknown;
+    correct(options?: string | { label?: string; text?: string; icon?: string; celebrate?: boolean }): unknown;
+    wrong(options?: string | { label?: string; text?: string; icon?: string }): unknown;
+    reset(options?: string | { label?: string; text?: string; icon?: string }): unknown;
+    hide(): unknown;
+    remove(): unknown;
+    readonly state: Readonly<{ label: string; text: string; icon: string; state: string }>;
   };
   readonly console: {
     set(options: string | { objective?: string; title?: string; message?: string; icon?: string; tone?: GuiTone; state?: GuiTone }): unknown;

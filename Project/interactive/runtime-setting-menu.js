@@ -56,7 +56,7 @@ export function consumeRuntimeLessonRestore() {
 }
 
 export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, onRefresh, onRestore, onRetest, onGuiLabAction, onToggleDebugArea, debugEnabled = true }) {
-  let draft = clone(setting), jsonDirty = false;
+  let draft = clone(setting), jsonDirty = false, previewMode = false;
   const panel = document.createElement("section");
   panel.className = "runtime-setting-panel";
   panel.hidden = true;
@@ -89,7 +89,7 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
       <div class="runtime-gui-lab" data-setting-view="service" hidden>
         <header><strong>GUI Service Lab</strong><p>ทดสอบ UI กลางกับบทเรียนปัจจุบัน ค่า Preview จะไม่ถูกบันทึก</p></header>
         <div class="runtime-gui-lab-form">
-          <label><span>Service</span><select data-gui-lab-service><option value="question">Question Panel</option><option value="console">Main Console</option><option value="top-message">Top Message</option><option value="choice">Choice Panel</option><option value="gizmo">Gizmo (Object ที่เลือก/ชิ้นแรก)</option><option value="world-gui-system">World GUI System (ป้ายเล็กตามโมเดล)</option><option value="world-counter">World Counter (3D Digits)</option><option value="world-gui">World GUI (ข้อความบนพื้น)</option><option value="feedback">Feedback</option><option value="dialog">Dialog</option><option value="control-top">Control Menu · Top Right</option><option value="control-middle">Control Menu · Middle Right</option><option value="control-bottom">Control Menu · Bottom Right</option><option value="hint">Mascot Hint</option><option value="busy">Busy Overlay</option></select></label>
+          <label><span>Service</span><select data-gui-lab-service><option value="question">Question Panel</option><option value="gui-answer">GUI Answer Bar</option><option value="console">Main Console</option><option value="top-message">Top Message</option><option value="choice">Choice Panel</option><option value="gizmo">Gizmo (Object ที่เลือก/ชิ้นแรก)</option><option value="world-gui-system">World GUI System (ป้ายเล็กตามโมเดล)</option><option value="world-counter">World Counter (3D Digits)</option><option value="world-gui">World GUI (ข้อความบนพื้น)</option><option value="feedback">Feedback</option><option value="dialog">Dialog</option><option value="control-top">Control Menu · Top Right</option><option value="control-middle">Control Menu · Middle Right</option><option value="control-bottom">Control Menu · Bottom Right</option><option value="hint">Mascot Hint</option><option value="busy">Busy Overlay</option></select></label>
           <label><span>Tone</span><select data-gui-lab-tone><option value="primary">Primary</option><option value="info">Info</option><option value="success">Success</option><option value="warning">Warning</option><option value="error">Error</option></select></label>
           <label class="is-wide"><span>ข้อความทดสอบ</span><input type="text" data-gui-lab-text value="ตัวอย่าง GUI Service จาก Runtime Setting"></label>
         </div>
@@ -159,7 +159,7 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
 
   function modifiedValue() { if (!readJson()) return null; return diffObject(draft, baseline) || {}; }
   function showModified() { const modified = modifiedValue(); if (modified === null) return null; result.hidden = false; resultCode.textContent = JSON.stringify(modified, null, 2); setStatus(Object.keys(modified).length ? "แสดงเฉพาะค่าที่ต่างจากไฟล์หลักแล้ว" : "ยังไม่มีค่าที่เปลี่ยน", "success"); return modified; }
-  function openPanel() { draft = clone(setting); renderGui(); syncJson(); syncQuickActions(); result.hidden = true; setStatus("แก้ค่าแล้วกด Apply & Rebuild เพื่อดูผลทันที"); panel.hidden = false; panel.classList.remove("is-closing"); requestAnimationFrame(() => panel.classList.add("is-open")); search.focus(); }
+  function openPanel() { if (previewMode || debugEnabled !== true) return; draft = clone(setting); renderGui(); syncJson(); syncQuickActions(); result.hidden = true; setStatus("แก้ค่าแล้วกด Apply & Rebuild เพื่อดูผลทันที"); panel.hidden = false; panel.classList.remove("is-closing"); requestAnimationFrame(() => panel.classList.add("is-open")); search.focus(); }
   function closePanel() { panel.classList.remove("is-open"); panel.classList.add("is-closing"); setTimeout(() => { panel.hidden = true; panel.classList.remove("is-closing"); }, 180); }
 
   gui.addEventListener("input", event => { const input = event.target.closest("[data-setting-path],[data-color-path]"); if (input) updateDraft(input); });
@@ -180,7 +180,7 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
   panel.querySelector("[data-apply-setting]").addEventListener("click", async () => { const modified = modifiedValue(); if (modified === null) return; setStatus("กำลังสร้าง Runtime ใหม่จากค่าที่แก้ไข…", "success"); sessionStorage.setItem(SETTING_OVERRIDE_KEY, JSON.stringify(modified)); await onApply?.(modified); });
   panel.querySelector("[data-restore-default]").addEventListener("click", async () => { setStatus("กำลังคืนค่าจาก main-world-setting.js…", "success"); sessionStorage.removeItem(SETTING_OVERRIDE_KEY); await onRestore?.(); });
   panel.querySelector("[data-refresh-lesson]").addEventListener("click", async () => { setStatus("กำลังโหลดบทเรียนและ asset ใหม่…", "success"); try { await onRefresh?.(); closePanel(); } catch (error) { setStatus(error.message, "error"); } });
-  window.addEventListener("keydown", event => { if (event.key === "F6") { event.preventDefault(); if (panel.hidden) openPanel(); else closePanel(); } else if (event.key === "Escape" && !panel.hidden) closePanel(); });
+  window.addEventListener("keydown", event => { if (event.key === "F6" && !previewMode && debugEnabled === true) { event.preventDefault(); if (panel.hidden) openPanel(); else closePanel(); } else if (event.key === "Escape" && !panel.hidden) closePanel(); });
   // Keep developer shortcuts outside runtime UI skins and the lesson tool drawer.
   const debugTools = document.createElement("nav");
   debugTools.className = "runtime-debug-tools";
@@ -206,5 +206,17 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
       else await onRetest?.({ mode: action });
     } catch (error) { console.warn("[Runtime Debug]", error); }
   });
-  return Object.freeze({ open: openPanel, close: closePanel, toggle() { if (panel.hidden) openPanel(); else closePanel(); } });
+  return Object.freeze({
+    open: openPanel, close: closePanel,
+    toggle() { if (previewMode || debugEnabled !== true) return; if (panel.hidden) openPanel(); else closePanel(); },
+    setPreviewMode(value) {
+      previewMode = value === true;
+      debugTools.hidden = previewMode || debugEnabled !== true;
+      if (previewMode) {
+        onToggleDebugArea?.(false);
+        panel.classList.remove("is-open", "is-closing");
+        panel.hidden = true;
+      }
+    }
+  });
 }

@@ -6,7 +6,7 @@
 
 ดู type signatures เพิ่มเติมที่ [`lesson-sdk.d.ts`](lesson-sdk.d.ts)
 
-## Universal Scene API (SDK 2.1)
+## Universal Scene API (Runtime 3.4.0)
 
 บทเรียนใหม่ไม่ควรคัดลอกฉากซ้าย/ขวา กล่อง หรือเครื่องหมายจาก Lesson 0 โดยอัตโนมัติ ให้เลือกวัตถุและการจัดฉากตามเนื้อหาของครูผ่าน API กลางต่อไปนี้ ส่วน API เดิมยังรองรับเพื่อให้บทเรียนเก่าทำงานต่อได้
 
@@ -343,6 +343,8 @@ Hit area โปร่งใสและไม่ถูกนำไปคำน�
 
 กำหนด `clickable`, `onClick`, `hoverMessage`, `objectiveAction` และ `selectionFeedback` ได้เหมือน object แบบ clickable โดยไม่ต้องเข้าถึง internals ของฐานเครื่องหมาย
 
+ความกว้างบนพื้นกำหนดด้วย `scale` ตามปกติ ส่วนความหนาแนวตั้งของ prefab ทุกเครื่องหมายใช้ค่ากลาง `mainWorldSetting.lessonGraphics.operatorBase.heightScale` บทเรียนห้ามเข้าถึง `object3D.userData.visualRoot` เพื่อย่อแกน Y เอง เพราะจะทำให้แต่ละบทมีรูปทรงไม่ตรงกัน
+
 ### `world.addWorldCounter(options)`
 
 ตัวนับเลขดิจิตอลแบบ 3D ที่วางบนพื้น ใช้เฉพาะแสดงจำนวนและไม่รับ interaction:
@@ -428,7 +430,7 @@ world.addGuideline({
 
 ### `world.addLineRender(options)`
 
-สร้างเส้นตรงสำหรับแกนวัด ระยะ และเส้นพรีวิวบนพื้นที่ พร้อมหัวลูกศรที่ปลายเส้น:
+สร้างเส้นสำหรับแกนวัด ระยะ เส้นพรีวิว หรือกรอบ polygon พร้อมหัวลูกศรที่ปลายเส้น รูปแบบเดิมใช้ `from`/`to`:
 
 ```js
 world.addLineRender({
@@ -443,6 +445,24 @@ world.addLineRender({
 
 ใช้ `dashed: true` สำหรับเส้นช่วยที่ต้องการลดความเด่น และ `arrow: false` สำหรับเส้นแบ่งระยะที่ไม่มีทิศทาง
 
+เมื่อต้องการเส้นหลายช่วงให้ส่ง `points` อย่างน้อยสองตำแหน่ง และใช้ `closed: true` เพื่อเชื่อมจุดสุดท้ายกลับจุดแรก:
+
+```js
+world.addLineRender({
+  name: "answer-outline",
+  points: [
+    [-2, 0.32, -1], [2, 0.32, -1],
+    [2, 0.32, 1], [-2, 0.32, 1]
+  ],
+  closed: true,
+  dashed: false,
+  arrow: false,
+  color: "#ff8a00"
+});
+```
+
+วางค่า Y เหนือพื้นหรือ Zone เล็กน้อยเพื่อป้องกัน z-fighting ถ้าใช้ `points` ระบบจะไม่อ่าน `from`/`to`
+
 ### Cue และ entrance
 
 - `world.showDragCue(handle, to)` — แสดงมือสาธิตลาก
@@ -452,6 +472,7 @@ world.addLineRender({
 Runtime เรียก entrance ให้อัตโนมัติหลังเปิดขั้นแรกของ Lab และหลัง reset แต่ละข้อใน Quiz จึงห้ามเรียกซ้ำจาก `reset()` หรือฟังก์ชัน render ของบทเรียน เพราะวัตถุจะ scale เข้า 2 รอบ ใช้ API นี้เมื่อมีปุ่มหรือ interaction ที่ต้องการเล่น entrance ซ้ำโดยตั้งใจเท่านั้น
 - `world.camera.reset()` — reset camera
 - `world.camera.configure(options)` — เปลี่ยน camera config (ปกติใช้ `meta.camera`)
+- `world.camera.focus({ position, normal })` — หันกล้องอย่างนุ่มไปยังจุดและแนว normal ที่กำหนด โดยคงระยะซูม, FOV และข้อจำกัดกล้องเดิม; การหมุน/ซูมของผู้เรียนจะยกเลิก transition ที่กำลังเล่น
 - `world.getObject(name)` — ค้น object ด้วยชื่อ; ใช้ handle ที่เก็บไว้จะปลอดภัยกว่า
 - `world.clear()` — ล้าง lesson world; runtime จัดการให้ก่อน reset อยู่แล้ว
 
@@ -473,6 +494,30 @@ Handle ที่ `add...` คืนมามี:
 - `object3D` — opaque reference สำหรับ guideline; หลีกเลี่ยงการแก้ internals
 
 ## UI
+
+### Step progression และ Mascot dialogue
+
+กำหนด `requiresCompletion: true` ใน Step ที่ห้ามข้าม แล้วปลดล็อกเมื่อกิจกรรมสำเร็จ:
+
+```js
+howto: [{
+  index: 0,
+  title: "วางชิ้นแรก",
+  type: "sequence",
+  desc: "ลากชิ้นลงกรอบก่อนจึงไปต่อ",
+  requiresCompletion: true,
+  option: {
+    type: "instruction",
+    header: "เริ่มจากชิ้นที่รู้ค่า",
+    message: "ตรวจด้านและมุมของชิ้นแรกก่อนลากลงกรอบ"
+  }
+}]
+
+// เรียกเมื่อผ่านเงื่อนไขของ Step
+context.ui.steps.setNextEnabled(true);
+```
+
+`option.type` รองรับ `instruction`, `hint` และ `feedback`: instruction แสดง bubble ทันที, hint อาจแสดงเป็น notice ก่อนบนจอใหญ่และเปิดอัตโนมัติตามเวลาของ Runtime, feedback ส่งเป็นสถานะสำเร็จ ควรเขียนบทพูดเฉพาะแต่ละขั้นและไม่ใช้ประโยคแนะนำทั่วไปซ้ำทั้งบท
 
 อ่านรายละเอียดและตัวอย่างครบที่ [`GUI_SERVICE_REFERENCE.md`](GUI_SERVICE_REFERENCE.md)
 

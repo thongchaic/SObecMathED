@@ -26,6 +26,7 @@
 | ต้องการ | ใช้ |
 |---|---|
 | โจทย์หลักด้านบน | `context.ui.question` |
+| คำตอบหรือผลรวมที่ต่อจากโจทย์ | `context.ui.guiAnswer` |
 | Objective/คำอธิบาย/feedback ใน Console ด้านล่าง | `context.ui.console` |
 | ประกาศสั้นด้านบนที่ไม่ใช่โจทย์ | `context.ui.topMessage` |
 | ปุ่มตัวเลือกเหนือ Console | `context.ui.choice` |
@@ -63,6 +64,20 @@ context.ui.question.hide();
 ```
 
 API เดิม `setQuestion(text)` และ `clearQuestion()` ยังรองรับ แต่บทเรียนใหม่ควรใช้ Service แบบ nested เมื่อจำเป็นต้องกำหนด label/tone
+
+## GUI Answer
+
+ใช้แสดงคำตอบหรือผลรวมแบบ Screen-space ต่อจาก Question Panel ไม่ใช้แทน Gizmo หรือป้ายที่ต้องติดตามวัตถุ:
+
+```js
+context.ui.guiAnswer.show({ label: "ผลรวม", text: "0" });
+context.ui.guiAnswer.update({ text: "7" });
+context.ui.guiAnswer.correct({ label: "ผลรวม", text: "10" });
+context.ui.guiAnswer.wrong({ label: "ลองใหม่", text: "8" });
+context.ui.guiAnswer.hide();
+```
+
+หากค่าระหว่างลากเปลี่ยนเร็วและทำให้ panel เด้ง ให้ซ่อนระหว่าง `onDrag` แล้วแสดงหรืออัปเดตใน `onDrop` เท่านั้น ใช้ realtime เฉพาะเมื่อการเห็นค่าระหว่างลากเป็นเป้าหมายการเรียนรู้จริง
 
 ## Console
 
@@ -415,6 +430,34 @@ context.ui.hint.show({
 ```
 
 Hint ส่งข้อความผ่าน Mascot และ responsive behavior กลาง ห้ามสร้างตัวละครหรือ speech bubble ซ้ำเอง เรียก `context.ui.hint.hide()` เมื่อต้องการปิดทันที
+
+## Step progression และบทพูด Mascot
+
+Metadata ของแต่ละ Step รองรับบทพูดผ่าน `option` โดยไม่ต้องเรียก Hint ซ้ำใน `onStep`:
+
+```js
+{
+  index: 1,
+  title: "รวมคู่ศูนย์",
+  type: "sequence",
+  desc: "+1 กับ −1 หักล้างกัน",
+  option: {
+    type: "instruction",
+    header: "หนึ่งบวกกับหนึ่งลบเป็นศูนย์",
+    message: "จับคู่ต่างเครื่องหมายก่อน แล้วค่อยนับจำนวนที่เหลือ"
+  }
+}
+```
+
+ใช้ `instruction` เมื่อข้อความต้องปรากฏทันที, `hint` เมื่อเป็นคำใบ้เสริม และ `feedback` เมื่อเป็นผลตอบรับสั้น ๆ ทุกขั้นสำคัญควรมีข้อความเฉพาะแนวคิด ไม่ใช้คำทักทายทั่วไปซ้ำทั้งบท
+
+ขั้นที่ต้องทำกิจกรรมให้ผ่านก่อนกดถัดไปใช้ `requiresCompletion: true` และปลดล็อกด้วย:
+
+```js
+context.ui.steps.setNextEnabled(true);
+```
+
+Runtime จะปิดปุ่มถัดไปและไม่แสดงปุ่มข้ามการสอนเมื่อช่วงที่เหลือมี Step บังคับ
 
 ## Busy
 

@@ -41,6 +41,7 @@
           background: "green",
           camera: { fov: 42, startYaw: 28, startPitch: 55, startDistance: 23.5, minDistance: 13, maxDistance: 33, minPitch: 30, maxPitch: 75, target: [0, .85, .15] },
           welcomeMessage: [
+            "ไดโนจะช่วยนับแถว ชั้น และจำนวนบล็อกทั้งหมด",
             "โจทย์อยู่ด้านบน พื้นที่คำตอบอยู่ตรงกลาง",
             "ลากแถวบล็อกจากถาดด้านล่างเข้าไปวาง",
             "ถ้าเป็นกำลังสาม เมื่อชั้นล่างเต็ม แถวต่อไปจะขึ้นชั้นใหม่"
@@ -55,10 +56,10 @@
             { key: "base", name: "จำนวนบล็อกต่อแถว", type: "slider", option: [2, 5], step: 1 }
           ],
           howto: [
-            { index: 0, title: "ลากหนึ่งแถว", type: "sequence", desc: "หนึ่งแถวมีบล็อกเท่ากับเลขฐาน ลากจากถาดเข้าพื้นที่คำตอบ" },
-            { index: 1, title: "เติมให้เต็มชั้น", type: "sequence", desc: "เรียงแถวบนแนวราบจนกว้างและยาวเท่ากัน" },
-            { index: 2, title: "ต่อขึ้นชั้นใหม่", type: "sequence", desc: "กำลังสามใช้แถวเดิม เมื่อชั้นเต็ม แถวต่อไปจะขึ้นด้านบน" },
-            { index: 3, title: "ลองสร้างเอง", type: "freestyle", desc: "เพิ่ม ลด แยกดู และส่งเมื่อพอใจ" }
+            { index: 0, title: "ลากหนึ่งแถว", type: "sequence", desc: "หนึ่งแถวมีบล็อกเท่ากับเลขฐาน ลากจากถาดเข้าพื้นที่คำตอบ", option: { type: "instruction", header: "ไดโนชวนนับแถวและชั้น", message: "หนึ่งแถวมีบล็อกเท่ากับเลขฐาน เติมแถวให้เต็มพื้นสำหรับกำลังสอง และซ้อนชั้นสำหรับกำลังสาม" } },
+            { index: 1, title: "เติมให้เต็มชั้น", type: "sequence", desc: "เรียงแถวบนแนวราบจนกว้างและยาวเท่ากัน", option: { type: "instruction", header: "กำลังสองสร้างเป็นพื้นที่", message: "ฐาน n ต้องมี n บล็อกต่อแถวและ n แถว เมื่อเติมเต็มชั้นจะมี n × n = n² บล็อก" } },
+            { index: 2, title: "ต่อขึ้นชั้นใหม่", type: "sequence", desc: "กำลังสามใช้แถวเดิม เมื่อชั้นเต็ม แถวต่อไปจะขึ้นด้านบน", option: { type: "instruction", header: "กำลังสามเพิ่มมิติความสูง", message: "นำชั้นขนาด n² มาซ้อนกันอีก n ชั้น จึงได้ n × n × n = n³ บล็อก สังเกตว่าแถวใหม่จะขึ้นชั้นเมื่อพื้นเต็ม" } },
+            { index: 3, title: "ลองสร้างเอง", type: "freestyle", desc: "เพิ่ม ลด แยกดู และส่งเมื่อพอใจ", option: { type: "instruction", header: "นับฐาน แถว และชั้น", message: "กำลังสองตรวจฐานกับจำนวนแถว ส่วนกำลังสามตรวจเพิ่มอีกว่ามีครบกี่ชั้น แยกดูได้ถ้าบล็อกด้านในถูกบัง" } }
           ],
           quiz
         },
@@ -179,16 +180,21 @@
             hitArea: [rowWidth + .7, 1.45, 1.55], hitAreaOffset: [0, .5, 0],
             guideTarget: this.mode === "student-quiz" ? null : [0, .28, LAYOUT.answerZ],
             hoverMessage: this.sourceInteractive ? "ลากแถวนี้ไปยังพื้นที่คำตอบ" : "",
-            onClick: () => this.addRow(),
+            onClick: () => { this.addRow(); this.context.ui.clickme?.restoreFor(source); },
             onDrop: position => {
               const accepted = Math.abs(position.x) <= this.answerWidth / 2 && Math.abs(position.z - LAYOUT.answerZ) <= this.answerDepth / 2;
               source.setPosition(0, .19, LAYOUT.sourceZ);
               if (!accepted) return false;
               this.addRow();
+              queueMicrotask(() => this.context?.ui.clickme?.restoreFor(source));
               return { accepted: true, commit: true };
             }
           }));
           this.sourceHandle = source;
+          this.sourceClickmeCue?.remove?.();
+          this.sourceClickmeCue = this.sourceInteractive && this.context.ui.clickme
+            ? this.context.ui.clickme.attach(source, { size: 36, anchor: "bottom", offset: [0, .1, 0] })
+            : null;
           this.sourcePaletteKey = sourcePalette.join("|");
           return source;
         },
@@ -281,7 +287,7 @@
             const timer = setTimeout(() => this.answerZone?.setColor(color), index * 140);
             this.effectTimers.push(timer);
           });
-          this.context.ui.console.set({ objective: `ชั้นที่ ${this.selectedCount / this.base} เต็มแล้ว`, title: "เตรียมต่อขึ้นด้านบน", message: "บล็อกและพื้นกำลังกระพริบ แล้วแถวใหม่จะเริ่มชั้นถัดไป", tone: "info" });
+          this.context.ui.console.set({ objective: `ชั้นที่ ${this.selectedCount / this.base} เต็มแล้ว`, title: "ไดโนเห็นว่าชั้นนี้เต็มแล้ว เตรียมต่อด้านบน", message: "บล็อกและพื้นกำลังกระพริบ แล้วแถวใหม่จะเริ่มชั้นถัดไป", tone: "info" });
           const timer = setTimeout(() => {
             this.transitioningLayer = false;
             this.controls?.setItems(this.controlItems());
@@ -306,7 +312,7 @@
             this.context.ui.console.set({ objective: `วางแล้ว ${this.selectedCount} แถว`, title: "ยังแก้คำตอบได้", message: "เพิ่มหรือลดแถว แล้วกดส่งเมื่อพอใจ", tone: "info" });
           } else if (this.selectedCount === this.expectedRows()) {
             this.context.audio.play("success");
-            this.context.ui.console.set({ objective: this.resultEquation(), title: this.kind === "area" ? "เต็มพื้นที่แล้ว" : "ครบทุกชั้นแล้ว", message: this.resultExplanation(), tone: "success" });
+            this.context.ui.console.set({ objective: this.resultEquation(), title: this.kind === "area" ? "เก่งมาก ไดโนเห็นว่าเต็มพื้นที่แล้ว!" : "เก่งมาก ไดโนนับครบทุกชั้นแล้ว!", message: this.resultExplanation(), tone: "success" });
           } else if (this.kind === "volume" && this.selectedCount % this.base === 0) {
             this.context.ui.console.set({ objective: `ชั้นที่ ${this.selectedCount / this.base} เต็มแล้ว`, title: `ล็อก ${this.base} แถวบนแนวราบ`, message: "แถวต่อไปจะเริ่มวางบนชั้นใหม่", tone: "info" });
           } else {
@@ -444,13 +450,13 @@
             stack: ["เริ่มชั้นใหม่ด้านบน", `ชั้นล่างครบ ${this.base} แถวแล้ว`, `แถวที่ ${this.base + 1} ต่อสูงขึ้น`]
           };
           const copy = copies[teaching] || (this.mode === "student-quiz" ? ["สร้างรูปแล้วกดส่ง", "ระบบไม่บอกจำนวนแถวที่ถูก", "เพิ่มหรือลดได้จนกว่าจะพอใจ"] : ["ลากแถวด้านล่าง", "วางลงในพื้นที่คำตอบ", "ใช้ปุ่มเพิ่มแถวแทนการลากได้"]);
-          this.context.ui.console.set({ objective: copy[0], title: copy[1], message: copy[2], tone: teaching === "square" ? "success" : "info" });
+          this.context.ui.console.set({ objective: copy[0], title: `ไดโนสอน: ${copy[1]}`, message: copy[2], tone: teaching === "square" ? "success" : "info" });
         },
 
         submitQuiz() {
           if (this.mode !== "student-quiz") return;
           this.context.quiz.answer(this.selectedCount === this.expectedRows(), { kind: this.kind, base: this.base, selectedCount: this.selectedCount, expectedCount: this.expectedRows(), unitCount: this.selectedCount * this.base });
-          this.context.ui.console.set({ objective: `ส่งรูป ${this.selectedCount} แถวแล้ว`, title: "บันทึกคำตอบเรียบร้อย", message: "ไปข้อต่อไป หรือแก้แล้วส่งใหม่ได้", tone: "info" });
+          this.context.ui.console.set({ objective: `ส่งรูป ${this.selectedCount} แถวแล้ว`, title: "ไดโนรับคำตอบเรียบร้อย!", message: "ไปข้อต่อไป หรือเพิ่มลดแถวแล้วส่งใหม่ได้", tone: "info" });
         },
 
         rowParts(base, color, topColor) {

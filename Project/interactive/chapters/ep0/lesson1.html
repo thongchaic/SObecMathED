@@ -8,10 +8,15 @@
   <script data-lesson-app>
     (() => {
       const symbols = [
-        { text: "+", name: "บวก", x: -4.8 },
-        { text: "−", name: "ลบ", x: -1.6 },
-        { text: "×", name: "คูณ", x: 1.6 },
-        { text: "÷", name: "หาร", x: 4.8 }
+        { text: "+", name: "บวก", x: -4.8, z: -1.65, scale: 1.72 },
+        { text: "−", name: "ลบ", x: -1.6, z: -1.65, scale: 1.72 },
+        { text: "×", name: "คูณ", x: 1.6, z: -1.65, scale: 1.72 },
+        { text: "÷", name: "หาร", x: 4.8, z: -1.65, scale: 1.72 },
+        { text: "=", name: "เท่ากับ", x: -5.2, z: .55, scale: 1.52 },
+        { text: "<", name: "น้อยกว่า", x: -2.6, z: .55, scale: 1.52 },
+        { text: ">", name: "มากกว่า", x: 0, z: .55, scale: 1.52 },
+        { text: "≤", name: "น้อยกว่าหรือเท่ากับ", x: 2.6, z: .55, scale: 1.52 },
+        { text: "≥", name: "มากกว่าหรือเท่ากับ", x: 5.2, z: .55, scale: 1.52 }
       ];
 
       PuzzleLesson.define({
@@ -51,7 +56,11 @@
             { question: "คลิกเครื่องหมายลบ (−)", data: [{ key: "answer", value: "−" }] },
             { question: "คลิกเครื่องหมายคูณ (×)", data: [{ key: "answer", value: "×" }] },
             { question: "คลิกเครื่องหมายหาร (÷)", data: [{ key: "answer", value: "÷" }] },
-            { question: "เลือกเครื่องหมายบวก (+)", data: [{ key: "answer", value: "+" }] }
+            { question: "คลิกเครื่องหมายเท่ากับ (=)", data: [{ key: "answer", value: "=" }] },
+            { question: "คลิกเครื่องหมายน้อยกว่า (<)", data: [{ key: "answer", value: "<" }] },
+            { question: "คลิกเครื่องหมายมากกว่า (>)", data: [{ key: "answer", value: ">" }] },
+            { question: "คลิกเครื่องหมายน้อยกว่าหรือเท่ากับ (≤)", data: [{ key: "answer", value: "≤" }] },
+            { question: "คลิกเครื่องหมายมากกว่าหรือเท่ากับ (≥)", data: [{ key: "answer", value: "≥" }] }
           ]
         },
 
@@ -76,28 +85,28 @@
           this.catYaw = 0;
           this.catMotionToken += 1;
 
-          this.context.world.addZone({ name: "operator-stage", size: [13.8, .22, 7.4], position: [0, .11, .25], color: "#dff5e6" });
-          this.context.world.addCallout({ text: "เครื่องหมายมาตรฐาน", position: [0, 3.7, -2], anchor: [0, .25, -1.45], scale: [3.25, .82] });
+          this.context.world.addZone({ name: "operator-stage", size: [13.8, .22, 8.2], position: [0, .11, .35], color: "#dff5e6" });
+          this.context.world.addCallout({ text: "เครื่องหมายมาตรฐาน", position: [0, 3.7, -2.35], anchor: [0, .25, -1.65], scale: [3.25, .82] });
 
-          for (const symbol of symbols) {
+          this.signs = symbols.map(symbol => {
             let handle = null;
             handle = this.context.world.addOperatorSign({
               text: symbol.text,
-              position: [symbol.x, .25, -1.45],
-              scale: [1.9, 1.9],
+              position: [symbol.x, .25, symbol.z],
+              scale: [symbol.scale, symbol.scale],
               clickable: mode === "student-quiz",
               selectionFeedback: false,
               hoverMessage: `${symbol.name} (${symbol.text}) — คลิกเพื่อสลับสถานะ`,
               onClick: () => this.toggleSymbol(symbol, handle)
             });
-            this.signs.push({ symbol, handle });
             this.active.set(symbol.text, false);
-          }
+            return { symbol, handle };
+          });
 
           this.cat = await this.context.world.addLibraryObject({
             asset: "animal/cute-cat",
             name: "world-option-cat",
-            position: [0, .18, 2.35],
+            position: [0, .18, 3.65],
             scale: .92,
             targetSize: 2.35,
             clickable: true,
@@ -163,15 +172,15 @@
           }
           this.catMotionToken += 1;
           this.catX = Math.max(-4, Math.min(4, this.catX + (command === "move-left" ? -1.4 : 1.4)));
-          this.cat.animateTo(this.catX, .18, 2.35, { duration: 560, arcHeight: .5 });
+          this.cat.animateTo(this.catX, .18, 3.65, { duration: 560, arcHeight: .5 });
           this.context.ui.toast(command === "move-left" ? "น้องแมวขยับไปทางซ้าย" : "น้องแมวขยับไปทางขวา", "info");
         },
 
         toggleSymbol(symbol, handle) {
+          if (!handle) return;
           const next = !this.active.get(symbol.text);
           this.active.set(symbol.text, next);
           handle.setState(next);
-          if (!next) handle.pulse();
           if (this.mode === "student-quiz") {
             this.context.quiz.answer(symbol.text === this.answer, { answerText: `${symbol.name} (${symbol.text})` });
             return;
@@ -183,7 +192,7 @@
         onStep(index) {
           const enabled = index === 1;
           for (const { handle } of this.signs) handle.setClickable(enabled);
-          if (enabled) this.context.ui.toast("ทดลองคลิกเครื่องหมายทั้ง 4 แบบได้เลย", "success");
+          if (enabled) this.context.ui.toast("ทดลองคลิกเครื่องหมายทั้ง 9 แบบได้เลย", "success");
         },
 
         dispose() {

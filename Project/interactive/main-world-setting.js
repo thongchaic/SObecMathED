@@ -339,7 +339,8 @@ export const mainWorldSetting = {
     },
     operatorBase: {
       neutralBase: "#eeeaff", neutralEdge: "#9f8be8", topColor: "#fffaff",
-      validBase: "#ddfaeb", validEdge: "#5bc594"
+      validBase: "#ddfaeb", validEdge: "#5bc594",
+      heightScale: 0.58
     }
   },
   interaction: {
@@ -400,11 +401,11 @@ export const mainWorldSetting = {
     drop: { particleCount: 18, particleSize: 9, spread: 110 }
   },
   entry: {
-    loadingImagePath: "./assets/image/welcome-workshop.png", // ภาพพื้นหลังระหว่างโหลดบทเรียน
+    loadingImagePath: "./assets/image/welcome-workshop.webp", // ภาพพื้นหลังระหว่างโหลดบทเรียน
     quizWelcomeImagePath: "./assets/image/quiz-welcome.png", // ภาพปกหน้าต้อนรับก่อนเริ่ม Quiz
-    characterImagePath: "./assets/character/dinosaur-student/greeting-open-mouth.png", // ภาพสำรองของไดโนในหน้าโหลด
+    characterImagePath: "./assets/character/dinosaur-student/celebrate.png", // ภาพสำรองของไดโนในหน้าโหลด
     minDuration: 1700,      // ให้เวลาอ่าน welcomeMessage และกันหน้ากระพริบ
-    exitDuration: 650
+    exitDuration: 1420
   },
   mascot: {
     enabled: true,                          // เปิด/ปิดผู้ช่วย หากปิดจะกลับไปแสดงกล่องคำแนะนำแบบเดิม
@@ -414,10 +415,10 @@ export const mainWorldSetting = {
     assets: {
       idle: "./assets/character/dinosaur-student/idle.png",
       speaking: "./assets/character/dinosaur-student/speaking-open-mouth.png",
-      greeting: "./assets/character/dinosaur-student/greeting-open-mouth.png",
+      greeting: "./assets/character/dinosaur-student/celebrate.png",
       instruction: "./assets/character/dinosaur-student/point.png",
       hint: "./assets/character/dinosaur-student/thinking.png",
-      celebrate: "./assets/character/dinosaur-student/greeting-open-mouth.png",
+      celebrate: "./assets/character/dinosaur-student/celebrate.png",
       perch: "./assets/character/dinosaur-student/small-floating-island.png"
     },
     character: {
@@ -512,6 +513,24 @@ export const mainWorldSetting = {
       iconBackground: "linear-gradient(145deg, #725cdf, #8c77eb)", radius: 21, fontSize: 17,
       feltBackground: "#fff2d6", feltBorderColor: "#dfc08a", feltIconBackground: "#7657d8"
     },
+    // แถบคำตอบ Screen-space ที่วางต่อจาก Question Panel บทเรียนเป็นผู้กำหนดว่าจะใช้เมื่อใด
+    guiAnswer: {
+      label: "คำตอบ",
+      width: "min(500px, calc(100vw - 460px))",
+      gap: 7,
+      background: "linear-gradient(120deg, rgba(255,255,255,.76), rgba(239,246,255,.70))",
+      borderColor: "rgba(110, 134, 181, .38)",
+      textColor: "#111111",
+      labelColor: "#6a60bc",
+      successColor: "#37cf7d",
+      successDarkColor: "#117347",
+      errorColor: "#ff6878",
+      errorDarkColor: "#a8243b",
+      particleColor: "#fff19a",
+      radius: 15,
+      fontSize: 16,
+      animationDuration: 1700
+    },
     // Main Console ด้านล่าง ใช้ร่วมกันทุกบทเรียนและมี layout แยก Desktop/Mobile
     console: {
       desktop: {
@@ -578,8 +597,8 @@ export const mainWorldSetting = {
     },
     // ข้อความผลลัพธ์สั้น ๆ แบบไม่บล็อกหน้าจอ เช่น สำเร็จ/คำเตือน/ผิดพลาด
     feedback: {
-      background: "rgba(37, 55, 91, 0.94)", borderColor: "rgba(255, 255, 255, 0.76)",
-      textColor: "#ffffff", radius: 18, maxWidth: "min(340px, calc(100% - 28px))", duration: 2600
+      background: "linear-gradient(135deg, rgba(255,254,247,.98), rgba(255,244,215,.98))", borderColor: "rgba(210,170,91,.74)",
+      textColor: "#513d2d", radius: 16, maxWidth: "min(320px, calc(100% - 28px))", duration: 2600
     },
     // Popup มาตรฐานของบทเรียน รองรับข้อความ ปุ่มยืนยัน และหัวข้อย่อย
     dialog: {

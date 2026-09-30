@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25",
+  "generatedAt": "2026-09-30",
   "purpose": "AI reference only; not a runnable deployment",
   "source": "Owner project working tree; copied files may contain uncommitted edits",
   "excluded": [
@@ -10,30 +10,130 @@
     "host Project/index.html"
   ],
   "files": [
-    { "path": "Project/interactive/assets/library/catalog.json", "sourcePath": "Project/interactive/assets/library/catalog.json", "sha256": "7d9e277b5373c9dd4b925b019668f10a3bdf820c6a493c09c14b44b99b7b66e2" },
-    { "path": "Project/interactive/assets/library/README.md", "sourcePath": "Project/interactive/assets/library/README.md", "sha256": "95362fca8d8785e2e54e2676be8a8e2ddc5df035388efd903b6087693e5920fb" },
-    { "path": "Project/interactive/chapters/ep0/intro_lesson1.html", "sourcePath": "Project/interactive/chapters/ep0/intro_lesson1.html", "sha256": "75e05f4c12c75b919058343e0eca46751249dcce1532018dec8e710c078aeb34" },
-    { "path": "Project/interactive/chapters/ep0/lesson1.html", "sourcePath": "Project/interactive/chapters/ep0/lesson1.html", "sha256": "cf2470085b52cc0eff4f2b17ad889623bf73075364461a617b9a102d99b30fb0" },
-    { "path": "Project/interactive/chapters/ep1/lesson1.html", "sourcePath": "Project/interactive/chapters/ep1/lesson1.html", "sha256": "3cc9a88e27d62216cf8428eade7dcc3c6777df2bfa2602967311da437df52de8" },
-    { "path": "Project/interactive/chapters/ep1/lesson2.html", "sourcePath": "Project/interactive/chapters/ep1/lesson2.html", "sha256": "d18bd79bae9cec74f5754d6ae05c84be5f2659b5889a968044910123a2a5b863" },
-    { "path": "Project/interactive/chapters/ep1/lesson3.html", "sourcePath": "Project/interactive/chapters/ep1/lesson3.html", "sha256": "7c87a5f548cbab63acd58282e54525464c004921b1d196c5739018ce8718f928" },
-    { "path": "Project/interactive/chapters/ep10/lesson1.html", "sourcePath": "Project/interactive/chapters/ep10/lesson1.html", "sha256": "062d039953e73816d0a0110f6649c1a419ba581a85625548d5ce1117e92a07cc" },
-    { "path": "Project/interactive/chapters/ep10/lesson2.html", "sourcePath": "Project/interactive/chapters/ep10/lesson2.html", "sha256": "0d6ecb7514a8c595e631ac3907e7cd1e5c068b6eac6e837f2dcf3f5632c67936" },
-    { "path": "Project/interactive/chapters/ep10/lesson3.html", "sourcePath": "Project/interactive/chapters/ep10/lesson3.html", "sha256": "db1d6b2e0122016ead2ae563bf799332f68ea3bbee0b7f7612b620709db4a6c0" },
-    { "path": "Project/interactive/chapters/ep3/lesson3.html", "sourcePath": "Project/interactive/chapters/ep3/lesson3.html", "sha256": "e67617f50fa2130988df365da4cb7a53bf8a3c828b7076263b3a980c90ec9aa2" },
-    { "path": "Project/interactive/chapters/leesonExternal.html", "sourcePath": "Project/interactive/chapters/leesonExternal.html", "sha256": "9883bdcb7831fc9142bc32709c04fce0887efb2b7c2412688ae507cebfa3b529" },
-    { "path": "Project/interactive/chapters/lesson-library-demo.html", "sourcePath": "Project/interactive/chapters/lesson-library-demo.html", "sha256": "02c79a8caeedabf4bb94e35bab20a53fc8cac1b98a420d52697d009a670f9701" },
-    { "path": "Project/interactive/chapters/lesson0.html", "sourcePath": "Project/interactive/chapters/lesson0.html", "sha256": "64afff95ce6bef45a04ea3f39b7df7c13bb41db5b8dd68b2439534d7491edd14" },
-    { "path": "Project/interactive/chapters/lesson1.html", "sourcePath": "Project/interactive/chapters/lesson1.html", "sha256": "5a10a0f940154e7a311f1266f02019871be6f372c39264596258bc1765f6038d" },
-    { "path": "Project/interactive/clickme-service.js", "sourcePath": "Project/interactive/clickme-service.js", "sha256": "265bcebf0c7b7abf38cc8e313392ad9d1df160340200af06f2306545ef47dadf" },
-    { "path": "Project/interactive/eduSdk.js", "sourcePath": "Project/interactive/eduSdk.js", "sha256": "06525e60d4aba0336e09f35d8b2a446deb15adb1ab708fe2e3b4307c2d2e9a9f" },
-    { "path": "Project/interactive/gui-service.js", "sourcePath": "Project/interactive/gui-service.js", "sha256": "f01dc3238f165cc802b8d509fc7386c4273d2941338e7bedc9cf30311a4c2be8" },
-    { "path": "Project/interactive/intro-service.js", "sourcePath": "Project/interactive/intro-service.js", "sha256": "89890f41dae3d29a40f49dac6d9c52aaa1ba863dccf318faae9e940ad0fcd15c" },
-    { "path": "Project/interactive/main-world-setting.js", "sourcePath": "Project/interactive/main-world-setting.js", "sha256": "59a4c4f59cfe99efabdd8d751cad6d05f4040bcf6a8477b584bc454e6cf20081" },
-    { "path": "Project/interactive/main-world.html", "sourcePath": "Project/interactive/main-world.html", "sha256": "f766f63aadd076c1c2b80347a690e675dff4344c19600459ca51e1298cc52dd3" },
-    { "path": "Project/interactive/main-world.js", "sourcePath": "Project/interactive/main-world.js", "sha256": "e9aed275c4317ae661f76587f2fa654a27b3dd0012123689155b23e02d349bdd" },
-    { "path": "Project/interactive/runtime-setting-menu.js", "sourcePath": "Project/interactive/runtime-setting-menu.js", "sha256": "96d312ee078c14bff807b9786b87a72e8d23086fea321bed87247f2988685e9a" },
-    { "path": "Project/interactive/world-gui-system.js", "sourcePath": "Project/interactive/world-gui-system.js", "sha256": "50f77086909a6d24e543f5855646a15dcedb22a9af79233ca486afcc885c7747" },
-    { "path": "Project/interactive/world.css", "sourcePath": "Project/interactive/world.css", "sha256": "0a8e52ef892c69261d99eff0c9cf0068a2743809a77fd125c61c4619b657b32a" }
+    {
+      "path": "Project/interactive/assets/library/catalog.json",
+      "sourcePath": "Project/interactive/assets/library/catalog.json",
+      "sha256": "7d9e277b5373c9dd4b925b019668f10a3bdf820c6a493c09c14b44b99b7b66e2"
+    },
+    {
+      "path": "Project/interactive/assets/library/README.md",
+      "sourcePath": "Project/interactive/assets/library/README.md",
+      "sha256": "95362fca8d8785e2e54e2676be8a8e2ddc5df035388efd903b6087693e5920fb"
+    },
+    {
+      "path": "Project/interactive/chapters/ep0/intro_lesson1.html",
+      "sourcePath": "Project/interactive/chapters/ep0/intro_lesson1.html",
+      "sha256": "7da7890a9e928c793a2ebddd205ef29a5974d79d79bb5712af91cc269ad178c4"
+    },
+    {
+      "path": "Project/interactive/chapters/ep0/lesson1.html",
+      "sourcePath": "Project/interactive/chapters/ep0/lesson1.html",
+      "sha256": "d6eaf38216943c28da26d5fb5785c388d072857d82bd163221b31e60c934a9b1"
+    },
+    {
+      "path": "Project/interactive/chapters/ep1/lesson1.html",
+      "sourcePath": "Project/interactive/chapters/ep1/lesson1.html",
+      "sha256": "a844b68fac26b47a1e30a74e2f309c8c5b3c2877920fed408c20bec7ca158414"
+    },
+    {
+      "path": "Project/interactive/chapters/ep1/lesson2.html",
+      "sourcePath": "Project/interactive/chapters/ep1/lesson2.html",
+      "sha256": "1d6432d7b39b23a8fe862d28a7497d0030d057c84bbc2ccce4b50c5063674b09"
+    },
+    {
+      "path": "Project/interactive/chapters/ep1/lesson3.html",
+      "sourcePath": "Project/interactive/chapters/ep1/lesson3.html",
+      "sha256": "399779da06e8c5ace26920a227d98ffe7cec23f8aa2e182ff1bca52198f5f3a7"
+    },
+    {
+      "path": "Project/interactive/chapters/ep10/lesson1.html",
+      "sourcePath": "Project/interactive/chapters/ep10/lesson1.html",
+      "sha256": "f2ccd9684a5de5d153765eb21df34e5bacc29dd60d77371c427da77c7c2f407c"
+    },
+    {
+      "path": "Project/interactive/chapters/ep10/lesson2.html",
+      "sourcePath": "Project/interactive/chapters/ep10/lesson2.html",
+      "sha256": "23f7efc1f134740d61647cb1194ae706238e625d8b4215bcd2a3e363b3f430ac"
+    },
+    {
+      "path": "Project/interactive/chapters/ep10/lesson3.html",
+      "sourcePath": "Project/interactive/chapters/ep10/lesson3.html",
+      "sha256": "64935b5c74af77f99aa0741a21a73c7b2b4d2ddb82653bf17b3ddc96102cd483"
+    },
+    {
+      "path": "Project/interactive/chapters/ep3/lesson3.html",
+      "sourcePath": "Project/interactive/chapters/ep3/lesson3.html",
+      "sha256": "63cf679fe2cbe2ee627b7470bcbee71bcfac5d0aac974aa731ea9db958ea14a1"
+    },
+    {
+      "path": "Project/interactive/chapters/leesonExternal.html",
+      "sourcePath": "Project/interactive/chapters/leesonExternal.html",
+      "sha256": "9883bdcb7831fc9142bc32709c04fce0887efb2b7c2412688ae507cebfa3b529"
+    },
+    {
+      "path": "Project/interactive/chapters/lesson-library-demo.html",
+      "sourcePath": "Project/interactive/chapters/lesson-library-demo.html",
+      "sha256": "02c79a8caeedabf4bb94e35bab20a53fc8cac1b98a420d52697d009a670f9701"
+    },
+    {
+      "path": "Project/interactive/chapters/lesson0.html",
+      "sourcePath": "Project/interactive/chapters/lesson0.html",
+      "sha256": "64afff95ce6bef45a04ea3f39b7df7c13bb41db5b8dd68b2439534d7491edd14"
+    },
+    {
+      "path": "Project/interactive/chapters/lesson1.html",
+      "sourcePath": "Project/interactive/chapters/lesson1.html",
+      "sha256": "5a10a0f940154e7a311f1266f02019871be6f372c39264596258bc1765f6038d"
+    },
+    {
+      "path": "Project/interactive/clickme-service.js",
+      "sourcePath": "Project/interactive/clickme-service.js",
+      "sha256": "265bcebf0c7b7abf38cc8e313392ad9d1df160340200af06f2306545ef47dadf"
+    },
+    {
+      "path": "Project/interactive/eduSdk.js",
+      "sourcePath": "Project/interactive/eduSdk.js",
+      "sha256": "740eb4729b33a6f59f2a8d49b21ea22a13d794d7efa8854e53c38f62a891de40"
+    },
+    {
+      "path": "Project/interactive/gui-service.js",
+      "sourcePath": "Project/interactive/gui-service.js",
+      "sha256": "abe96cc60636ef7d344d3c5ca067cb97701acc1b05ecede48449d47076aa694c"
+    },
+    {
+      "path": "Project/interactive/intro-service.js",
+      "sourcePath": "Project/interactive/intro-service.js",
+      "sha256": "9092b834d48f382c1a295b2fb186c5b0a9f4881a874334b4194a4060a9ea70cb"
+    },
+    {
+      "path": "Project/interactive/main-world-setting.js",
+      "sourcePath": "Project/interactive/main-world-setting.js",
+      "sha256": "1a7c5e82a752f35403d1e92d0f431e5df8a7fab572998baa000c6ce1e0691b47"
+    },
+    {
+      "path": "Project/interactive/main-world.html",
+      "sourcePath": "Project/interactive/main-world.html",
+      "sha256": "4681437ff81fe638c255dea68c049b24e5eed6ee03686c5a8a502f1f65f4dfae"
+    },
+    {
+      "path": "Project/interactive/main-world.js",
+      "sourcePath": "Project/interactive/main-world.js",
+      "sha256": "ec8625aa0454a8dc2a068e53872b4b47c06b51c4737aa15efc2d380d1c53d470"
+    },
+    {
+      "path": "Project/interactive/runtime-setting-menu.js",
+      "sourcePath": "Project/interactive/runtime-setting-menu.js",
+      "sha256": "8d0f806f8afedf9fe11a7ecbf8ce94ee3b5a573a25e68e19a4c652c210c3dbab"
+    },
+    {
+      "path": "Project/interactive/world-gui-system.js",
+      "sourcePath": "Project/interactive/world-gui-system.js",
+      "sha256": "c2d1cd4ae9790e76589bcf01cae6a1d42ef9f4b481c172e366d6a902ad5b9bc8"
+    },
+    {
+      "path": "Project/interactive/world.css",
+      "sourcePath": "Project/interactive/world.css",
+      "sha256": "d3a35b38c35fa5f0ad74312d417a442260f5fd55d372dea2e97d76e5d58c2c36"
+    }
   ]
 }

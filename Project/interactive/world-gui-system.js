@@ -111,11 +111,23 @@ export function createWorldGuiSystem({ THREE, viewport, camera, setting = {}, ge
 
   function render(entry) {
     const { element, options } = entry;
-    element.textContent = String(options.text ?? "");
+    element.replaceChildren();
+    if (options.icon) {
+      const file = String(options.icon).endsWith(".svg") ? String(options.icon) : `${options.icon}.svg`;
+      const icon = document.createElement("img");
+      icon.className = "world-gui-system-icon";
+      icon.src = new URL(`./assets/icon/${file}`, import.meta.url).href;
+      icon.alt = "";
+      const copy = document.createElement("span");
+      copy.className = "world-gui-system-copy";
+      copy.textContent = String(options.text ?? "");
+      element.append(icon, copy);
+    } else element.textContent = String(options.text ?? "");
     element.dataset.variant = options.variant || "label";
     element.dataset.tone = options.tone || "info";
     element.dataset.size = options.size || "small";
     element.className = `world-gui-system-label is-${options.variant || "label"}${options.className ? ` ${options.className}` : ""}`;
+    element.classList.toggle("has-icon", Boolean(options.icon));
     const actionable = typeof options.onClick === "function";
     element.classList.toggle("is-actionable", actionable);
     if (actionable) { element.tabIndex = 0; element.setAttribute("role", "button"); }

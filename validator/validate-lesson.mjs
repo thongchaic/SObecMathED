@@ -364,7 +364,7 @@ if (html) {
 const report = {
   ok: errors.length === 0,
   file: basename(file),
-  contractVersion: "1.4.0",
+  contractVersion: "1.5.0",
   profile,
   errors
 };

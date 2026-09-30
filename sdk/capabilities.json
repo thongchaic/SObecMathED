@@ -1,5 +1,5 @@
 {
-  "sdkVersion": "3.3.0",
+  "sdkVersion": "3.4.0",
   "worldOwner": "main-world",
   "accessProfiles": {
     "teacherExternal": {
@@ -31,7 +31,9 @@
   ],
   "interactions": ["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"],
   "guiServices": {
+    "steps": "context.ui.steps",
     "question": "context.ui.question",
+    "guiAnswer": "context.ui.guiAnswer",
     "console": "context.ui.console",
     "topMessage": "context.ui.topMessage",
     "choice": "context.ui.choice",
@@ -71,6 +73,10 @@
   "guiScopes": ["lesson", "scene", "step", "question", "manual"],
   "guiAuthoringPolicy": "existing-central-service-first-no-lesson-owned-duplicate-ui",
   "controlPhasePolicy": "teaching=system-skip-only; lab-final-or-experiment=lesson-controls; quiz=lesson-controls; back-to-teaching=hides-lesson-controls",
+  "guidedStepGate": "howto.requiresCompletion=true; unlock with context.ui.steps.setNextEnabled(true)",
+  "mascotStepDialogue": "howto.option={type:instruction|hint|feedback,header,message}",
+  "lineRenderPaths": ["from-to", "points", "closed"],
+  "cameraFocus": "world.camera.focus({position,normal}) preserves zoom and eases transition",
   "runtimeUiTheme": "storybook-brown-cream-on-felt-environment",
   "devTools": {
     "quickRetest": "F4",
@@ -103,6 +109,7 @@
     "environment/picnic-blanket"
   ],
   "operatorPrefab": ["<", ">", "=", "≠", "<=", ">=", "≤", "≥", "+", "-", "−", "×", "x", "X", "÷"],
+  "operatorPrefabSetting": "mainWorldSetting.lessonGraphics.operatorBase.heightScale",
   "questionUi": "context.ui.question.show",
   "compatibilityUi": ["context.ui.setQuestion", "context.ui.clearQuestion", "context.ui.setObjective", "context.ui.toast", "context.ui.setProgress"],
   "optionalFutureCapabilities": ["throw", "physics", "balance", "pour-state"]

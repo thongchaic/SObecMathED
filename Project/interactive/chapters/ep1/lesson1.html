@@ -515,6 +515,7 @@
                 source.setPosition(...this.sourcePosition);
                 source.setVisible(true);
                 source.setDraggable(this.isInteractive);
+                this.syncDragClickme(this.isInteractive);
               }, 260);
               this.timers.push(timer);
               return { accepted: true, commit: true };
@@ -523,6 +524,7 @@
           this.multiplySource = source;
           await this.addBasket(source, "multiply-source");
           this.sourceCarrots = await this.addGroupCarrots(source, groupSize, "multiply-source");
+          this.syncDragClickme(this.isInteractive);
         },
 
         multiplySlotX(index) {
@@ -608,6 +610,7 @@
             record.handle = handle;
             this.divisionItems.push(record);
           }
+          this.syncDragClickme(this.isInteractive);
         },
 
         divisionSourcePosition(index, total) {
@@ -630,6 +633,7 @@
           record.bin = binIndex < 0 ? null : binIndex;
           this.relayoutDivision(true);
           this.updateDivisionAnswer(true);
+          this.syncDragClickme(this.isInteractive);
           return { accepted: true, commit: binIndex >= 0 };
         },
 
@@ -730,6 +734,7 @@
               item.handle = handle;
               this.items.push(item);
               this.sourceItems.set(1, item);
+              this.syncDragClickme(this.isInteractive);
               return item;
             })
             .finally(() => { this.sourcePromise = null; });
@@ -1341,6 +1346,18 @@
           };
         },
 
+        syncDragClickme(enabled) {
+          this.dragClickmeCue?.remove?.();
+          this.dragClickmeCue = null;
+          if (!enabled || !this.context.ui.clickme) return;
+          const target = this.problem.type === "multiplication"
+            ? this.multiplySource
+            : this.problem.type === "division"
+              ? this.divisionItems.find(item => item.bin === null)?.handle
+              : this.sourceItems.get(1)?.handle;
+          if (target?.object3D?.userData?.draggable) this.dragClickmeCue = this.context.ui.clickme.attach(target, { size: 36, anchor: "bottom", offset: [0, .1, 0] });
+        },
+
         onStep(index, step) {
           const freestyle = step.type === "freestyle";
           this.clearTimers();
@@ -1365,6 +1382,7 @@
             if (freestyle && !item.released && !item.placed) item.handle.setPosition(...item.sourcePosition);
             item.handle.setDraggable(freestyle);
           }
+          this.syncDragClickme(freestyle);
           this.problemFocus.setVisible(index === 0 || index === 1);
           this.answerFocus.setVisible(index >= 2);
 

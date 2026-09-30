@@ -80,6 +80,15 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
 
 Host เรียก EduSDK → ตรวจ `script[data-lesson-app]` → เปิด main-world → เรียก PuzzleLesson.define และ lifecycle → บทเรียนสร้างฉากผ่าน context ส่วน runtime ดูแล renderer, GUI, กล้อง, Lab, Quiz และการปิด บทเรียนจึงไม่สร้าง renderer, canvas หรือแผง UI กลางซ้ำ
 
+### Runtime รุ่นปัจจุบันที่ควรรู้ก่อนสร้างบท
+
+- `howto[].option` เชื่อม Step กับบทพูด Mascot จริง ใช้ `instruction` สำหรับคำอธิบายที่ต้องเห็นทันทีและ `hint` สำหรับคำใบ้ ทุกขั้นสำคัญควรมีข้อความเฉพาะแนวคิด ไม่ใช่ใส่เฉพาะคำทักทายขั้นแรก
+- `howto[].requiresCompletion: true` ใช้ล็อกปุ่มถัดไปจนบทเรียนเรียก `context.ui.steps.setNextEnabled(true)` และ Runtime จะไม่ให้ข้ามช่วงที่มีขั้นบังคับ
+- `context.ui.guiAnswer` ใช้ผลรวมหรือคำตอบแบบ Screen-space; กิจกรรมลากควรแสดงหลังปล่อยมือถ้าค่าระหว่างลากทำให้ UI กระพริบ
+- `context.ui.clickme` เป็นมือชี้แบบ opt-in และต้องจบ cue ด้วย `completeFor()`/`cue.complete()` เมื่อกิจกรรมครบ เพื่อไม่ให้มือชี้ต่อหลังคำตอบเสร็จ
+- `world.addLineRender()` รองรับ `points` และ `closed` สำหรับเส้นหลายช่วง/กรอบ polygon ส่วน `world.camera.focus({ position, normal })` หันกล้องแบบนุ่มโดยรักษาระยะซูม
+- `world.addOperatorSign()` ใช้ prefab กลางทุกบท รูปทรงและความหนาแนวตั้งถูกกำหนดจาก `mainWorldSetting.lessonGraphics.operatorBase` ห้ามแก้ internal scale ของเครื่องหมายรายบท
+
 ### เปิดบทเรียนเต็มจอหรือภายใน Preview Panel
 
 EduSDK เปิดบทเรียนแบบเต็ม viewport เป็นค่าเริ่มต้น เพื่อรักษาพฤติกรรมเดิมของระบบ:
@@ -130,7 +139,7 @@ howto: [{
 
 ปุ่ม Control เปิดเสริมได้ด้วย `context.ui.intro.open({ url, title, source: "control" })`; การปิดกรณีนี้ไม่เปลี่ยน Step หน้าเว็บปลายทางอาจปฏิเสธ iframe ผ่าน `X-Frame-Options` หรือ CSP ซึ่ง Host ไม่สามารถข้ามข้อจำกัดนั้นได้
 
-GUI ที่ใช้ได้มี question, console, topMessage, choice, gizmo, worldOption, worldGuiSystem, clickme, feedback, dialog, insight, intro, control, hint และ busy พร้อมตัวอย่างใน GUI Service Reference; `worldOption` ใช้เมนูคำสั่งแนวตั้งที่ติดตาม object, `worldGuiSystem` ใช้ป้ายเล็กที่ยึดกับพิกัดหรือโมเดล ส่วน `clickme` เป็นมือแบ/มือกำแบบ opt-in ที่ Admin/Dev ระบุให้ใช้กับวัตถุ draggable/clickable และตั้งค่าที่ `ui.clickme` ส่วน Callout, World Counter, World GUI, Target Focus และ Guideline ดูใน Public API
+GUI ที่ใช้ได้มี steps, question, guiAnswer, console, topMessage, choice, gizmo, worldOption, worldGuiSystem, clickme, feedback, dialog, insight, intro, control, hint และ busy พร้อมตัวอย่างใน GUI Service Reference; `worldOption` ใช้เมนูคำสั่งแนวตั้งที่ติดตาม object, `worldGuiSystem` ใช้ป้ายเล็กที่ยึดกับพิกัดหรือโมเดล ส่วน `clickme` เป็นมือแบ/มือกำแบบ opt-in ที่ Admin/Dev ระบุให้ใช้กับวัตถุ draggable/clickable และตั้งค่าที่ `ui.clickme` ส่วน Callout, World Counter, World GUI, Target Focus, Line Render และ Guideline ดูใน Public API
 
 Runtime เป็นผู้บังคับกฎ Control กลาง: ระหว่างขั้นสอนแสดงได้เฉพาะปุ่มข้ามการสอน เมื่อเข้า Lab ขั้นสุดท้าย/การทดลองหรือ Quiz จึงแสดง Control ของบทเรียน และเมื่อย้อนกลับไปขั้นสอนระบบต้องซ่อนให้อัตโนมัติ รูปลักษณ์บทเรียน 3D ปัจจุบันใช้ Storybook UI สีน้ำตาล/ครีม โดยคง felt environment เป็นฉากพื้นฐาน
 

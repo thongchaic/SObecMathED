@@ -5,7 +5,7 @@ const VALID_TONES = new Set(["default", "primary", "info", "success", "warning",
 const VALID_GIZMO_TYPES = new Set(["label", "badge", "value", "icon", "image"]);
 const VALID_CONTROL_POSITIONS = new Set(["top-right", "middle-right", "bottom-right"]);
 const INSIGHT_TAGS = new Set(["p", "strong", "em", "b", "i", "br", "ul", "ol", "li", "div", "section", "span", "code", "small", "mark", "img"]);
-const INSIGHT_CLASSES = new Set(["insight-lead", "insight-equation", "insight-steps", "insight-note", "insight-grid", "insight-card", "insight-card-image", "insight-card-name", "insight-arrow", "insight-result", "insight-muted", "insight-diagram"]);
+const INSIGHT_CLASSES = new Set(["insight-lead", "insight-equation", "insight-steps", "insight-note", "insight-grid", "insight-card", "insight-card-image", "insight-card-name", "insight-arrow", "insight-result", "insight-muted", "insight-diagram", "surface-net-diagram", "surface-insight-steps"]);
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const text = value => String(value ?? "").trim();
 
@@ -56,6 +56,7 @@ function safeInsightFragment(value, resolveAsset) {
 export function createGuiService({ setting, elements, camera, iconUrl, resolveAsset, objectiveAction, animateConsole, typeText, getMode, onChoiceShow, onHintShow, onHintHide, playUiSound }) {
   const scopes = new Map(), choices = new Map(), gizmos = new Map(), worldOptions = new Map(), feedbacks = new Map(), dialogs = new Map(), controls = new Map(), controlEntries = new Map(), hints = new Map(), projected = new THREE.Vector3(), worldPoint = new THREE.Vector3(), viewPoint = new THREE.Vector3();
   let sequence = 0, topMessageHandle = null, questionState = { label: setting.ui?.questionPanel?.label || "โจทย์", text: "", tone: "primary" };
+  let answerTimer = 0, answerState = { label: setting.ui?.guiAnswer?.label || "คำตอบ", text: "", state: "neutral" };
   let lessonControlPhase = "lab";
   const motionDuration = Math.max(80, Number(setting.ui?.animation?.serviceExitDuration ?? 180));
   function showAnimated(element) { clearTimeout(element.__guiMotionTimer); element.hidden = true; element.classList.remove("is-leaving", "is-entering"); void element.offsetWidth; element.classList.add("is-entering"); element.hidden = false; element.__guiMotionTimer = setTimeout(() => element.classList.remove("is-entering"), 360); }
@@ -71,12 +72,13 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   function register(handle, scope) { scopeSet(scope).add(handle); return handle; }
   function unregister(handle, scope) { const values = scopes.get(scope); values?.delete(handle); if (values && !values.size) scopes.delete(scope); }
   function clearScope(...names) { for (const name of names.flat()) { const values = scopes.get(name); if (!values) continue; for (const handle of [...values]) handle.remove(); scopes.delete(name); } }
-  function clearAll() { for (const values of [...scopes.values()]) for (const handle of [...values]) handle.remove(); scopes.clear(); question.hide(); consoleService.reset(); }
+  function clearAll() { for (const values of [...scopes.values()]) for (const handle of [...values]) handle.remove(); scopes.clear(); question.hide(); guiAnswer.hide(); consoleService.reset(); }
 
   function applySettings() {
-    const root = document.documentElement, questionSetting = setting.ui?.questionPanel || {}, consoleSetting = setting.ui?.console || {}, topMessageSetting = setting.ui?.topMessage || {}, choiceSetting = setting.ui?.choice || {}, gizmoSetting = setting.ui?.gizmo || {}, worldOptionSetting = setting.ui?.worldOption || {}, feedbackSetting = setting.ui?.feedback || {}, dialogSetting = setting.ui?.dialog || {}, controlSetting = setting.ui?.control || {}, hintSetting = setting.ui?.hint || {}, busySetting = setting.ui?.busy || {}, desktop = consoleSetting.desktop || {}, mobile = consoleSetting.mobile || {};
+    const root = document.documentElement, questionSetting = setting.ui?.questionPanel || {}, answerSetting = setting.ui?.guiAnswer || {}, consoleSetting = setting.ui?.console || {}, topMessageSetting = setting.ui?.topMessage || {}, choiceSetting = setting.ui?.choice || {}, gizmoSetting = setting.ui?.gizmo || {}, worldOptionSetting = setting.ui?.worldOption || {}, feedbackSetting = setting.ui?.feedback || {}, dialogSetting = setting.ui?.dialog || {}, controlSetting = setting.ui?.control || {}, hintSetting = setting.ui?.hint || {}, busySetting = setting.ui?.busy || {}, desktop = consoleSetting.desktop || {}, mobile = consoleSetting.mobile || {};
     const variables = {
       "--lesson-question-bg": questionSetting.background, "--lesson-question-border": questionSetting.borderColor, "--lesson-question-text": questionSetting.textColor, "--lesson-question-label": questionSetting.labelColor, "--lesson-question-icon-bg": questionSetting.iconBackground, "--lesson-question-radius": questionSetting.radius, "--lesson-question-font-size": questionSetting.fontSize, "--lesson-question-felt-bg": questionSetting.feltBackground, "--lesson-question-felt-border": questionSetting.feltBorderColor, "--lesson-question-felt-icon-bg": questionSetting.feltIconBackground,
+      "--gui-answer-width": answerSetting.width, "--gui-answer-gap": answerSetting.gap, "--gui-answer-bg": answerSetting.background, "--gui-answer-border": answerSetting.borderColor, "--gui-answer-text": answerSetting.textColor, "--gui-answer-label": answerSetting.labelColor, "--gui-answer-success": answerSetting.successColor, "--gui-answer-success-dark": answerSetting.successDarkColor, "--gui-answer-error": answerSetting.errorColor, "--gui-answer-error-dark": answerSetting.errorDarkColor, "--gui-answer-radius": answerSetting.radius, "--gui-answer-font-size": answerSetting.fontSize, "--gui-answer-particle": answerSetting.particleColor,
       "--gui-console-width": desktop.width, "--gui-console-quiz-width": desktop.quizWidth, "--gui-console-bottom": desktop.bottom, "--gui-console-min-height": desktop.minHeight,
       "--gui-console-width-mobile": mobile.width, "--gui-console-bottom-mobile": mobile.bottom, "--gui-console-min-height-mobile": mobile.minHeight,
       "--gui-console-bg-start": consoleSetting.backgroundStart, "--gui-console-bg-end": consoleSetting.backgroundEnd, "--gui-console-border": consoleSetting.borderColor, "--gui-console-text": consoleSetting.textColor, "--gui-console-objective": consoleSetting.objectiveColor, "--gui-console-radius": consoleSetting.radius, "--gui-console-icon-size": consoleSetting.iconSize,
@@ -106,6 +108,46 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
     update(options = {}) { return this.show(options); },
     hide() { questionState.text = ""; elements.question.classList.remove("is-updating"); elements.topMessageLayer?.classList.remove("has-question"); if (!elements.question.hidden) hideAnimated(elements.question); return this; },
     remove() { return this.hide(); }
+  });
+
+  function renderAnswer(next = {}, celebrate = false) {
+    if (!elements.guiAnswer) return guiAnswer;
+    const value = typeof next === "string" ? { text: next } : next || {};
+    const requestedState = text(value.state ?? value.tone ?? answerState.state).toLowerCase();
+    const state = requestedState === "correct" || requestedState === "success" ? "correct" : requestedState === "wrong" || requestedState === "error" ? "wrong" : "neutral";
+    answerState = {
+      ...answerState,
+      ...value,
+      label: text(value.label ?? answerState.label) || "คำตอบ",
+      text: text(value.text ?? value.message ?? answerState.text),
+      state
+    };
+    elements.guiAnswerLabel.textContent = answerState.label;
+    elements.guiAnswerText.textContent = answerState.text;
+    elements.guiAnswer.dataset.state = state;
+    elements.guiAnswer.setAttribute("aria-label", `${answerState.label}: ${answerState.text}`);
+    if (elements.guiAnswerIcon) elements.guiAnswerIcon.src = iconUrl(state === "correct" ? "result-correct.svg" : state === "wrong" ? "result-wrong.svg" : "question.svg");
+    clearTimeout(answerTimer);
+    elements.guiAnswer.classList.remove("is-answer-correct", "is-answer-wrong", "is-answer-complete");
+    void elements.guiAnswer.offsetWidth;
+    if (state === "correct") elements.guiAnswer.classList.add("is-answer-correct");
+    if (state === "wrong") elements.guiAnswer.classList.add("is-answer-wrong");
+    if (celebrate && state === "correct") elements.guiAnswer.classList.add("is-answer-complete");
+    if (answerState.text) showAnimated(elements.guiAnswer); else elements.guiAnswer.hidden = true;
+    const duration = Math.max(500, Number(setting.ui?.guiAnswer?.animationDuration ?? 1600));
+    answerTimer = setTimeout(() => elements.guiAnswer?.classList.remove("is-answer-correct", "is-answer-wrong", "is-answer-complete"), duration);
+    return guiAnswer;
+  }
+
+  const guiAnswer = Object.freeze({
+    show(options = {}) { return renderAnswer(options, Boolean(options?.celebrate)); },
+    update(options = {}) { return renderAnswer(options, Boolean(options?.celebrate)); },
+    correct(options = {}) { const value = typeof options === "string" ? { text: options } : options || {}; return renderAnswer({ ...value, state: "correct" }, value.celebrate !== false); },
+    wrong(options = {}) { const value = typeof options === "string" ? { text: options } : options || {}; return renderAnswer({ ...value, state: "wrong" }, false); },
+    reset(options = {}) { const value = typeof options === "string" ? { text: options } : options || {}; return renderAnswer({ label: setting.ui?.guiAnswer?.label || "คำตอบ", text: "", ...value, state: "neutral" }, false); },
+    hide() { clearTimeout(answerTimer); if (!elements.guiAnswer) return this; elements.guiAnswer.classList.remove("is-answer-correct", "is-answer-wrong", "is-answer-complete", "is-entering"); if (!elements.guiAnswer.hidden) hideAnimated(elements.guiAnswer); return this; },
+    remove() { return this.hide(); },
+    get state() { return Object.freeze({ ...answerState }); }
   });
 
   function setConsoleTone(tone = "default") {
@@ -245,11 +287,43 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   const topMessage = Object.freeze({ show: createTopMessage, success(message, options = {}) { return createTopMessage(message, { ...options, tone: "success" }); }, info(message, options = {}) { return createTopMessage(message, { ...options, tone: "info" }); }, warning(message, options = {}) { return createTopMessage(message, { ...options, tone: "warning" }); }, error(message, options = {}) { return createTopMessage(message, { ...options, tone: "error" }); }, get current() { return topMessageHandle; }, hide() { topMessageHandle?.remove(); } });
 
   function createFeedback(value, extra = {}) {
-    const options = normalizeServiceOptions(value, extra), id = text(options.id) || `feedback-${++sequence}`, scope = normalizeScope(options.scope, "step"), root = document.createElement("article"), copy = document.createElement("div"); let timer = 0, removed = false;
-    feedbacks.get(id)?.remove(); root.className = "gui-feedback"; root.dataset.feedbackId = id; root.setAttribute("role", options.tone === "error" ? "alert" : "status"); root.append(copy); elements.feedbackLayer.append(root); elements.feedbackLayer.hidden = false;
-    function render() { root.dataset.tone = normalizeTone(options.tone || "info"); copy.replaceChildren(); const media = serviceMedia(options.icon, true); if (media) root.prepend(media); for (const old of [...root.children]) if (old !== copy && old !== media) old.remove(); const title = text(options.title), message = text(options.message ?? options.text); if (title) { const strong = document.createElement("strong"); strong.textContent = title; copy.append(strong); } const paragraph = document.createElement("p"); paragraph.textContent = message; copy.append(paragraph); root.setAttribute("aria-label", [title, message].filter(Boolean).join(": ")); if (options.dismissible) { const close = document.createElement("button"); close.type = "button"; close.className = "gui-feedback-close"; close.setAttribute("aria-label", "ปิดข้อความ"); close.textContent = "×"; close.addEventListener("click", () => { playUiSound?.(); remove(); }); root.append(close); } clearTimeout(timer); const duration = Number(options.duration ?? setting.ui?.feedback?.duration ?? 2600); if (duration > 0) timer = setTimeout(remove, duration); }
-    function remove() { if (removed) return; removed = true; clearTimeout(timer); if (feedbacks.get(id) === handle) feedbacks.delete(id); unregister(handle, scope); hideAnimated(root, () => { if (!elements.feedbackLayer.children.length) elements.feedbackLayer.hidden = true; }, true); }
-    const handle = Object.freeze({ id, scope, update(next = {}) { Object.assign(options, next); render(); return this; }, show() { if (!removed) { showAnimated(root); render(); } return this; }, hide() { clearTimeout(timer); if (!root.hidden) hideAnimated(root); return this; }, remove, get element() { return root; } }); feedbacks.set(id, handle); register(handle, scope); render(); showAnimated(root); return handle;
+    const options = normalizeServiceOptions(value, extra), id = text(options.id) || `feedback-${++sequence}`, scope = normalizeScope(options.scope, "step");
+    const current = feedbacks.get(id);
+    if (current?.element?.isConnected && !current.element.classList.contains("is-leaving")) {
+      current.replay(options);
+      return current;
+    }
+    for (const existing of [...feedbacks.values()]) existing.remove(true);
+    elements.feedbackLayer.replaceChildren();
+    const root = document.createElement("article"), copy = document.createElement("div"); let timer = 0, removed = false;
+    root.className = "gui-feedback"; root.dataset.feedbackId = id; root.append(copy); elements.feedbackLayer.append(root); elements.feedbackLayer.hidden = false;
+    function render() {
+      const tone = normalizeTone(options.tone || "info");
+      root.dataset.tone = tone;
+      root.setAttribute("role", tone === "error" ? "alert" : "status");
+      copy.replaceChildren();
+      const defaultIcon = tone === "success" ? "result-correct.svg" : tone === "error" ? "result-wrong.svg" : "info.svg";
+      const media = serviceMedia(options.icon || defaultIcon, true);
+      if (media) root.prepend(media);
+      for (const old of [...root.children]) if (old !== copy && old !== media) old.remove();
+      const title = text(options.title), message = text(options.message ?? options.text);
+      if (title) { const strong = document.createElement("strong"); strong.textContent = title; copy.append(strong); }
+      const paragraph = document.createElement("p"); paragraph.textContent = message; copy.append(paragraph);
+      root.setAttribute("aria-label", [title, message].filter(Boolean).join(": "));
+      if (options.dismissible) { const close = document.createElement("button"); close.type = "button"; close.className = "gui-feedback-close"; close.setAttribute("aria-label", "ปิดข้อความ"); close.textContent = "×"; close.addEventListener("click", () => { playUiSound?.(); remove(); }); root.append(close); }
+      clearTimeout(timer); const duration = Number(options.duration ?? setting.ui?.feedback?.duration ?? 2600); if (duration > 0) timer = setTimeout(remove, duration);
+    }
+    function remove(immediate = false) {
+      if (removed) return;
+      removed = true;
+      clearTimeout(timer);
+      if (feedbacks.get(id) === handle) feedbacks.delete(id);
+      unregister(handle, scope);
+      const finish = () => { if (!elements.feedbackLayer.children.length) elements.feedbackLayer.hidden = true; };
+      if (immediate) { clearTimeout(root.__guiMotionTimer); root.remove(); finish(); return; }
+      hideAnimated(root, finish, true);
+    }
+    const handle = Object.freeze({ id, scope, update(next = {}) { Object.assign(options, next); render(); return this; }, replay(next = {}) { if (!removed) { Object.assign(options, next); render(); showAnimated(root); } return this; }, show() { if (!removed) { showAnimated(root); render(); } return this; }, hide() { clearTimeout(timer); if (!root.hidden) hideAnimated(root); return this; }, remove, get element() { return root; } }); feedbacks.set(id, handle); register(handle, scope); render(); showAnimated(root); return handle;
   }
   const feedback = Object.freeze({ show: createFeedback, success(message, options = {}) { return createFeedback(message, { ...options, tone: "success" }); }, info(message, options = {}) { return createFeedback(message, { ...options, tone: "info" }); }, warning(message, options = {}) { return createFeedback(message, { ...options, tone: "warning" }); }, error(message, options = {}) { return createFeedback(message, { ...options, tone: "error" }); }, get(id) { return feedbacks.get(String(id)) || null; }, clear(scope) { if (scope) clearScope(scope); else for (const handle of [...feedbacks.values()]) handle.remove(); } });
 
@@ -333,7 +407,7 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
 
   function updateGizmos() {
     if (!gizmos.size && !worldOptions.size) return; camera.updateMatrixWorld(); const rect = elements.viewport.getBoundingClientRect(), width = Math.max(1, rect.width), height = Math.max(1, rect.height), config = setting.ui?.gizmo || {}, margin = config.safeMargin ?? 14;
-    let safeTop = margin, safeBottom = height - margin; for (const element of [elements.topbar, elements.question]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeTop = Math.max(safeTop, bounds.bottom - rect.top + margin); } for (const element of [elements.choiceDock, elements.labConsole, elements.quizConsole]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeBottom = Math.min(safeBottom, bounds.top - rect.top - margin); } if (safeBottom - safeTop < 80) { safeTop = margin; safeBottom = height - margin; }
+    let safeTop = margin, safeBottom = height - margin; for (const element of [elements.topbar, elements.question, elements.guiAnswer]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeTop = Math.max(safeTop, bounds.bottom - rect.top + margin); } for (const element of [elements.choiceDock, elements.labConsole, elements.quizConsole]) if (element && !element.hidden) { const bounds = element.getBoundingClientRect(); if (bounds.height) safeBottom = Math.min(safeBottom, bounds.top - rect.top - margin); } if (safeBottom - safeTop < 80) { safeTop = margin; safeBottom = height - margin; }
     for (const entry of gizmos.values()) {
       const { root, leader, options } = entry; if (!entry.visible) { leader.hidden = true; if (!root.classList.contains("is-leaving")) root.hidden = true; continue; } const target = targetObject(entry.target); let valid = true;
       if (Array.isArray(target)) worldPoint.fromArray(target); else if (target?.getWorldPosition) { if (!target.parent) valid = false; target.getWorldPosition(worldPoint); } else valid = false;
@@ -378,5 +452,5 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
   }
 
   applySettings();
-  return Object.freeze({ question, console: consoleService, topMessage, choice, gizmo, worldOption, feedback, dialog, insight, control, hint, busy, update: updateGizmos, clearScope, clearAll, applySettings, get counts() { return Object.freeze({ topMessages: topMessageHandle ? 1 : 0, choices: choices.size, gizmos: gizmos.size, worldOptions: worldOptions.size, feedbacks: feedbacks.size, dialogs: dialogs.size, controls: controls.size, hints: hints.size, busy: busyHandle ? 1 : 0 }); } });
+  return Object.freeze({ question, guiAnswer, console: consoleService, topMessage, choice, gizmo, worldOption, feedback, dialog, insight, control, hint, busy, update: updateGizmos, clearScope, clearAll, applySettings, get counts() { return Object.freeze({ topMessages: topMessageHandle ? 1 : 0, choices: choices.size, gizmos: gizmos.size, worldOptions: worldOptions.size, feedbacks: feedbacks.size, dialogs: dialogs.size, controls: controls.size, hints: hints.size, busy: busyHandle ? 1 : 0 }); } });
 }

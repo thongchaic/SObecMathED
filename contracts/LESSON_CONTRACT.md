@@ -1,4 +1,4 @@
-# Lesson Contract 1.4.0
+# Lesson Contract 1.5.0
 
 เอกสารนี้กำหนดรูปแบบบังคับของ `lesson_N.html` สำหรับ World Runtime
 
@@ -38,7 +38,7 @@ Lesson Package เป็น HTML UTF-8 ไฟล์เดียวเพื่�
 - ออกแบบฉากจากเนื้อหาของบทเรียน ไม่บังคับใช้โครงซ้าย/ขวาหรือกล่องจาก Lesson 0
 - ใช้เฉพาะ Standard Asset ID จาก `sdk/asset-library.catalog.json` ห้าม custom model relative path, `world.addModel()` และ `type: "model"` โดยตรง แต่ Standard Asset ID อาจชี้ไปยังโมเดลที่ระบบกลางดูแลได้
 - รูปทรง procedural ที่ประกาศใน Public API ใช้ได้ทั้งหมดและไม่ถือเป็น custom asset ก่อนแจ้งว่าขาด Asset ต้องลองสร้างด้วย `addPrimitive`/`addGroup` ก่อน โดยเฉพาะ `sector` สำหรับชิ้นเค้กหรือวงกลมเศษส่วน
-- GUI ใช้ Service กลาง `question`, `console`, `topMessage`, `choice`, `gizmo`, `worldGuiSystem`, `feedback`, `dialog`, `intro`, `control`, `hint`, `busy` ตามหน้าที่ ห้ามสร้าง UI เหล่านี้ซ้ำด้วย DOM/CSS, Canvas, Sprite, primitive หรือ group ของบทเรียน
+- GUI ใช้ Service กลาง `steps`, `question`, `guiAnswer`, `console`, `topMessage`, `choice`, `gizmo`, `worldOption`, `worldGuiSystem`, `clickme`, `feedback`, `dialog`, `insight`, `intro`, `control`, `hint`, `busy` ตามหน้าที่ ห้ามสร้าง UI เหล่านี้ซ้ำด้วย DOM/CSS, Canvas, Sprite, primitive หรือ group ของบทเรียน
 - เนื้อหาเสริมจาก URL ต้องเปิดผ่าน `context.ui.intro` หรือ `howto[].intro` เท่านั้น ห้ามฝัง iframe เองใน Lesson Package; เว็บภายนอกต้องอนุญาตการ embed ผ่าน `X-Frame-Options`/CSP
 - Control ของบทเรียนต้องยอมรับ phase policy ของ runtime: ซ่อนทั้งหมดระหว่างขั้นสอน ยกเว้นปุ่มข้ามการสอนของระบบ และแสดงได้เมื่อเข้า Lab ขั้นสุดท้าย/การทดลองหรือ Quiz เท่านั้น `handle.show()` ไม่สามารถข้ามกฎนี้
 - Debug Area และ Transform Editor เป็น System-owned tooling บทเรียนห้ามเปิดหรือจำลองขึ้นเอง; หากต้องแสดงข้อมูลเล็กที่ยึดกับโมเดลหรือพิกัดในบทเรียน ให้ใช้ `context.ui.worldGuiSystem`
@@ -122,6 +122,9 @@ meta: {
 - `type: "sequence"` เป็นขั้นสังเกต/สาธิต ต้องปิด interactive
 - `type: "freestyle"` เป็นขั้นให้ลงมือ ต้องเปิด interactive และคืน scene สู่ state พร้อมเล่น
 - แต่ละ step ควรสื่อการเปลี่ยนแปลงด้วย target focus, cue, guideline, pulse หรือ animation ที่สัมพันธ์กับข้อความ
+- ขั้นสำคัญควรมี `option: { type: "instruction" | "hint" | "feedback", header, message }` เพื่อให้ Mascot อธิบายแนวคิดเฉพาะขั้น ไม่ใช้คำทักทายเดียวแทนบทสอนทั้งบท
+- ใช้ `requiresCompletion: true` เมื่อผู้เรียนต้องผ่านกิจกรรมก่อนกดถัดไป และเรียก `context.ui.steps.setNextEnabled(true)` หลังตรวจเงื่อนไขสำเร็จ ห้ามจำลองการล็อกปุ่มด้วย DOM
+- ถ้าต้องการให้ Teacher Tools กลับเข้า Step ทดลองหลังปรับค่า ให้กำหนด `meta.editRestartStep` เป็น index ที่มีอยู่จริง; ค่าเริ่มต้นคือ Step 0
 - Step เพิ่ม `intro: { url, title?, label? }` ได้ เมื่อต้องบังคับอ่านหน้าเสริม การปิด Intro จะพาไป Step ถัดไปอัตโนมัติ; หากเปิด Intro จาก `ui.control` การปิดจะไม่เปลี่ยน Step
 
 ### quiz

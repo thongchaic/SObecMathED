@@ -7,6 +7,8 @@ const guiServiceTools = await import(`./gui-service.js?v=${encodeURIComponent(wi
 const worldGuiSystemTools = await import(`./world-gui-system.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const clickmeServiceTools = await import(`./clickme-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const introServiceTools = await import(`./intro-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const operatorSignMasterTools = await import(`./operator-sign-master.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const { OPERATOR_SIGN_MASTER, operatorSignMasterFor, operatorFullTurnEnd } = operatorSignMasterTools;
 const runtimeSettingBaseline = runtimeSettingTools.applyStoredRuntimeSetting(setting);
 // ใช้ token เดียวตลอดอายุของ runtime เพื่อไม่ให้ asset เดียวกันถูกดาวน์โหลดซ้ำในหน้าเดียว
 // เมื่อ isCache=false การเปิด runtime รอบใหม่จะสร้าง timestamp ใหม่โดยอัตโนมัติ
@@ -19,8 +21,10 @@ const elements = {
   runtime: $("#runtime"), viewport: $("#world-viewport"), canvas: $("#world-canvas"), debugHud: $("#debug-hud"), lessonUi: $("#lesson-ui"), gizmoLayer: $("#gui-gizmo-layer"), topMessageLayer: $("#gui-top-message-layer"), feedbackLayer: $("#gui-feedback-layer"), choiceDock: $("#gui-choice-dock"), controlDock: $("#gui-control-dock"), busyLayer: $("#gui-busy-layer"), dialogLayer: $("#gui-dialog-layer"), topbar: $("#topbar"),
   webRoot: $("#web-page-root"), title: $("#lesson-title"), taxonomy: $("#lesson-taxonomy"), mode: $("#mode-badge"),
   hint: $("#world-hint"), toast: $("#toast"), modal: $("#modal-layer"), objective: $("#objective-text"),
-  lessonQuestion: $("#lesson-question-ui"), lessonQuestionLabel: $("#lesson-question-label"), lessonQuestionText: $("#lesson-question-text"), topbarMain: $(".topbar-main"), topbarActions: $(".topbar-actions"),
-  entry: $("#entry-screen"), entryTitle: $("#entry-title"), entryWelcome: $("#entry-welcome"), entryStatus: $("#entry-status"), entryProgress: $("#entry-progress-bar"), entryProgressValue: $("#entry-progress-value"), entryCharacter: $("#entry-character"),
+  lessonQuestion: $("#lesson-question-ui"), lessonQuestionLabel: $("#lesson-question-label"), lessonQuestionText: $("#lesson-question-text"),
+  guiAnswer: $("#gui-answer"), guiAnswerLabel: $("#gui-answer-label"), guiAnswerText: $("#gui-answer-text"), guiAnswerIcon: $("#gui-answer-icon"),
+  topbarMain: $(".topbar-main"), topbarActions: $(".topbar-actions"),
+  entry: $("#entry-screen"), entryTitle: $("#entry-title"), entryCategory: $("#entry-category"), entryWelcome: $("#entry-welcome"), entryStatus: $("#entry-status"), entryProgress: $("#entry-progress-bar"), entryProgressTrack: $("#entry-progress-track"), entryProgressValue: $("#entry-progress-value"),
   celebration: $("#celebration"), celebrationFireworks: $("#celebration-fireworks"), howto: $("#howto-panel"), stepCounter: $("#step-counter"), stepTitle: $("#step-title"),
   stepDescription: $("#step-description"), stepOption: $("#step-option"), quizPanel: $("#quiz-panel"),
   mascot: $("#mascot-guide"), mascotNotice: $("#mascot-notice"), mascotParticles: $("#mascot-particles"), mascotCharacter: $("#mascot-character"), mascotPerchImage: $("#mascot-perch-image"), mascotIdleImage: $("#mascot-idle-image"), mascotSpeakingImage: $("#mascot-speaking-image"), mascotFlyImage: $("#mascot-fly-image"), mascotFlyMidImage: $("#mascot-fly-mid-image"), mascotFlyDownImage: $("#mascot-fly-down-image"),
@@ -30,21 +34,25 @@ const elements = {
 
 const runtime = {
   sessionId: 0, lesson: null, meta: null, lessonData: null, lessonUrl: null, context: null,
-  mode: "student-lab", language: "th", fullScreen: true, values: {}, stepIndex: 0, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, lastOpenPayload: null
+  mode: "student-lab", language: "th", fullScreen: true, preview: false, values: {}, stepIndex: 0, stepNextEnabled: true, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, lastOpenPayload: null
 };
 
 function syncDebugHud() {
   if (!elements.debugHud) return;
-  // The standalone runtime-debug-tools replaces this legacy HUD.
-  elements.debugHud.hidden = true;
+  elements.debugHud.hidden = !runtime.preview && setting.debugHUD !== true;
+  elements.debugHud.classList.toggle("is-preview", runtime.preview);
   const switchButton = elements.debugHud.querySelector('[data-debug-action="switch-mode"]');
   if (!switchButton) return;
   const nextIsQuiz = runtime.mode !== "student-quiz";
-  const label = nextIsQuiz ? "สลับไป Quiz" : "สลับไป Lab";
+  const label = nextIsQuiz ? "เปิดบทเรียนนี้ในโหมด Quiz" : "เปิดบทเรียนนี้ในโหมด Lab";
   switchButton.title = label;
   switchButton.setAttribute("aria-label", label);
   const icon = switchButton.querySelector("[data-debug-mode-icon]");
-  if (icon) icon.src = iconUrl(nextIsQuiz ? "trophy.svg" : "book.svg");
+  if (icon) icon.src = iconUrl("switch-symbol.svg");
+  const current = switchButton.querySelector(".preview-switch-copy small");
+  const next = switchButton.querySelector(".preview-switch-copy strong");
+  if (current) current.textContent = `โหมดปัจจุบัน · ${nextIsQuiz ? "Lab" : "Quiz"}`;
+  if (next) next.textContent = `ไป ${nextIsQuiz ? "Quiz" : "Lab"}`;
 }
 
 const setUiVariable = (name, value, unit = "") => { if (value !== undefined && value !== null) document.documentElement.style.setProperty(name, typeof value === "number" ? `${value}${unit}` : String(value)); };
@@ -114,7 +122,6 @@ const mascotCharacter = mascotSetting.character || mascotSetting.position || {};
 const mascotSpeech = mascotSetting.speech || {};
 const mascotNoticeBubble = mascotSetting.noticeBubble || mascotSetting.bubble || {};
 const mascotBehavior = mascotSetting.behavior || "stationary";
-elements.entryCharacter.src = runtimeAssetUrl(mascotAssets.greeting || setting.entry.characterImagePath || mascotAssets.idle || "./assets/character/dinosaur-student/idle.png");
 elements.mascot.dataset.character = activeMascotKey;
 elements.mascot.dataset.behavior = mascotBehavior;
 elements.mascot.dataset.pose = "idle";
@@ -252,20 +259,38 @@ elements.modal.addEventListener("click", event => {
 });
 window.addEventListener("keydown", event => { if (elements.modal.hidden) return; const focusable = [...elements.modal.querySelectorAll('button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')]; if (event.key === "Escape" && elements.modal.querySelector("[data-modal-close]")) { event.preventDefault(); closeModal(); return; } if (event.key !== "Tab" || focusable.length < 2) return; const first = focusable[0], last = focusable.at(-1); if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } });
 
-function beginEntry(title) {
+function setEntryCategory(category) {
+  if (elements.entryCategory) elements.entryCategory.textContent = String(category || "บทเรียนคณิตศาสตร์").trim();
+}
+function entryUnitTitle(lessonData = {}) {
+  return displayText(lessonData.subcategory) || displayText(lessonData.category) || "บทเรียนคณิตศาสตร์";
+}
+function beginEntry(title, category) {
   window.eduHideRuntimeFailure?.();
   runtime.entryStartedAt = performance.now();
+  runtime.entryProgressReadyAt = runtime.entryStartedAt + 1380;
+  clearTimeout(runtime.entryProgressTimer);
+  runtime.entryProgressTimer = 0;
   elements.entry.classList.remove("is-leaving");
   elements.entryTitle.textContent = title || "กำลังเตรียมพื้นที่เรียนรู้";
+  setEntryCategory(category);
   elements.entryWelcome.replaceChildren();
   elements.entryStatus.textContent = "กำลังเชื่อมต่อบทเรียน…";
   elements.entryProgress.style.width = "8%";
+  elements.entryProgressTrack?.style.setProperty("--entry-progress", "8%");
   elements.entryProgressValue.textContent = "8%";
 }
 function updateEntry(progress, status, messages) {
   const safeProgress = Math.round(clamp(progress, 0, 100));
-  elements.entryProgress.style.width = `${safeProgress}%`;
-  elements.entryProgressValue.textContent = `${safeProgress}%`;
+  const renderProgress = () => {
+    elements.entryProgress.style.width = `${safeProgress}%`;
+    elements.entryProgressTrack?.style.setProperty("--entry-progress", `${safeProgress}%`);
+    elements.entryProgressValue.textContent = `${safeProgress}%`;
+  };
+  const waitForIntro = Math.max(0, (runtime.entryProgressReadyAt || 0) - performance.now());
+  clearTimeout(runtime.entryProgressTimer);
+  if (waitForIntro > 0) runtime.entryProgressTimer = window.setTimeout(renderProgress, waitForIntro);
+  else renderProgress();
   elements.entryStatus.textContent = status;
   if (messages) elements.entryWelcome.innerHTML = messages.slice(0, 2).map(message => { const short = String(message).length > 58 ? `${String(message).slice(0, 55)}…` : message; return `<p>${escapeHtml(short)}</p>`; }).join("");
 }
@@ -357,14 +382,39 @@ function updateRimLight() { if (!rimLight) return; const direction = camera.posi
 function updateCamera() { const horizontal = Math.cos(cameraState.pitch) * cameraState.distance; camera.position.set(cameraTarget.x + Math.sin(cameraState.yaw) * horizontal, cameraTarget.y + Math.sin(cameraState.pitch) * cameraState.distance, cameraTarget.z + Math.cos(cameraState.yaw) * horizontal); camera.lookAt(cameraTarget); updateCameraFog(); updateRimLight(); markSceneActive(); }
 function isPortraitViewport() { return elements.viewport.clientWidth / elements.viewport.clientHeight < .82; }
 function cameraMaxDistance() { return cameraConfig.maxDistance * (isPortraitViewport() ? (cameraConfig.mobileMaxDistanceScale || setting.camera.mobileMaxDistanceScale || 1.5) : 1); }
-function resetCamera() { Object.assign(cameraState, defaultCamera); if (isPortraitViewport()) cameraState.distance = Math.min(defaultCamera.distance * (cameraConfig.mobileDistanceScale || setting.camera.mobileDistanceScale || 1.9), cameraMaxDistance()); updateCamera(); }
+let cameraFocusFrame = null;
+function cancelCameraFocus() { if (cameraFocusFrame !== null) cancelAnimationFrame(cameraFocusFrame); cameraFocusFrame = null; }
+function resetCamera() { cancelCameraFocus(); cameraTarget.set(...cameraConfig.target); Object.assign(cameraState, defaultCamera); if (isPortraitViewport()) cameraState.distance = Math.min(defaultCamera.distance * (cameraConfig.mobileDistanceScale || setting.camera.mobileDistanceScale || 1.9), cameraMaxDistance()); updateCamera(); }
 function configureCamera(overrides = {}) { cameraConfig = { ...setting.camera, ...overrides, target: [...(overrides.target || setting.camera.target)] }; camera.fov = cameraConfig.fov; camera.updateProjectionMatrix(); cameraTarget.set(...cameraConfig.target); defaultCamera = { yaw: THREE.MathUtils.degToRad(cameraConfig.startYaw), pitch: THREE.MathUtils.degToRad(cameraConfig.startPitch), distance: cameraConfig.startDistance }; resetCamera(); }
+
+// Ease toward an authored face without changing the learner's zoom, FOV, or camera limits.
+function focusCamera({ position, normal } = {}) {
+  if (![position, normal].every(v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite)) || Math.hypot(...normal) < .001) throw new Error("CAMERA_FOCUS_INVALID: position and nonzero normal are required");
+  cancelCameraFocus();
+  const [x, y, z] = normal;
+  const fromYaw = cameraState.yaw, fromPitch = cameraState.pitch, fromTarget = cameraTarget.clone();
+  const yaw = Math.hypot(x, z) > .001 ? Math.atan2(x, z) : fromYaw;
+  const yawDelta = Math.atan2(Math.sin(yaw - fromYaw), Math.cos(yaw - fromYaw));
+  const pitch = clamp(Math.atan2(y, Math.hypot(x, z)), THREE.MathUtils.degToRad(cameraConfig.minPitch), THREE.MathUtils.degToRad(cameraConfig.maxPitch));
+  const target = new THREE.Vector3(...position), started = performance.now();
+  const move = now => {
+    const progress = clamp((now - started) / 700, 0, 1);
+    const eased = progress * progress * (3 - 2 * progress);
+    cameraState.yaw = fromYaw + yawDelta * eased;
+    cameraState.pitch = fromPitch + (pitch - fromPitch) * eased;
+    cameraTarget.lerpVectors(fromTarget, target, eased);
+    updateCamera();
+    cameraFocusFrame = progress < 1 ? requestAnimationFrame(move) : null;
+  };
+  cameraFocusFrame = requestAnimationFrame(move);
+}
 
 const guiService = guiServiceTools.createGuiService({
   setting,
   elements: {
     viewport: elements.viewport, gizmoLayer: elements.gizmoLayer, topMessageLayer: elements.topMessageLayer, feedbackLayer: elements.feedbackLayer, choiceDock: elements.choiceDock, controlDock: elements.controlDock, busyLayer: elements.busyLayer, dialogLayer: elements.dialogLayer, topbar: elements.topbar,
     question: elements.lessonQuestion, questionLabel: elements.lessonQuestionLabel, questionText: elements.lessonQuestionText,
+    guiAnswer: elements.guiAnswer, guiAnswerLabel: elements.guiAnswerLabel, guiAnswerText: elements.guiAnswerText, guiAnswerIcon: elements.guiAnswerIcon,
     labConsole: elements.howto, quizConsole: elements.quizPanel, objective: elements.objective,
     consoleTitle: elements.stepTitle, consoleMessage: elements.stepDescription, quizMessage: elements.question, consoleIcon: elements.consoleStateImage
   },
@@ -852,7 +902,7 @@ function updateHighlightBounds(now = performance.now()) {
     const minRadius = ring.minRadius ?? .58;
     const pulse = 1 + Math.sin(now * (ring.pulseSpeed ?? .0022)) * (ring.pulseAmount ?? .025);
     highlightRing.position.set(center.x, box.min.y + (ring.heightOffset ?? .055), center.z);
-    highlightRing.scale.set(Math.max(minRadius, size.x * .5 + padding) * pulse, 1, Math.max(minRadius, size.z * .5 + padding) * pulse);
+    highlightRing.scale.setScalar(Math.max(minRadius, Math.min(.82, Math.min(size.x, size.z) * .5 + padding)) * pulse);
   }
   if (!selectedObject || !floatingMarker.visible) return;
   const markerBoundsRoot = selectedObject.userData.visualRoot || selectedObject;
@@ -903,28 +953,33 @@ function setHovered(object) {
   updateHighlightBounds();
   markSceneActive();
 }
-function disposeObject(object) { object.traverse(child => { child.userData?.domElement?.remove?.(); child.userData?.worldUiTexture?.dispose?.(); child.geometry?.dispose?.(); if (Array.isArray(child.material)) child.material.forEach(m => m.dispose?.()); else child.material?.dispose?.(); }); }
+function disposeObject(object) { object.traverse(child => { child.userData?.domElement?.remove?.(); child.userData?.worldUiTexture?.dispose?.(); if (!child.userData?.sharedLibraryGeometry) child.geometry?.dispose?.(); if (Array.isArray(child.material)) child.material.forEach(m => m.dispose?.()); else child.material?.dispose?.(); }); }
 function setDisplayHovered(object) { if (hoveredDisplay === object) return; if (hoveredDisplay?.material) hoveredDisplay.material.opacity = hoveredDisplay.userData.idleOpacity; hoveredDisplay = object; if (object?.material) object.material.opacity = object.userData.hoverOpacity; }
-function clearWorld() { setHovered(null); setDisplayHovered(null); setSelected(null); hideDragCue(); removeDragGuideline(); animations.clear(); commitFlashes.clear(); activeGuidelines.clear(); targetFocusEffects.clear(); worldCallouts.clear(); worldGuiSystem.clearAll(); clickme.clearAll(); spawnSequence = 0; runtime.sceneEntered = false; runtime.lessonSceneInitialized = false; for (const child of [...lessonGroup.children]) { lessonGroup.remove(child); disposeObject(child); } interactive.length = 0; uiDisplays.length = 0; while (effectGroup.children.length) { const child = effectGroup.children.pop(); disposeObject(child); } markSceneActive(); }
+function clearWorld() { cancelCameraFocus(); setHovered(null); setDisplayHovered(null); setSelected(null); hideDragCue(); removeDragGuideline(); animations.clear(); commitFlashes.clear(); activeGuidelines.clear(); targetFocusEffects.clear(); worldCallouts.clear(); worldGuiSystem.clearAll(); clickme.clearAll(); spawnSequence = 0; runtime.sceneEntered = false; runtime.lessonSceneInitialized = false; for (const child of [...lessonGroup.children]) { lessonGroup.remove(child); disposeObject(child); } interactive.length = 0; uiDisplays.length = 0; while (effectGroup.children.length) { const child = effectGroup.children.pop(); disposeObject(child); } markSceneActive(); }
 
 function startCommitFlash(object) { const config = setting.object.commit; if (!config?.enabled || !object) return; restoreObjectSurface(object); const materials = []; forEachObjectMaterial(object, material => { if (!material.transparent) materials.push(material); }); if (!materials.length) return; commitFlashes.set(object, { start: performance.now(), duration: config.duration || 780, flashes: config.flashes || 3, color: new THREE.Color(config.color || "#ffffff"), materials: [...new Set(materials)].map(material => ({ material, baseColor: material.color.clone(), emissive: material.emissive?.clone(), emissiveIntensity: material.emissiveIntensity })) }); }
 
 function syncInteractive(object) { const enabled = Boolean(object.userData.draggable || object.userData.clickable), index = interactive.indexOf(object); if (enabled && index < 0) interactive.push(object); if (!enabled && index >= 0) { interactive.splice(index, 1); if (hovered === object) setHovered(null); if (selected === object) setSelected(null); } }
-function makeHandle(mesh) { const changed = () => markSceneActive(); const cancelAnimation = () => { const previous = animations.get(mesh); if (previous?.kind === "spawn" || previous?.kind === "drop") mesh.scale.setScalar(1); animations.delete(mesh); }; const clearHighlight = () => { if (hovered === mesh) setHovered(null); if (selected === mesh) setSelected(null); }; const handle = { object3D: mesh, setPosition(x, y, z) { cancelAnimation(); mesh.position.set(x, y, z); mesh.userData.groundY = y; changed(); }, setRotation(x = 0, y = 0, z = 0) { mesh.rotation.set(THREE.MathUtils.degToRad(x), THREE.MathUtils.degToRad(y), THREE.MathUtils.degToRad(z)); changed(); }, setScale(x = 1, y = x, z = x) { const visual = mesh.userData.visualRoot || mesh; visual.scale.set(x, y, z); changed(); }, animateTo(x, y, z, { duration = 620, delay = 0, arcHeight = .7 } = {}) { cancelAnimation(); animations.set(mesh, { kind: "move", start: performance.now() + delay, duration, from: mesh.position.clone(), to: new THREE.Vector3(x, y, z), arcHeight }); mesh.userData.groundY = y; markSceneActive(); }, stopAnimation() { cancelAnimation(); changed(); }, playCommit(options = {}) { startCommitFlash(mesh); if (options.spark !== false) screenSpark(mesh); markSceneActive(); }, setHighlighted(value) { applyObjectHighlight(mesh, value ? "hover" : "none"); changed(); }, setColor(color) { forEachObjectMaterial(mesh, value => { value.color.set(color); rememberHighlightSurface(value).baseHighlightColor.copy(value.color); }); markSceneActive(); }, setVisible(value) { mesh.visible = value; if (!value) clearHighlight(); changed(); }, setDraggable(value) { mesh.userData.draggable = Boolean(value); syncInteractive(mesh); }, setClickable(value) { mesh.userData.clickable = Boolean(value); syncInteractive(mesh); }, setHitArea(size = null, offset = [0, 0, 0]) { setInteractionHitArea(mesh, size, offset); markSceneActive(); }, setDragFromCenter(value) { mesh.userData.dragFromCenter = Boolean(value); }, remove() { clearHighlight(); commitFlashes.delete(mesh); activeGuidelines.delete(mesh); mesh.parent?.remove(mesh); const index = interactive.indexOf(mesh); if (index >= 0) interactive.splice(index, 1); disposeObject(mesh); changed(); } }; mesh.userData.lessonHandle = handle; return Object.freeze(handle); }
-function queueSpawn(object, enabled = true) { if (!enabled || !setting.object.spawn.enabled) return; object.userData.spawnable = true; object.scale.setScalar(.001); if (runtime.sceneEntered) animations.set(object, { kind: "spawn", start: performance.now(), duration: setting.object.spawn.duration }); }
-function playWorldEntrance() { let index = 0; lessonGroup.traverse(object => { if (object.userData.spawnable) { object.scale.setScalar(.001); animations.set(object, { kind: "spawn", start: performance.now() + index++ * setting.object.spawn.stagger, duration: setting.object.spawn.duration }); } }); }
+function makeHandle(mesh) { const changed = () => markSceneActive(); const cancelAnimation = () => { const previous = animations.get(mesh); if (previous?.kind === "spawn" || previous?.kind === "drop") { mesh.scale.setScalar(1); if (previous.baseY != null) mesh.position.y = previous.baseY; } animations.delete(mesh); }; const clearHighlight = () => { if (hovered === mesh) setHovered(null); if (selected === mesh) setSelected(null); }; const handle = { object3D: mesh, setPosition(x, y, z) { cancelAnimation(); mesh.position.set(x, y, z); mesh.userData.groundY = y; changed(); }, setRotation(x = 0, y = 0, z = 0) { mesh.rotation.set(THREE.MathUtils.degToRad(x), THREE.MathUtils.degToRad(y), THREE.MathUtils.degToRad(z)); changed(); }, setScale(x = 1, y = x, z = x) { const visual = mesh.userData.visualRoot || mesh; visual.scale.set(x, y, z); changed(); }, animateTo(x, y, z, { duration = 620, delay = 0, arcHeight = .7 } = {}) { cancelAnimation(); animations.set(mesh, { kind: "move", start: performance.now() + delay, duration, from: mesh.position.clone(), to: new THREE.Vector3(x, y, z), arcHeight }); mesh.userData.groundY = y; markSceneActive(); }, stopAnimation() { cancelAnimation(); changed(); }, playCommit(options = {}) { startCommitFlash(mesh); if (options.spark !== false) screenSpark(mesh); markSceneActive(); }, setHighlighted(value) { applyObjectHighlight(mesh, value ? "hover" : "none"); changed(); }, setColor(color) { forEachObjectMaterial(mesh, value => { value.color.set(color); rememberHighlightSurface(value).baseHighlightColor.copy(value.color); }); markSceneActive(); }, setWash(color = "#ffffff", amount = 0) { forEachObjectMaterial(mesh, value => setMaterialWash(value, color, amount)); markSceneActive(); }, setOpacity(opacity = 1) { const alpha = clamp(Number(opacity) || 0, 0, 1); forEachObjectMaterial(mesh, value => { value.opacity = alpha; value.transparent = alpha < .999; value.depthWrite = alpha >= .72; value.needsUpdate = true; }); markSceneActive(); }, setVisible(value) { mesh.visible = value; if (!value) clearHighlight(); changed(); }, setDraggable(value) { mesh.userData.draggable = Boolean(value); syncInteractive(mesh); }, setClickable(value) { mesh.userData.clickable = Boolean(value); syncInteractive(mesh); }, setHitArea(size = null, offset = [0, 0, 0]) { setInteractionHitArea(mesh, size, offset); markSceneActive(); }, setDragFromCenter(value) { mesh.userData.dragFromCenter = Boolean(value); }, remove() { clearHighlight(); commitFlashes.delete(mesh); activeGuidelines.delete(mesh); mesh.parent?.remove(mesh); const index = interactive.indexOf(mesh); if (index >= 0) interactive.splice(index, 1); disposeObject(mesh); changed(); } }; mesh.userData.lessonHandle = handle; return Object.freeze(handle); }
+function spawnAnimation(object, start = performance.now()) { return { kind: "spawn", start, duration: object.userData.spawnDuration || setting.object.spawn.duration, baseY: object.position.y, height: object.userData.spawnFloatHeight || 0, scaleOvershoot: object.userData.spawnScaleOvershoot !== false }; }
+function queueSpawn(object, enabled = true) { if (!enabled || !setting.object.spawn.enabled) return; object.userData.spawnable = true; object.scale.setScalar(.001); if (runtime.sceneEntered) animations.set(object, spawnAnimation(object)); }
+function playWorldEntrance() { let index = 0; lessonGroup.traverse(object => { if (!object.userData.spawnable) return; animations.delete(object); if (object.visible === false) { object.scale.setScalar(1); return; } object.scale.setScalar(.001); animations.set(object, spawnAnimation(object, performance.now() + index++ * setting.object.spawn.stagger)); }); }
 function updateGuideline(line) { const from = line.userData.fromObject ? line.userData.fromObject.getWorldPosition(new THREE.Vector3()) : line.userData.guideFrom.clone(), to = line.userData.guideTo, middle = new THREE.Vector3((from.x + to.x) / 2, Math.max(from.y, to.y) + 2.3, (from.z + to.z) / 2), curve = new THREE.QuadraticBezierCurve3(from, middle, to), points = curve.getPoints(40), direction = points.at(-1).clone().sub(points.at(-2)).normalize(); line.geometry.setFromPoints(points); line.computeLineDistances(); line.userData.arrow.position.copy(to).addScaledVector(direction, -line.userData.arrowOffset); line.userData.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); }
 function createGuideline({ from = [0, .2, 0], fromObject = null, to = [0, .2, 0], color = setting.interaction.guideline.color, parent = lessonGroup } = {}) { const style = threeColor(color), guide = setting.interaction.guideline, arrowLength = guide.arrowLength ?? .52, geometry = new THREE.BufferGeometry(), line = new THREE.Line(geometry, new THREE.LineDashedMaterial({ color: style.color, dashSize: guide.dashSize, gapSize: guide.gapSize, transparent: true, opacity: .92 * style.alpha, depthTest: false, toneMapped: false, fog: false })), arrow = new THREE.Mesh(new THREE.ConeGeometry(guide.arrowSize ?? .22, arrowLength, 14), new THREE.MeshBasicMaterial({ color: style.color, transparent: true, opacity: .98 * style.alpha, depthTest: false, depthWrite: false, toneMapped: false, fog: false })); arrow.renderOrder = 951; Object.assign(line.userData, { flowingGuideline: true, fromObject, guideFrom: new THREE.Vector3(...from), guideTo: new THREE.Vector3(...to), arrow, arrowOffset: arrowLength * .46 }); line.add(arrow); line.renderOrder = 950; updateGuideline(line); parent.add(line); activeGuidelines.add(line); return line; }
-function createLineRender({ name = "line-render", from = [0, .24, 0], to = [1, .24, 0], color = "#4f7fe8", opacity = .9, occludedOpacity = .14, dashed = false, arrow = true, parent = lessonGroup } = {}) {
-  const start = new THREE.Vector3(...from), end = new THREE.Vector3(...to), direction = end.clone().sub(start), length = direction.length();
-  if (length < .001) throw new Error("LINE_RENDER_INVALID: from และ to ต้องเป็นคนละตำแหน่ง");
+function createLineRender({ name = "line-render", from = [0, .24, 0], to = [1, .24, 0], points = null, closed = false, color = "#4f7fe8", opacity = .9, occludedOpacity = .14, dashed = false, arrow = true, parent = lessonGroup } = {}) {
+  const path = points == null ? [from, to] : points;
+  if (!Array.isArray(path) || path.length < 2 || path.some(p => !Array.isArray(p) || p.length !== 3 || p.some(v => !Number.isFinite(v)))) throw new Error("LINE_RENDER_INVALID: points must contain at least two finite xyz positions");
+  const vertices = path.map(p => new THREE.Vector3(...p));
+  if (closed && vertices[0].distanceTo(vertices.at(-1)) > .001) vertices.push(vertices[0].clone());
+  const end = vertices.at(-1), start = vertices.at(-2), direction = end.clone().sub(start), length = direction.length();
+  if (length < .001) throw new Error("LINE_RENDER_INVALID: consecutive endpoints must differ");
   direction.normalize();
   const style = threeColor(color), guide = setting.interaction.guideline;
   const materialOptions = { color: style.color, transparent: true, opacity: clamp(opacity, 0, 1) * style.alpha, depthTest: true, depthWrite: false, toneMapped: false, fog: false };
   const lineMaterial = dashed
     ? new THREE.LineDashedMaterial({ ...materialOptions, dashSize: guide.dashSize, gapSize: guide.gapSize })
     : new THREE.LineBasicMaterial(materialOptions);
-  const group = new THREE.Group(), lineGeometry = new THREE.BufferGeometry().setFromPoints([start, end]), line = new THREE.Line(lineGeometry, lineMaterial);
+  const group = new THREE.Group(), lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices), line = new THREE.Line(lineGeometry, lineMaterial);
   line.renderOrder = 48;
   line.raycast = () => { };
   if (dashed) line.computeLineDistances();
@@ -973,7 +1028,7 @@ function setOperatorAppearance(group, state) { const valid = state === "valid", 
 function pulseOperator(group) { cancelAnimationFrame(group.userData.operatorPulseFrame); const start = performance.now(), duration = 760, baseY = group.position.y; const tick = now => { if (!group.parent) return; const progress = clamp((now - start) / duration, 0, 1), fade = 1 - progress, pop = Math.sin(progress * Math.PI), bounce = Math.abs(Math.sin(progress * Math.PI * 2.4)) * fade; group.scale.setScalar(1 + pop * .2 + bounce * .055); group.position.y = baseY + bounce * .3; group.rotation.z = Math.sin(progress * Math.PI * 4) * fade * .055; if (progress < 1) group.userData.operatorPulseFrame = requestAnimationFrame(tick); else { group.scale.setScalar(1); group.position.y = baseY; group.rotation.z = 0; group.userData.operatorPulseFrame = 0; } }; group.userData.operatorPulseFrame = requestAnimationFrame(tick); }
 function createOperatorPart(length = 1.16) { const geometry = new RoundedBoxGeometry(length, .3, .34, 6, .11), part = new THREE.Mesh(geometry, new THREE.MeshPhysicalMaterial({ color: "#6049c7", roughness: .25, metalness: .03, clearcoat: .9, clearcoatRoughness: .1, emissive: "#25186f", emissiveIntensity: .14 })); part.position.y = .48; part.castShadow = Boolean(shadowSetting.lessonCast); part.receiveShadow = shadowSetting.lessonReceive !== false; return part; }
 function createOperatorDot() { const dot = new THREE.Mesh(new THREE.SphereGeometry(.17, 18, 12), new THREE.MeshPhysicalMaterial({ color: "#6049c7", roughness: .25, metalness: .03, clearcoat: .9, clearcoatRoughness: .1, emissive: "#25186f", emissiveIntensity: .14 })); dot.position.y = .48; dot.castShadow = Boolean(shadowSetting.lessonCast); dot.receiveShadow = shadowSetting.lessonReceive !== false; return dot; }
-const SUPPORTED_OPERATOR_SIGNS = Object.freeze(["<", ">", "=", "≠", "<=", ">=", "≤", "≥", "+", "-", "−", "×", "x", "X", "÷"]);
+const SUPPORTED_OPERATOR_SIGNS = Object.freeze(["<", ">", "=", "≠", "!=", "<=", ">=", "≤", "≥", "+", "-", "−", "×", "x", "X", "÷"]);
 function createOperatorParts(text) {
   text = text === "!=" ? "≠" : text === "<=" ? "≤" : text === ">=" ? "≥" : text;
   if (text === "=") { const top = createOperatorPart(1.28), bottom = createOperatorPart(1.28); top.position.z = -.29; bottom.position.z = .29; return [top, bottom]; }
@@ -988,7 +1043,23 @@ function createOperatorParts(text) {
   const equalsBar = createOperatorPart(1.42); equalsBar.position.z = .82; return [upper, lower, equalsBar];
 }
 function roundedZonePoints(width, depth, radius = .45, segments = 5) { const points = [], corners = [[width / 2 - radius, depth / 2 - radius, 0, Math.PI / 2], [-width / 2 + radius, depth / 2 - radius, Math.PI / 2, Math.PI], [-width / 2 + radius, -depth / 2 + radius, Math.PI, Math.PI * 1.5], [width / 2 - radius, -depth / 2 + radius, Math.PI * 1.5, Math.PI * 2]]; for (const [cx, cz, start, end] of corners) for (let index = 0; index <= segments; index++) { const angle = THREE.MathUtils.lerp(start, end, index / segments); points.push(new THREE.Vector3(cx + Math.cos(angle) * radius, 0, cz + Math.sin(angle) * radius)); } points.push(points[0].clone()); return points; }
-function lessonMaterial(options = {}) { const color = options.color || "#ffffff", surface = setting.object.surface, opacity = clamp(options.opacity ?? 1, 0, 1), parameters = { color, roughness: options.roughness ?? surface.roughness, metalness: options.metalness ?? .015, transparent: opacity < 1, opacity, depthWrite: options.depthWrite ?? opacity >= .98, emissive: options.emissive || new THREE.Color(color).multiplyScalar(.12), emissiveIntensity: options.emissiveIntensity ?? surface.emissiveIntensity }; if (options.clearcoat != null) { parameters.clearcoat = options.clearcoat; parameters.clearcoatRoughness = options.clearcoatRoughness ?? .2; } const result = options.clearcoat != null ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters); if (options.texture) result.map = lessonTextureRecord(options.texture).texture; return result; }
+const proceduralSurfaceTextureCache = new Map();
+function proceduralPatternTexture(kind, colors = []) {
+  const palette = [colors[0] || "#ffb7c4", colors[1] || "#d8647a", colors[2] || "#fffaf0"], key = `${kind}|${palette.join("|")}`;
+  if (proceduralSurfaceTextureCache.has(key)) return proceduralSurfaceTextureCache.get(key);
+  const canvas = document.createElement("canvas"), context = canvas.getContext("2d"); canvas.width = canvas.height = 64;
+  context.fillStyle = palette[0]; context.fillRect(0, 0, 64, 64);
+  if (kind === "cute-base") {
+    context.fillStyle = palette[2];
+    [[16, 16], [48, 48]].forEach(([x, y]) => { context.beginPath(); context.arc(x, y, 6, 0, Math.PI * 2); context.fill(); });
+    context.fillStyle = palette[1];
+    [[48, 16], [16, 48]].forEach(([x, y]) => { context.beginPath(); context.arc(x, y, 3.5, 0, Math.PI * 2); context.fill(); });
+  } else {
+    context.strokeStyle = palette[1]; context.globalAlpha = .48; context.lineWidth = 3; context.strokeRect(1.5, 1.5, 61, 61); context.globalAlpha = 1;
+  }
+  const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); texture.needsUpdate = true; proceduralSurfaceTextureCache.set(key, texture); return texture;
+}
+function lessonMaterial(options = {}) { const color = options.color || "#ffffff", surface = setting.object.surface, opacity = clamp(options.opacity ?? 1, 0, 1), baseParameters = { color, transparent: opacity < 1, opacity, depthWrite: options.depthWrite ?? opacity >= .98 }, parameters = { ...baseParameters, roughness: options.roughness ?? surface.roughness, metalness: options.metalness ?? .015, emissive: options.emissive || new THREE.Color(color).multiplyScalar(.12), emissiveIntensity: options.emissiveIntensity ?? surface.emissiveIntensity }; if (options.clearcoat != null) { parameters.clearcoat = options.clearcoat; parameters.clearcoatRoughness = options.clearcoatRoughness ?? .2; } const result = options.unlit ? new THREE.MeshBasicMaterial({ ...baseParameters, toneMapped: false }) : options.clearcoat != null ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters); if (options.pattern === "simple-grid" || options.pattern === "cute-base") { const pattern = proceduralPatternTexture(options.pattern, options.patternColors), repeat = Array.isArray(options.patternRepeat) ? options.patternRepeat : null; result.map = repeat ? pattern.clone() : pattern; if (repeat) { result.map.wrapS = result.map.wrapT = THREE.RepeatWrapping; result.map.repeat.set(Math.max(.01, Number(repeat[0]) || 1), Math.max(.01, Number(repeat[1]) || 1)); result.map.needsUpdate = true; } } else if (options.texture) result.map = lessonTextureRecord(options.texture).texture; return result; }
 const SUPPORTED_PRIMITIVE_SHAPES = Object.freeze([
   "box", "rounded-box", "sharp-box", "sphere", "hemisphere", "cylinder", "half-cylinder", "quarter-cylinder",
   "cone", "pyramid", "prism", "frustum", "capsule", "sector", "sector-flat", "ring-sector", "ring-sector-flat",
@@ -1130,14 +1201,14 @@ function primitiveGeometry(shape = "box", definition = {}) {
     default: throw new Error(`LESSON_PRIMITIVE_UNSUPPORTED: addPrimitive ไม่รองรับรูปทรง ${shape}`);
   }
 }
-function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "arrow-flat", "circle", "ring", "sector-flat", "ring-sector-flat", "polygon-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
+function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "arrow-flat", "circle", "ring", "sector-flat", "ring-sector-flat", "polygon-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; if (materialDefinition.pattern && mesh.material.map) { const explicitRepeat = Array.isArray(materialDefinition.patternRepeat) ? materialDefinition.patternRepeat : null; mesh.material.map = mesh.material.map.clone(); if (explicitRepeat) mesh.material.map.repeat.set(Math.max(.01, Number(explicitRepeat[0]) || 1), Math.max(.01, Number(explicitRepeat[1]) || 1)); else { const cell = Math.max(.25, Number(materialDefinition.patternCell) || (materialDefinition.pattern === "cute-base" ? 1.2 : .8)), patternSize = materialDefinition.patternSize || [size[0], size[2] ?? size[1]], width = Math.max(cell, Math.abs(Number(patternSize[0]) || 1)), depth = Math.max(cell, Math.abs(Number(patternSize[1]) || 1)); mesh.material.map.repeat.set(width / cell, depth / cell); } mesh.material.map.needsUpdate = true; } mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
 function prepareLessonVisual(root, interactionRoot) { root.traverse(child => { if (!child.userData.isLessonDecoration) child.userData.interactionRoot = interactionRoot; }); forEachObjectMaterial(root, value => rememberHighlightSurface(value)); }
 function setInteractionHitArea(root, size = null, offset = [0, 0, 0]) { const previous = root.userData.interactionHitArea; if (previous) { root.remove(previous); previous.geometry?.dispose?.(); previous.material?.dispose?.(); root.userData.interactionHitArea = null; } if (!Array.isArray(size) || size.length < 3 || size.some(value => Number(value) <= 0)) return; const hitArea = new THREE.Mesh(new THREE.BoxGeometry(...size.map(Number)), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })); hitArea.name = `${root.name || "lesson-object"}-hit-area`; hitArea.position.fromArray(offset); Object.assign(hitArea.userData, { isLessonDecoration: true, interactionRoot: root }); root.add(hitArea); root.userData.interactionHitArea = hitArea; }
-function configureLessonObject(root, visual, options = {}) { const position = options.position || [0, 0, 0], rotation = options.rotation || [0, 0, 0], scale = options.scale ?? 1, scaleValues = Array.isArray(scale) ? scale : [scale, scale, scale]; root.name = options.name || root.name || "lesson-object"; root.position.fromArray(position); root.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); visual.scale.multiply(new THREE.Vector3(...scaleValues)); Object.assign(root.userData, { visualRoot: visual, draggable: Boolean(options.draggable), clickable: Boolean(options.clickable || options.onClick), tapToClick: Boolean(options.tapToClick), tapClickTolerance: Number.isFinite(options.tapClickTolerance) ? Math.max(1, options.tapClickTolerance) : 7, selectionFeedback: options.selectionFeedback !== false, dragAxis: options.dragAxis || setting.interaction.defaultDragAxis, dragLiftHeight: options.dragLiftHeight, dragFromCenter: Boolean(options.dragFromCenter), hoverMessage: options.hoverMessage || "", guideTarget: options.guideTarget || null, onHover: typeof options.onHover === "function" ? options.onHover : null, onDrag: options.onDrag || null, onDrop: options.onDrop || null, onClick: options.onClick || null, objectiveAction: options.objectiveAction, groundY: position[1], debugTargetSize: options.targetSize, debugAreaHidden: options.debugAreaHidden === true }); prepareLessonVisual(visual, root); setInteractionHitArea(root, options.hitArea, options.hitAreaOffset); lessonGroup.add(root); queueSpawn(root, options.spawn !== false); const handle = makeHandle(root); syncInteractive(root); return handle; }
+function configureLessonObject(root, visual, options = {}) { const position = options.position || [0, 0, 0], rotation = options.rotation || [0, 0, 0], scale = options.scale ?? 1, scaleValues = Array.isArray(scale) ? scale : [scale, scale, scale]; root.name = options.name || root.name || "lesson-object"; root.position.fromArray(position); root.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); visual.scale.multiply(new THREE.Vector3(...scaleValues)); Object.assign(root.userData, { visualRoot: visual, draggable: Boolean(options.draggable), clickable: Boolean(options.clickable || options.onClick), tapToClick: Boolean(options.tapToClick), tapClickTolerance: Number.isFinite(options.tapClickTolerance) ? Math.max(1, options.tapClickTolerance) : 7, selectionFeedback: options.selectionFeedback !== false, commitFeedback: options.commitFeedback !== false, dragAxis: options.dragAxis || setting.interaction.defaultDragAxis, dragLiftHeight: options.dragLiftHeight, dragFromCenter: Boolean(options.dragFromCenter), hoverMessage: options.hoverMessage || "", guideTarget: options.guideTarget || null, onHover: typeof options.onHover === "function" ? options.onHover : null, onDrag: options.onDrag || null, onDrop: options.onDrop || null, onClick: options.onClick || null, objectiveAction: options.objectiveAction, groundY: position[1], spawnFloatHeight: Math.max(0, Number(options.spawnFloatHeight) || 0), spawnScaleOvershoot: options.spawnScaleOvershoot !== false, spawnDuration: options.spawnDuration == null ? null : Math.max(1, Number(options.spawnDuration) || 1), debugTargetSize: options.targetSize, debugAreaHidden: options.debugAreaHidden === true }); prepareLessonVisual(visual, root); setInteractionHitArea(root, options.hitArea, options.hitAreaOffset); lessonGroup.add(root); queueSpawn(root, options.spawn !== false); const handle = makeHandle(root); syncInteractive(root); return handle; }
 function addPrimitive(options = {}) { const root = new THREE.Group(), visual = new THREE.Group(), mesh = createPrimitivePart(options); visual.add(mesh); root.add(visual); return configureLessonObject(root, visual, options); }
 function addGroup(options = {}) { const root = new THREE.Group(), visual = new THREE.Group(); for (const definition of options.parts || options.children || []) visual.add(createPrimitivePart(definition)); root.add(visual); return configureLessonObject(root, visual, options); }
 function libraryAsset(id) { const definition = lessonAssetLibrary.assets[id]; if (!definition) throw new Error(`LESSON_ASSET_NOT_FOUND: ไม่พบ Asset ID ${id}`); return definition; }
-const libraryModelTemplates = new Map();
+const libraryModelTemplates = new Map(), libraryPreparedModelTemplates = new Map();
 function makeTextCanvas(text, options = {}) { const canvas = document.createElement("canvas"), width = options.canvasWidth || 768, height = options.canvasHeight || 320; canvas.width = width; canvas.height = height; const context = canvas.getContext("2d"), fontSize = options.fontSize || 190; context.clearRect(0, 0, width, height); if (options.background) { context.fillStyle = options.background; context.beginPath(); context.roundRect(16, 16, width - 32, height - 32, options.radius || 64); context.fill(); } context.font = `${options.fontWeight || 900} ${fontSize}px ${options.fontFamily || "system-ui"}`; context.fillStyle = options.color || "#3a315f"; context.textAlign = "center"; context.textBaseline = "middle"; context.fillText(String(text), width / 2, height / 2 + (options.baselineOffset || 0)); const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; return texture; }
 function addText3D(options = {}) { const root = new THREE.Group(), visual = new THREE.Group(), texture = makeTextCanvas(options.text ?? "", options), sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, depthTest: options.depthTest !== false, toneMapped: false })), size = options.size || [3.6, 1.5]; sprite.scale.set(size[0], size[1], 1); sprite.userData.textTexture = texture; visual.add(sprite); root.add(visual); return configureLessonObject(root, visual, options); }
 const sevenSegmentMasks = Object.freeze([
@@ -1567,6 +1638,34 @@ function addWorldLabel(options = {}) {
   });
 }
 async function loadCustomModel(path, options = {}) { if (!path) throw new Error("LESSON_ASSET_PATH_REQUIRED: world.addModel ต้องมี path"); const base = options.baseUrl || runtime.lessonUrl || import.meta.url, url = runtimeAssetUrl(path, base); if (new URL(url).origin !== location.origin) throw new Error("LESSON_ASSET_ORIGIN_ERROR: รองรับเฉพาะโมเดลที่อยู่ origin เดียวกัน"); return new Promise((resolve, reject) => { const finish = object => resolve(object), fail = error => reject(new Error(`LESSON_ASSET_LOAD_FAILED: โหลดโมเดล ${path} ไม่สำเร็จ (${error?.message || "unknown"})`)), extension = new URL(url).pathname.split(".").pop().toLowerCase(); if (extension === "glb" || extension === "gltf") import("three/addons/loaders/GLTFLoader.js").then(({ GLTFLoader }) => new GLTFLoader().load(url, gltf => finish(gltf.scene), undefined, fail)).catch(fail); else if (extension === "fbx") import("three/addons/loaders/FBXLoader.js").then(({ FBXLoader }) => new FBXLoader().load(url, finish, undefined, fail)).catch(fail); else fail(new Error("รองรับเฉพาะ .glb, .gltf และ .fbx")); }); }
+function enableMaterialWash(value) {
+  if (!value || value._lessonWashEnabled) return value;
+  value._lessonWashEnabled = true;
+  const previousCompile = value.onBeforeCompile, previousCacheKey = value.customProgramCacheKey.bind(value);
+  const state = { color: new THREE.Color("#ffffff"), amount: 0, shader: null };
+  value.userData.lessonWash = state;
+  value.onBeforeCompile = (shader, activeRenderer) => {
+    previousCompile.call(value, shader, activeRenderer);
+    shader.uniforms.lessonWashColor = { value: state.color };
+    shader.uniforms.lessonWashAmount = { value: state.amount };
+    shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nuniform vec3 lessonWashColor;\nuniform float lessonWashAmount;");
+    shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", "#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, lessonWashColor, lessonWashAmount);");
+    state.shader = shader;
+  };
+  value.customProgramCacheKey = () => `${previousCacheKey()}|lesson-wash-v1`;
+  value.needsUpdate = true;
+  return value;
+}
+function setMaterialWash(value, color, amount) {
+  enableMaterialWash(value);
+  const state = value.userData.lessonWash;
+  state.color.set(color);
+  state.amount = clamp(Number(amount) || 0, 0, 1);
+  if (state.shader) {
+    state.shader.uniforms.lessonWashColor.value.copy(state.color);
+    state.shader.uniforms.lessonWashAmount.value = state.amount;
+  }
+}
 function platformImportedMaterial(source, options = {}) {
   const textureEnabled = options.textureEnabled !== false;
   const map = textureEnabled ? source?.map || null : null;
@@ -1595,12 +1694,10 @@ function platformImportedMaterial(source, options = {}) {
   }
   if (options.roughness != null) value.roughness = options.roughness;
   if (options.metalness != null) value.metalness = options.metalness;
-  return value;
+  return enableMaterialWash(value);
 }
-function configureModelObject(object, options = {}) {
+function prepareModelObject(object, options = {}) {
   stripImportedSceneControls(object);
-  const root = new THREE.Group(), visual = new THREE.Group();
-  visual.add(object); root.add(visual);
   object.traverse(child => {
     if (!child.isMesh) return;
     child.geometry = child.geometry.clone();
@@ -1617,22 +1714,198 @@ function configureModelObject(object, options = {}) {
     object.scale.multiplyScalar(factor);
     object.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
   }
+  return object;
+}
+function wrapModelObject(object, options = {}) {
+  const root = new THREE.Group(), visual = new THREE.Group();
+  visual.add(object); root.add(visual);
   return configureLessonObject(root, visual, options);
 }
+function configureModelObject(object, options = {}) { return wrapModelObject(prepareModelObject(object, options), options); }
 async function addModel(options = {}) { return configureModelObject(await loadCustomModel(options.path, options), options); }
-function addLibraryObject(options = {}) { const id = options.asset || options.id, definition = libraryAsset(id), common = { ...options, name: options.name || id, scale: options.scale ?? definition.defaultScale ?? 1 }; if (definition.type === "prefab") { const parts = (definition.parts || []).map(part => options.color ? { ...part, color: options.color } : part); return addGroup({ ...common, parts }); } if (definition.type === "model") { if (!libraryModelTemplates.has(id)) libraryModelTemplates.set(id, loadCustomModel(definition.path, { baseUrl: import.meta.url })); return libraryModelTemplates.get(id).then(template => configureModelObject(template.clone(true), { ...common, targetSize: options.targetSize ?? definition.targetSize, normalize: options.normalize ?? definition.normalize })); } throw new Error(`LESSON_ASSET_TYPE_UNSUPPORTED: Asset ${id} ไม่รองรับ type ${definition.type}`); }
+function libraryModelTemplate(id, definition) { if (!libraryModelTemplates.has(id)) libraryModelTemplates.set(id, loadCustomModel(definition.path, { baseUrl: import.meta.url })); return libraryModelTemplates.get(id); }
+function preparedLibraryKey(id, options = {}) { return JSON.stringify([id, options.normalize !== false, options.textureEnabled !== false, options.color || "", options.opacity ?? "", options.roughness ?? "", options.metalness ?? "", options.textureLight ?? "", options.vertexColors === true]); }
+function preparedLibraryModel(id, definition, options = {}) {
+  const normalizedOptions = { ...options, normalize: options.normalize ?? definition.normalize, targetSize: 1 };
+  const key = preparedLibraryKey(id, normalizedOptions);
+  if (!libraryPreparedModelTemplates.has(key)) {
+    const prepared = libraryModelTemplate(id, definition).then(template => prepareModelObject(template.clone(true), normalizedOptions));
+    libraryPreparedModelTemplates.set(key, prepared);
+  }
+  return libraryPreparedModelTemplates.get(key);
+}
+function clonePreparedLibraryModel(template) {
+  const object = template.clone(true);
+  object.traverse(child => {
+    if (!child.isMesh) return;
+    child.userData.sharedLibraryGeometry = true;
+    child.material = Array.isArray(child.material) ? child.material.map(value => enableMaterialWash(value.clone())) : enableMaterialWash(child.material?.clone?.() || child.material);
+  });
+  return object;
+}
+async function warmPreparedLibraryModels(templates) {
+  if (!templates.length) return templates;
+  const staging = new THREE.Group();
+  for (const template of templates) {
+    if (!template?.isObject3D) continue;
+    const object = clonePreparedLibraryModel(template);
+    object.traverse(child => { child.frustumCulled = false; });
+    staging.add(object);
+  }
+  if (!staging.children.length) return templates;
+  staging.position.y = -1000;
+  scene.add(staging);
+  try {
+    if (typeof renderer.compileAsync === "function") await renderer.compileAsync(scene, camera);
+    else renderer.compile(scene, camera);
+    const textures = new Set();
+    staging.traverse(child => {
+      if (!child.isMesh) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const value of materials) for (const key of ["map", "emissiveMap", "normalMap", "roughnessMap", "metalnessMap", "alphaMap"]) if (value?.[key]?.isTexture) textures.add(value[key]);
+    });
+    for (const texture of textures) renderer.initTexture(texture);
+  } finally {
+    scene.remove(staging);
+    disposeObject(staging);
+  }
+  return templates;
+}
+function sizePreparedLibraryModel(object, targetSize, normalize) {
+  if (normalize === false) return object;
+  object.scale.multiplyScalar(targetSize);
+  object.position.multiplyScalar(targetSize);
+  return object;
+}
+function preloadLibraryObjects(entries = []) {
+  const pending = new Map();
+  for (const entry of entries) {
+    const options = typeof entry === "string" ? { asset: entry } : { ...entry };
+    const id = options.asset || options.id, definition = libraryAsset(id);
+    if (definition.type === "prefab") { pending.set(`prefab:${id}`, Promise.resolve(definition)); continue; }
+    if (definition.type !== "model") throw new Error(`LESSON_ASSET_TYPE_UNSUPPORTED: Asset ${id} ไม่รองรับ type ${definition.type}`);
+    const resolved = { ...options, normalize: options.normalize ?? definition.normalize };
+    pending.set(preparedLibraryKey(id, resolved), preparedLibraryModel(id, definition, resolved));
+  }
+  return Promise.all(pending.values()).then(warmPreparedLibraryModels);
+}
+function addLibraryObject(options = {}) {
+  const id = options.asset || options.id, definition = libraryAsset(id), baseScale = options.scale ?? definition.defaultScale ?? 1, common = { ...options, name: options.name || id, scale: baseScale };
+  if (definition.type === "prefab") { const parts = (definition.parts || []).map(part => options.color ? { ...part, color: options.color } : part); return addGroup({ ...common, parts }); }
+  if (definition.type === "model") {
+    const normalize = options.normalize ?? definition.normalize, targetSize = options.targetSize ?? definition.targetSize ?? 3;
+    return preparedLibraryModel(id, definition, { ...options, normalize }).then(template => wrapModelObject(sizePreparedLibraryModel(clonePreparedLibraryModel(template), targetSize, normalize), { ...common, targetSize, normalize }));
+  }
+  throw new Error(`LESSON_ASSET_TYPE_UNSUPPORTED: Asset ${id} ไม่รองรับ type ${definition.type}`);
+}
 function addObject(options = {}) { const type = options.type || options.source?.type || "primitive", source = options.source || {}; if (type === "library") return addLibraryObject({ ...options, asset: options.asset || source.asset }); if (type === "model") return addModel({ ...options, path: options.path || source.path }); if (type === "label") return addWorldLabel(options); if (type === "text" || type === "text3d") return addText3D(options); if (type === "group" || type === "prefab") return addGroup(options); return addPrimitive({ ...options, shape: options.shape || source.shape, geometry: options.geometry || source.geometry }); }
-function addConnector({ name = "connector", from = [0, 0, 0], to = [0, 0, 1], color = "#65758b", thickness = .075, opacity = .72 } = {}) {
+function recolorOperatorMasterObject(object, color) {
+  if (!object) return;
+  forEachObjectMaterial(object, value => {
+    value.color.set(color);
+    rememberHighlightSurface(value).baseHighlightColor.copy(value.color);
+  });
+}
+function applyOperatorMasterAppearance(group, valid) {
+  const master = group.userData.operatorMaster;
+  if (!master) return setOperatorAppearance(group, valid ? "valid" : "neutral");
+  setOperatorAppearance(group, valid ? "valid" : "neutral");
+  const color = valid ? OPERATOR_SIGN_MASTER.completeColor : master.config.color;
+  if (!valid) group.userData.operatorEdge.material.color.set(color);
+  for (const part of group.userData.operatorParts) {
+    part.material.color.set(color);
+    part.material.emissive.set(valid ? "#0e5a3a" : color);
+    part.material.emissiveIntensity = valid ? .14 : .06;
+  }
+  recolorOperatorMasterObject(master.model, color);
+  markSceneActive();
+}
+function animateOperatorMasterState(group, valid) {
+  const master = group.userData.operatorMaster;
+  if (!master) return;
+  const startRotation = master.pivot?.rotation.x ?? master.flipAngle;
+  const endRotation = operatorFullTurnEnd(startRotation, master.restRotation);
+  if (!master.pivot) { applyOperatorMasterAppearance(group, valid); return; }
+  master.flipAngle = endRotation;
+  const version = ++master.motionVersion, startedAt = performance.now(), startY = master.pivot.position.y, startScale = master.pivot.scale.x, animation = OPERATOR_SIGN_MASTER.animation;
+  let appearanceChanged = false;
+  const frame = now => {
+    if (version !== master.motionVersion || !group.parent) return;
+    const progress = clamp((now - startedAt) / animation.duration, 0, 1), eased = .5 - Math.cos(progress * Math.PI) / 2, bounce = Math.sin(progress * Math.PI);
+    master.pivot.position.y = THREE.MathUtils.lerp(startY, master.baseY, eased) + bounce * animation.bounceHeight;
+    master.pivot.scale.setScalar(THREE.MathUtils.lerp(startScale, 1, eased) - bounce * animation.scaleDip);
+    master.pivot.rotation.x = THREE.MathUtils.lerp(startRotation, endRotation, eased);
+    if (!appearanceChanged && progress >= .5) { appearanceChanged = true; applyOperatorMasterAppearance(group, valid); }
+    markSceneActive();
+    if (progress < 1) { requestAnimationFrame(frame); return; }
+    master.pivot.position.y = master.baseY;
+    master.pivot.scale.setScalar(1);
+    master.pivot.rotation.x = endRotation;
+    if (master.targetValid === valid) applyOperatorMasterAppearance(group, valid);
+  };
+  requestAnimationFrame(frame);
+}
+function installOperatorSignMaster(group, visual, symbol, parts, text, referenceSize) {
+  const config = operatorSignMasterFor(text);
+  if (!config) return null;
+  const restRotation = THREE.MathUtils.degToRad(config.restFlip || 0);
+  const master = { config, model: null, pivot: null, baseY: 0, targetValid: false, motionVersion: 0, restRotation, flipAngle: restRotation };
+  group.userData.operatorMaster = master;
+  applyOperatorMasterAppearance(group, false);
+  const modelDefinitions = config.models || [{ asset: config.asset, rotation: config.rotation, mirrorX: config.mirrorX }];
+  Promise.all(modelDefinitions.map(component => {
+    const definition = libraryAsset(component.asset), normalize = definition.normalize !== false;
+    return preparedLibraryModel(component.asset, definition, { normalize, color: config.color, textureEnabled: false }).then(template => ({ component, template }));
+  })).then(preparedParts => {
+    if (!group.parent) return;
+    const pivot = new THREE.Group(), model = new THREE.Group();
+    pivot.name = `operator-master-${text}`;
+    model.name = `${pivot.name}-model`;
+    for (const { component, template } of preparedParts) {
+      const frame = new THREE.Group(), piece = clonePreparedLibraryModel(template), rotation = component.rotation || [0, 0, 0], position = component.position || [0, 0, 0], scale = component.scale || [1, 1, 1];
+      piece.rotation.set(...rotation.map(THREE.MathUtils.degToRad));
+      piece.scale.multiply(new THREE.Vector3(...scale));
+      frame.position.set(...position);
+      frame.rotation.y = THREE.MathUtils.degToRad(component.yaw || 0);
+      if (component.mirrorX) frame.scale.x = -1;
+      frame.add(piece);
+      model.add(frame);
+    }
+    const displayScale = config.displayScale || [1, 1, 1];
+    model.scale.set(...displayScale).multiplyScalar(referenceSize * (config.size || 1));
+    pivot.add(model);
+    pivot.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(model), center = bounds.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    pivot.updateMatrixWorld(true);
+    const centeredBounds = new THREE.Box3().setFromObject(model), height = centeredBounds.getSize(new THREE.Vector3()).y;
+    master.baseY = .53 + height * .5;
+    pivot.position.y = master.baseY;
+    master.model = model;
+    master.pivot = pivot;
+    visual.add(pivot);
+    for (const part of parts) part.visible = false;
+    pivot.rotation.x = master.flipAngle;
+    applyOperatorMasterAppearance(group, master.targetValid);
+  }).catch(error => {
+    console.warn(`main-world: โหลด master เครื่องหมาย ${text} ไม่สำเร็จ จึงใช้ procedural สำรอง`, error);
+    for (const part of parts) part.visible = true;
+    applyOperatorMasterAppearance(group, master.targetValid);
+  });
+  return master;
+}
+function addConnector({ name = "connector", from = [0, 0, 0], to = [0, 0, 1], color = "#65758b", thickness = .075, opacity = .72, depthTest = true, renderOrder = 0 } = {}) {
   const start = new THREE.Vector3(...from), end = new THREE.Vector3(...to), direction = end.clone().sub(start), length = direction.length();
   if (length <= .0001) return addGroup({ name, position: from, parts: [] });
   const root = new THREE.Group(), visual = new THREE.Group();
   const connector = new THREE.Mesh(
     new THREE.CylinderGeometry(thickness, thickness, length, 12),
-    new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= .98, depthTest: true, fog: false, toneMapped: false })
+    new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: depthTest && opacity >= .98, depthTest, fog: false, toneMapped: false })
   );
   connector.position.y = length * .5;
   connector.castShadow = false;
   connector.receiveShadow = false;
+  connector.renderOrder = Number(renderOrder) || 0;
   visual.add(connector);
   root.add(visual);
   const handle = configureLessonObject(root, visual, { name, position: from });
@@ -1642,8 +1915,8 @@ function addConnector({ name = "connector", from = [0, 0, 0], to = [0, 0, 1], co
 }
 const world = Object.freeze({
   clear() { guiService.clearScope("scene", "step", "question"); clearWorld(); },
-  capabilities: Object.freeze({ version: "3.3.0", objects: Object.freeze(["primitive", "group", "text3d", "label", "library", "model", "zone", "callout", "connector", "worldCounter", "worldGui", "guideline", "lineRender"]), primitiveShapes: Object.freeze(SUPPORTED_PRIMITIVE_SHAPES), interactions: Object.freeze(["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"]), modelFormats: Object.freeze(["glb", "gltf", "fbx"]) }),
-  assets: Object.freeze({ version: lessonAssetLibrary.version, list() { return Object.entries(lessonAssetLibrary.assets).map(([id, value]) => ({ id, name: value.name || id, type: value.type, tags: [...(value.tags || [])] })); }, get(id) { const value = libraryAsset(id); return JSON.parse(JSON.stringify({ id, ...value })); }, preloadImages(paths = []) { return preloadLessonTextures(paths, runtime.lessonUrl || import.meta.url); } }),
+  capabilities: Object.freeze({ version: "3.4.0", objects: Object.freeze(["primitive", "group", "text3d", "label", "library", "model", "zone", "callout", "connector", "worldCounter", "worldGui", "guideline", "lineRender"]), primitiveShapes: Object.freeze(SUPPORTED_PRIMITIVE_SHAPES), interactions: Object.freeze(["drag", "click", "custom-hit-area", "actionable-callout", "actionable-world-gui"]), modelFormats: Object.freeze(["glb", "gltf", "fbx"]) }),
+  assets: Object.freeze({ version: lessonAssetLibrary.version, list() { return Object.entries(lessonAssetLibrary.assets).map(([id, value]) => ({ id, name: value.name || id, type: value.type, tags: [...(value.tags || [])] })); }, get(id) { const value = libraryAsset(id); return JSON.parse(JSON.stringify({ id, ...value })); }, preloadImages(paths = []) { return preloadLessonTextures(paths, runtime.lessonUrl || import.meta.url); }, preloadLibraryObjects }),
   addObject,
   addPrimitive,
   addGroup,
@@ -1750,14 +2023,17 @@ const world = Object.freeze({
     for (const part of parts) { part.position.x = (part.position.x - center.x) * fit; part.position.z = (part.position.z - center.z) * fit; part.scale.x *= fit; part.scale.z *= fit; }
     edge.position.y = .09; base.position.y = .28; topPlate.position.y = .475;
     for (const part of [edge, base, topPlate]) { part.castShadow = Boolean(shadowSetting.lessonCast); part.receiveShadow = shadowSetting.lessonReceive !== false; }
-    visual.add(edge, base, topPlate, symbol); visual.scale.setScalar(visualScale);
+    const heightScale = clamp(Number(style.heightScale) || 1, .2, 1);
+    visual.add(edge, base, topPlate, symbol); visual.scale.set(visualScale, visualScale * heightScale, visualScale);
     group.position.set(...position); group.add(visual);
     Object.assign(group.userData, { visualRoot: visual, operatorBase: base, operatorEdge: edge, operatorParts: parts, onClick, hoverMessage, objectiveAction: operatorObjectiveAction, selectionFeedback });
-    lessonGroup.add(group); setOperatorAppearance(group, "neutral"); queueSpawn(group);
+    lessonGroup.add(group); setOperatorAppearance(group, "neutral");
+    const operatorMaster = installOperatorSignMaster(group, visual, symbol, parts, text, referenceSize);
+    queueSpawn(group);
     const baseHandle = makeHandle(group);
     group.userData.clickable = Boolean(clickable || typeof onClick === "function");
     if (typeof syncInteractive === "function") syncInteractive(group);
-    return Object.freeze({ ...baseHandle, pulse() { pulseOperator(group); }, setState(valid) { const next = valid ? "valid" : "neutral", changed = group.userData.operatorState !== next; setOperatorAppearance(group, next); if (changed && valid) pulseOperator(group); } });
+    return Object.freeze({ ...baseHandle, pulse() { pulseOperator(group); }, setState(valid) { const nextValid = Boolean(valid); if (operatorMaster) { if (operatorMaster.targetValid === nextValid) return; operatorMaster.targetValid = nextValid; animateOperatorMasterState(group, nextValid); return; } const next = nextValid ? "valid" : "neutral", changed = group.userData.operatorState !== next; setOperatorAppearance(group, next); if (changed && nextValid) pulseOperator(group); } });
   },
   addGuideline(options = {}) { return makeHandle(createGuideline(options)); },
   addLineRender(options = {}) { return makeHandle(createLineRender(options)); },
@@ -1767,7 +2043,7 @@ const world = Object.freeze({
     ring.instanceMatrix.needsUpdate = true; ring.frustumCulled = false; group.position.set(...position); group.add(ring); lessonGroup.add(group); if (animate !== false) targetFocusEffects.add({ group, material, baseOpacity, phase: Math.random() * Math.PI * 2, rotateSpeed, pulseScale, opacityPulse }); return makeHandle(group);
   },
   showDragCue(handle, to) { showDragCue(handle?.object3D || handle, to); }, hideDragCue,
-  playEntrance: playWorldEntrance, getObject(name) { return lessonGroup.getObjectByName(name); }, camera: Object.freeze({ reset: resetCamera, configure: configureCamera })
+  playEntrance: playWorldEntrance, getObject(name) { return lessonGroup.getObjectByName(name); }, camera: Object.freeze({ reset: resetCamera, configure: configureCamera, focus: focusCamera })
 });
 
 function clearGroup(group) { for (const child of [...group.children]) { group.remove(child); if (group === skyboxGroup) child.traverse(item => { if (Array.isArray(item.material)) item.material.forEach(material => material.map?.dispose?.()); else item.material?.map?.dispose?.(); }); disposeObject(child); } }
@@ -1815,6 +2091,7 @@ function interactiveHit() {
 function snapshot() { const points = [...pointers.values()]; return { yaw: cameraState.yaw, pitch: cameraState.pitch, distance: cameraState.distance, points, pinch: points.length === 2 ? Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) : 0 }; }
 elements.canvas.addEventListener("pointerdown", event => {
   if (elements.runtime.classList.contains("web-page-mode")) return;
+  cancelCameraFocus();
   rayFrom(event);
   const target = interactiveHit()?.object;
   if (target?.userData.draggable) clickme.suspendFor(target);
@@ -1847,7 +2124,7 @@ function endPointer(event) {
         object.position.y = baseY + setting.object.motion.dropBounceHeight;
         animations.set(object, { kind: "drop", start: performance.now(), duration: setting.object.motion.settleDuration, baseY, height: setting.object.motion.dropBounceHeight, strength: setting.object.motion.dropSquash });
       }
-      if (committed) { startCommitFlash(object); screenSpark(object); }
+      if (committed && object.userData.commitFeedback !== false) { startCommitFlash(object); screenSpark(object); }
     } else {
       animations.set(object, { kind: "return", start: performance.now(), duration: setting.object.motion.returnDuration, from: object.position.clone(), to: origin });
     }
@@ -1859,7 +2136,7 @@ function endPointer(event) {
   }
   pointers.delete(event.pointerId); orbit = pointers.size ? snapshot() : null; if (!pointers.size) resumeDragCue();
 }
-elements.canvas.addEventListener("pointerup", endPointer); elements.canvas.addEventListener("pointercancel", endPointer); elements.canvas.addEventListener("pointerleave", () => { if (!dragged) { setHovered(null); setDisplayHovered(null); } }); elements.canvas.addEventListener("wheel", event => { event.preventDefault(); pauseDragCue(); cameraState.distance = clamp(cameraState.distance + event.deltaY * setting.interaction.wheelZoomSpeed, cameraConfig.minDistance, cameraMaxDistance()); updateCamera(); resumeDragCue(180); }, { passive: false });
+elements.canvas.addEventListener("pointerup", endPointer); elements.canvas.addEventListener("pointercancel", endPointer); elements.canvas.addEventListener("pointerleave", () => { if (!dragged) { setHovered(null); setDisplayHovered(null); } }); elements.canvas.addEventListener("wheel", event => { event.preventDefault(); cancelCameraFocus(); pauseDragCue(); cameraState.distance = clamp(cameraState.distance + event.deltaY * setting.interaction.wheelZoomSpeed, cameraConfig.minDistance, cameraMaxDistance()); updateCamera(); resumeDragCue(180); }, { passive: false });
 
 let lastUiSoundAt = 0;
 const mobileRenderMedia = matchMedia("(max-width: 760px), (orientation: portrait)");
@@ -1891,7 +2168,7 @@ document.addEventListener("keyup", event => {
 }, { capture: true });
 window.addEventListener("blur", releasePressedButton);
 document.addEventListener("click", event => { const button = event.target.closest("button"); if (button && !button.disabled) uiSound(); }, { capture: true });
-function cameraButtonAction(callback) { pauseDragCue(); callback(); resumeDragCue(180); }
+function cameraButtonAction(callback) { cancelCameraFocus(); pauseDragCue(); callback(); resumeDragCue(180); }
 $("#reset-view").addEventListener("click", () => { uiSound(); cameraButtonAction(resetCamera); }); $("#zoom-in").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.distance = clamp(cameraState.distance - 1.5, cameraConfig.minDistance, cameraConfig.maxDistance); updateCamera(); }); }); $("#zoom-out").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.distance = clamp(cameraState.distance + 1.5, cameraConfig.minDistance, cameraConfig.maxDistance); updateCamera(); }); }); $("#rotate-left").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.yaw -= THREE.MathUtils.degToRad(15); updateCamera(); }); }); $("#rotate-right").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.yaw += THREE.MathUtils.degToRad(15); updateCamera(); }); });
 
 function syncConsoleDockHeight() { const panel = !elements.howto.hidden ? elements.howto : !elements.quizPanel.hidden ? elements.quizPanel : null, height = panel?.getBoundingClientRect().height || 0; document.documentElement.style.setProperty("--gui-console-current-height", `${Math.ceil(height || ((mobileRenderMedia.matches ? setting.ui.console?.mobile?.minHeight : setting.ui.console?.desktop?.minHeight) || 112))}px`); }
@@ -1931,7 +2208,7 @@ renderer.setAnimationLoop(now => {
     if (a.kind === "return") { const eased = 1 - Math.pow(1 - progress, 3); object.position.lerpVectors(a.from, a.to, eased); }
     else if (a.kind === "move") { const eased = progress < .5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2; object.position.lerpVectors(a.from, a.to, eased); object.position.y += Math.sin(progress * Math.PI) * a.arcHeight; }
     else if (a.kind === "drop") { const fade = 1 - progress, bounce = Math.abs(Math.sin(progress * Math.PI * 2.5)) * fade; object.position.y = a.baseY + bounce * a.height; const squash = Math.sin(progress * Math.PI * 3) * fade * a.strength; object.scale.set(1 + squash * .65, 1 - squash, 1 + squash * .65); }
-    else if (a.kind === "spawn") { const c1 = setting.object.spawn.overshoot, c3 = c1 + 1, t = progress - 1, eased = 1 + c3 * t * t * t + c1 * t * t; object.scale.setScalar(Math.max(.001, eased)); }
+    else if (a.kind === "spawn") { const c1 = setting.object.spawn.overshoot, c3 = c1 + 1, t = progress - 1, scaleEase = a.scaleOvershoot ? 1 + c3 * t * t * t + c1 * t * t : 1 - Math.pow(1 - progress, 3), floatEase = progress * progress * (3 - 2 * progress); object.scale.setScalar(Math.max(.001, scaleEase)); object.position.y = a.baseY + (1 - floatEase) * a.height; }
     if (progress >= 1) { if (a.to) object.position.copy(a.to); if (a.baseY != null) object.position.y = a.baseY; object.scale.setScalar(1); animations.delete(object); }
   }
   if (highlightRoot.visible) updateHighlightBounds(now);
@@ -2180,6 +2457,7 @@ function applyRuntimeUi() {
 }
 function lessonPayload(extra = {}) { return { values: { ...runtime.values }, mode: runtime.mode, meta: runtime.meta, ...extra }; }
 async function resetLessonScene(extra = {}) {
+  runtime.stepNextEnabled = true;
   const retireTools = labCompactMedia.matches && elements.runtime.classList.contains("lab-tools-ready");
   elements.runtime.classList.add("lab-tools-retiring");
   elements.runtime.classList.remove("lab-tools-ready", "lab-tools-open");
@@ -2243,7 +2521,7 @@ function animateConsole() {
 }
 function syncLabSkipControl() {
   const id = "runtime-skip-teaching", steps = runtime.meta?.howto || [];
-  const shouldShow = runtime.mode !== "student-quiz" && steps.length > 1 && runtime.stepIndex < steps.length - 1;
+  const shouldShow = runtime.mode !== "student-quiz" && steps.length > 1 && runtime.stepIndex < steps.length - 1 && !steps.slice(runtime.stepIndex).some(step => step.requiresCompletion);
   const existing = guiService.control.get(id);
   if (!shouldShow) { existing?.hide(); return; }
   if (existing) { if (existing.element.hidden || existing.element.classList.contains("is-leaving")) existing.show(); return; }
@@ -2259,15 +2537,21 @@ function syncLabSkipControl() {
     }
   });
 }
+function setLabNextEnabled(enabled) {
+  if (runtime.mode === "student-quiz") return;
+  runtime.stepNextEnabled = Boolean(enabled);
+  $("#next-step").disabled = !runtime.stepNextEnabled || runtime.stepIndex >= (runtime.meta?.howto.length || 0) - 1;
+}
 async function setStep(index) {
   const steps = runtime.meta.howto;
   if (!steps.length) return;
+  if (index > runtime.stepIndex && (!runtime.stepNextEnabled || steps.slice(runtime.stepIndex + 1, index).some(step => step.requiresCompletion))) return;
   introService.close({ notify: false, reason: "step-change" });
   guiService.clearScope("step");
   clearTypewriters();
   runtime.stepIndex = clamp(index, 0, steps.length - 1);
   const activeStepIndex = runtime.stepIndex, step = steps[activeStepIndex], finalLabStep = activeStepIndex === steps.length - 1, freestyle = step.type === "freestyle" || finalLabStep;
-  guiService.control.setLessonPhase(finalLabStep ? "lab" : "teaching");
+  guiService.control.setLessonPhase(freestyle ? "lab" : "teaching");
   guiService.console.reset();
   elements.howto.classList.toggle("is-freestyle", freestyle);
   elements.consoleState.classList.toggle("is-hand", freestyle);
@@ -2276,7 +2560,7 @@ async function setStep(index) {
   typeText(elements.stepTitle, step.title);
   typeText(elements.stepDescription, step.desc);
   $("#previous-step").disabled = activeStepIndex === 0;
-  $("#next-step").disabled = finalLabStep;
+  setLabNextEnabled(!step.requiresCompletion);
   syncLabSkipControl();
   queueStepOption(step.option);
   animateConsole();
@@ -2297,7 +2581,14 @@ async function setStep(index) {
 function showInformation() { uiSound(); const tags = Array.isArray(runtime.lessonData.tags) ? runtime.lessonData.tags : [], category = [runtime.lessonData.category, runtime.lessonData.subcategory].filter(Boolean).join(" · ") || "บทเรียนเสริมทักษะ"; showModal(`<div class="info-dialog"><header class="modal-hero">${iconMarkup("info-book.svg")}<div><span class="mode-badge">${escapeHtml(modeLabel(runtime.mode))}</span><h2>${escapeHtml(runtime.lessonData.title)}</h2></div></header><div class="info-topic">${iconMarkup("info-book.svg")}<div><h3>เรื่องที่กำลังเรียน</h3><p>${escapeHtml(runtime.meta.description)}</p></div></div><div class="info-topic">${iconMarkup("info-category.svg")}<div><h3>หมวดการเรียนรู้</h3><p>${escapeHtml(category)}</p><div class="tag-list">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div></div><div class="info-topic is-target">${iconMarkup("info-target.svg")}<div><h3>เป้าหมายของบทเรียน</h3><p>${escapeHtml(runtime.meta.keyResult)}</p></div></div></div>`); }
 function editorFieldVisible(field, values) { const rule = field.showWhen; if (!rule?.key) return true; const accepted = Array.isArray(rule.values) ? rule.values : [rule.value]; return accepted.some(value => String(value) === String(values[rule.key])); }
 function editorFieldMarkup(field) { const key = escapeHtml(field.key), value = runtime.values[field.key] ?? "", range = field.option || [], min = field.min ?? range[0] ?? 0, max = field.max ?? range[1] ?? 100, help = field.help ? `<em class="editor-help">${escapeHtml(field.help)}</em>` : "", primaryClass = field.key === "problemType" ? " is-primary" : ""; if (field.type === "dropdown") { const options = (field.option || []).map(item => { const option = item && typeof item === "object" ? item : { value: item, label: item }; return `<option value="${escapeHtml(option.value)}" ${String(option.value) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`; }).join(""); return `<label class="editor-field${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><select data-edit="${key}">${options}</select>${help}</label>`; } if (field.type === "slider") return `<label class="editor-field is-slider${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><output data-range-output="${key}">${escapeHtml(value)}</output><input data-edit="${key}" type="range" value="${escapeHtml(value)}" min="${escapeHtml(min)}" max="${escapeHtml(max)}" step="${escapeHtml(field.step ?? 1)}"><small><i>${escapeHtml(min)}</i><i>${escapeHtml(max)}</i></small>${help}</label>`; return `<label class="editor-field${primaryClass}" data-editor-field="${key}"><span>${escapeHtml(field.name)}</span><input data-edit="${key}" type="number" value="${escapeHtml(value)}" min="${escapeHtml(min)}" max="${escapeHtml(max)}" step="${escapeHtml(field.step ?? 1)}">${help}</label>`; }
-function showEditor() { uiSound(); const fields = runtime.meta.editSchema.map(editorFieldMarkup).join(""); showModal(`<div class="editor-dialog"><header class="editor-hero"><span class="editor-kicker">✦ TEACHER TOOLS</span><h2>สร้างตัวอย่างโจทย์</h2><p>เลือกแบบโจทย์ก่อน ระบบจะแสดงเฉพาะตัวเลขที่ต้องปรับ</p></header><div class="editor-guide"><b>1</b><span>เลือกแบบโจทย์</span><i>→</i><b>2</b><span>ปรับตัวเลข</span><i>→</i><b>3</b><span>กดนำไปใช้</span></div><div class="editor-grid">${fields}</div></div>`, { primaryLabel: "นำโจทย์นี้ไปใช้", onPrimary: async () => { for (const input of elements.modal.querySelectorAll("[data-edit]")) { const schema = runtime.meta.editSchema.find(item => item.key === input.dataset.edit); runtime.values[input.dataset.edit] = schema?.type === "dropdown" ? input.value : Number(input.value); } closeModal(); await resetLessonScene(); await setStep(0); showToast("สร้างตัวอย่างโจทย์ใหม่แล้ว", "success"); } }); elements.modal.querySelector(".modal-card")?.classList.add("editor-modal"); const currentEditorValues = () => { const values = { ...runtime.values }; for (const input of elements.modal.querySelectorAll("[data-edit]")) values[input.dataset.edit] = input.tagName === "SELECT" ? input.value : Number(input.value); return values; }; const syncEditorFields = () => { const values = currentEditorValues(); for (const root of elements.modal.querySelectorAll("[data-editor-field]")) { const schema = runtime.meta.editSchema.find(item => item.key === root.dataset.editorField); root.hidden = !editorFieldVisible(schema || {}, values); } }; for (const input of elements.modal.querySelectorAll('input[type="range"][data-edit]')) input.addEventListener("input", () => { const output = elements.modal.querySelector(`[data-range-output="${CSS.escape(input.dataset.edit)}"]`); if (output) output.value = input.value; }); elements.modal.querySelector('select[data-edit="problemType"]')?.addEventListener("change", syncEditorFields); syncEditorFields(); }
+async function restartLabAfterEdit() {
+  await resetLessonScene();
+  const requested = Number(runtime.meta.editRestartStep);
+  const index = Number.isInteger(requested) ? clamp(requested, 0, runtime.meta.howto.length - 1) : 0;
+  runtime.stepIndex = index;
+  await setStep(index);
+}
+function showEditor() { uiSound(); const fields = runtime.meta.editSchema.map(editorFieldMarkup).join(""); showModal(`<div class="editor-dialog"><header class="editor-hero"><span class="editor-kicker">✦ TEACHER TOOLS</span><h2>สร้างตัวอย่างโจทย์</h2><p>เลือกแบบโจทย์ก่อน ระบบจะแสดงเฉพาะตัวเลขที่ต้องปรับ</p></header><div class="editor-guide"><b>1</b><span>เลือกแบบโจทย์</span><i>→</i><b>2</b><span>ปรับตัวเลข</span><i>→</i><b>3</b><span>กดนำไปใช้</span></div><div class="editor-grid">${fields}</div></div>`, { primaryLabel: "นำโจทย์นี้ไปใช้", onPrimary: async () => { for (const input of elements.modal.querySelectorAll("[data-edit]")) { const schema = runtime.meta.editSchema.find(item => item.key === input.dataset.edit); runtime.values[input.dataset.edit] = schema?.type === "dropdown" ? input.value : Number(input.value); } closeModal(); await restartLabAfterEdit(); if (runtime.meta.editRestartStep == null) showToast("สร้างตัวอย่างโจทย์ใหม่แล้ว", "success"); } }); elements.modal.querySelector(".modal-card")?.classList.add("editor-modal"); const currentEditorValues = () => { const values = { ...runtime.values }; for (const input of elements.modal.querySelectorAll("[data-edit]")) values[input.dataset.edit] = input.tagName === "SELECT" ? input.value : Number(input.value); return values; }; const syncEditorFields = () => { const values = currentEditorValues(); for (const root of elements.modal.querySelectorAll("[data-editor-field]")) { const schema = runtime.meta.editSchema.find(item => item.key === root.dataset.editorField); root.hidden = !editorFieldVisible(schema || {}, values); } }; for (const input of elements.modal.querySelectorAll('input[type="range"][data-edit]')) input.addEventListener("input", () => { const output = elements.modal.querySelector(`[data-range-output="${CSS.escape(input.dataset.edit)}"]`); if (output) output.value = input.value; }); elements.modal.querySelector('select[data-edit="problemType"]')?.addEventListener("change", syncEditorFields); syncEditorFields(); }
 
 function shuffle(items) { const copy = [...items]; for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; }
 function questionValues(question) { const values = { ...runtime.meta.defaultValue }; for (const item of question.data || []) values[item.key] = item.value; return values; }
@@ -2309,12 +2600,58 @@ async function showQuestion(index) { const quiz = runtime.quiz; if (index >= qui
 function answerQuiz(correct, details = {}) { const quiz = runtime.quiz; if (!quiz?.acceptingAnswers) return false; const question = quiz.questions[quiz.index]; quiz.pendingAnswer = { questionIndex: quiz.index, question: question.question, correct: Boolean(correct), ...details }; objectiveAction(); return true; }
 function commitQuizAnswer() { const quiz = runtime.quiz, question = quiz.questions[quiz.index], answer = quiz.pendingAnswer || { questionIndex: quiz.index, question: question.question, correct: false, skipped: true }; quiz.answers.push(answer); if (answer.correct) quiz.score += 1; }
 function answerSummary(answer) { if (answer?.skipped) return "ไม่ได้ตอบ"; if (typeof answer?.answerText === "string" && answer.answerText.trim()) return answer.answerText; if (answer?.leftCount != null && answer?.rightCount != null) return `${answer.leftCount} ${answer.operator} ${answer.rightCount}`; return "ยังไม่ได้วางคำตอบ"; }
-function finishQuiz() { const quiz = runtime.quiz; runtime.completed = true; const durationMs = Date.now() - quiz.startedAt; audio.play("completeLesson"); celebrate(); const minutes = Math.floor(durationMs / 60000), seconds = Math.floor(durationMs % 60000 / 1000), percent = Math.round(quiz.score / quiz.questions.length * 100), review = quiz.questions.map((question, index) => { const answer = quiz.answers.find(item => item.questionIndex === index), correct = answer?.correct; return `<li class="${correct ? "correct" : "wrong"}"><b>${iconMarkup(correct ? "result-correct.svg" : "result-wrong.svg")}</b><div><strong>${escapeHtml(question.question)}</strong><span>คำตอบที่วาง: ${escapeHtml(answerSummary(answer))}</span></div></li>`; }).join(""); showModal(`<div class="quiz-result"><header class="result-hero"><div class="result-trophy">${iconMarkup("result-trophy.svg")}</div><div><span>ภารกิจสำเร็จ</span><h2>${percent >= 80 ? "ยอดเยี่ยมมาก!" : "ทำครบแล้ว เก่งมาก!"}</h2><p>ใช้เวลา ${minutes} นาที ${seconds} วินาที</p></div><div class="result-score"><strong>${quiz.score}</strong><small>/ ${quiz.questions.length}</small></div></header><div class="result-stars" aria-label="ได้รับ ${Math.min(3, Math.floor(percent / 30))} ดาว">${[1, 2, 3].map(star => `<i class="${percent >= star * 30 ? "earned" : ""}">★</i>`).join("")}</div><h3 class="review-title">คำตอบและผลแต่ละข้อ</h3><ol class="review-list">${review}</ol></div>`, { dismissible: false, primaryLabel: "ตกลง", onPrimary: () => { const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers }; postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); postToHost("lesson.closeRequested"); } }); }
+function finishQuiz() {
+  const quiz = runtime.quiz;
+  runtime.completed = true;
+  const durationMs = Date.now() - quiz.startedAt;
+  audio.play("completeLesson");
+  celebrate();
+  const minutes = Math.floor(durationMs / 60000);
+  const seconds = Math.floor(durationMs % 60000 / 1000);
+  const percent = Math.round(quiz.score / quiz.questions.length * 100);
+  const summaryAsset = name => runtimeAssetUrl(`./assets/image/${name}`);
+  const review = quiz.questions.map((question, index) => {
+    const answer = quiz.answers.find(item => item.questionIndex === index);
+    const correct = answer?.correct;
+    return `<li class="${correct ? "correct" : "wrong"}" style="--result-index:${index}"><em>${index + 1}</em><b>${iconMarkup(correct ? "result-correct.svg" : "result-wrong.svg")}</b><strong>${escapeHtml(question.question)}</strong></li>`;
+  }).join("");
+  const confetti = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((item, index) => {
+    const itemId = String(item).padStart(2, "0");
+    return `<img class="result-confetti-item result-confetti-${itemId}" src="${summaryAsset(`summary-confetti-${itemId}.png`)}" alt="" style="--confetti-index:${index}" />`;
+  }).join("");
+  showModal(`<div class="quiz-result result-polished">
+    <div class="result-confetti" aria-hidden="true">${confetti}</div>
+    <section class="result-celebration">
+      <img class="result-ribbon" src="${summaryAsset("summary-ribbon.png")}" alt="" />
+      <img class="result-label" src="${summaryAsset("summary-label.png")}" alt="" />
+      <span class="result-kicker">ภารกิจสำเร็จ</span>
+      <h2>${percent >= 80 ? "ยอดเยี่ยมมาก!" : "ทำครบแล้ว เก่งมาก!"}</h2>
+      <img class="result-dino" src="${summaryAsset("summary-dino.png")}" alt="" />
+      <img class="result-shrub" src="${summaryAsset("summary-island-small.png")}" alt="" />
+      <div class="result-metrics">
+        <div class="result-score"><strong>${quiz.score}</strong><small>/ ${quiz.questions.length}</small></div>
+        <div class="result-time"><i>◴</i><span><small>ใช้เวลา</small><strong>${minutes} นาที ${seconds} วินาที</strong></span></div>
+      </div>
+      <div class="result-score-stars" aria-label="ตอบถูก ${quiz.score} จาก ${quiz.questions.length} ข้อ">${Array.from({ length: quiz.questions.length }, (_, index) => `<i class="${index < quiz.score ? "earned" : ""}"><svg viewBox="0 0 81 77" aria-hidden="true"><path d="M34.583 3.76402C36.5985 -1.2548 43.7033 -1.25479 45.7187 3.76403L52.1957 19.8931C53.0539 22.0303 55.0598 23.4876 57.3576 23.6434L74.6988 24.8193C80.0948 25.1851 82.2903 31.9422 78.1399 35.4099L64.8017 46.554C63.0343 48.0307 62.2682 50.3888 62.8301 52.6223L67.0705 69.478C68.39 74.723 62.642 78.8991 58.0615 76.0234L43.3411 66.7818C41.3906 65.5572 38.9112 65.5572 36.9606 66.7818L22.2402 76.0234C17.6597 78.8991 11.9118 74.723 13.2313 69.478L17.4717 52.6223C18.0336 50.3887 17.2674 48.0307 15.5 46.554L2.16187 35.4099C-1.98851 31.9422 0.207016 25.1851 5.60299 24.8193L22.9441 23.6434C25.242 23.4876 27.2478 22.0303 28.1061 19.8931L34.583 3.76402Z"/></svg></i>`).join("")}</div>
+    </section>
+    <section class="result-review-panel">
+      <h3 class="review-title"><img src="${summaryAsset("summary-note.png")}" alt="" />สรุปผลคะแนน</h3>
+      <ol class="review-list">${review}</ol>
+    </section>
+    <img class="result-island" src="${summaryAsset("summary-island-big.png")}" alt="" aria-hidden="true" />
+  </div>`, { dismissible: false, primaryLabel: "ตกลง", onPrimary: () => {
+    const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers };
+    postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result });
+    postToHost("lesson.closeRequested");
+  } });
+}
 async function beginQuiz() { closeModal(); runtime.completed = false; runtime.quiz = { questions: shuffle(runtime.meta.quiz).slice(0, Math.min(5, runtime.meta.quiz.length)), index: 0, score: 0, answers: [], pendingAnswer: null, acceptingAnswers: false, startedAt: Date.now() }; await showQuestion(0); }
 function readyQuiz() { const art = runtimeAssetUrl(setting.entry.quizWelcomeImagePath || setting.entry.loadingImagePath || setting.entry.imagePath); showModal(`<div class="quiz-welcome"><div class="quiz-welcome-art"><img src="${art}" alt="" /><span class="mode-badge">PRE-TEST</span></div><div class="quiz-welcome-copy"><div class="quiz-divider"><span>ภารกิจทดสอบก่อนเรียน</span></div><h2>พร้อมเริ่มภารกิจทดสอบหรือยัง?</h2><p>ลองตอบหรือทำโจทย์อย่างน้อยหนึ่งครั้ง แล้วจึงส่งคำตอบเพื่อไปข้อต่อไป เราจะสรุปคะแนนพร้อมกันเมื่อทำครบ</p><div class="quiz-rules"><div>${iconMarkup("quiz-rule-count.svg")}<b>${Math.min(5, runtime.meta.quiz.length)} ข้อ</b><small>สุ่มจาก ${runtime.meta.quiz.length} ข้อ</small></div><div>${iconMarkup("quiz-rule-try.svg")}<b>ลองก่อนส่ง</b><small>ตอบถูกหรือผิดก็ส่งได้</small></div><div>${iconMarkup("quiz-rule-trophy.svg")}<b>สรุปท้ายเกม</b><small>ดูคะแนนพร้อมกัน</small></div></div></div></div>`, { dismissible: false, primaryLabel: "เริ่มภารกิจ", onPrimary: beginQuiz }); }
 
 const lessonUi = Object.freeze({
+  steps: Object.freeze({ setNextEnabled: setLabNextEnabled }),
   question: guiService.question,
+  guiAnswer: guiService.guiAnswer,
   console: guiService.console,
   topMessage: guiService.topMessage,
   choice: guiService.choice,
@@ -2337,7 +2674,7 @@ const lessonUi = Object.freeze({
   setProgress(current, total) { postToHost("lesson.progress", { current, total }); }
 });
 function createContext(root, language) { return Object.freeze({ world, assets: world.assets, capabilities: world.capabilities, ui: lessonUi, audio: Object.freeze({ play: name => audio.play(name) }), root, lessonData: runtime.lessonData, mode: runtime.mode, language, resolveAsset: path => runtimeAssetUrl(path, runtime.lessonUrl), objectiveAction, quiz: Object.freeze({ answer: answerQuiz }), complete(result = {}) { clickme.clearAll(); if (!runtime.completed) { runtime.completed = true; audio.play("completeLesson"); celebrate(); } postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); } }); }
-async function closeLesson() { runtime.sessionId += 1; introService.close({ notify: false, reason: "lesson-close" }); try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.className = "mascot-guide"; elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
+async function closeLesson() { runtime.sessionId += 1; runtime.preview = false; runtimeSettingMenu?.setPreviewMode(false); syncDebugHud(); introService.close({ notify: false, reason: "lesson-close" }); try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.className = "mascot-guide"; elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
 const lessonFailureStages = {
   receive: ["การรับไฟล์บทเรียน", "ตรวจว่าไฟล์ HTML ที่เลือกอ่านได้ครบและไม่ว่าง"],
   fetch: ["การโหลดไฟล์บทเรียน", "ตรวจ path, ชื่อไฟล์, ตัวพิมพ์เล็ก–ใหญ่ และ HTTP status"],
@@ -2385,9 +2722,11 @@ async function openLesson(payload) {
   elements.runtime.dataset.fullScreen = String(runtime.fullScreen);
   const sessionId = runtime.sessionId + 1;
   await closeLesson();
+  runtime.preview = lessonData.preview === true;
+  runtimeSettingMenu?.setPreviewMode(runtime.preview);
   runtime.lastOpenPayload = payload;
   window.eduRuntimeConsoleErrors = [];
-  runtime.sessionId = sessionId; runtime.language = language || "th"; beginEntry(lessonData.title);
+  runtime.sessionId = sessionId; runtime.language = language || "th"; beginEntry(lessonData.title, entryUnitTitle(lessonData));
   let failureStage = lessonHtml ? "receive" : "fetch";
   try {
     updateEntry(18, lessonHtml ? "กำลังรับเนื้อหาบทเรียน…" : "กำลังโหลดเนื้อหาบทเรียน…");
@@ -2412,7 +2751,7 @@ async function openLesson(payload) {
     failureStage = "register";
     if (!registered?.mount) throw new Error("lessonApp ต้องมี mount(context)");
     failureStage = "metadata";
-    runtime.lesson = registered; runtime.lessonUrl = lessonUrl; runtime.mode = lessonData.mode; syncDebugHud(); runtime.meta = normalizeMeta(registered.meta, lessonData); runtime.lessonData = resolveLessonDisplayData(lessonData, runtime.meta); runtime.values = { ...runtime.meta.defaultValue }; runtime.stepIndex = 0; guiService.control.setLessonPhase(runtime.mode === "student-quiz" ? "quiz" : runtime.meta.howto.length ? "teaching" : "lab"); configureCamera(runtime.meta.camera || {}); elements.entryTitle.textContent = runtime.lessonData.title;
+    runtime.lesson = registered; runtime.lessonUrl = lessonUrl; runtime.mode = lessonData.mode; syncDebugHud(); runtime.meta = normalizeMeta(registered.meta, lessonData); runtime.lessonData = resolveLessonDisplayData(lessonData, runtime.meta); runtime.values = { ...runtime.meta.defaultValue }; runtime.stepIndex = 0; guiService.control.setLessonPhase(runtime.mode === "student-quiz" ? "quiz" : runtime.meta.howto.length ? "teaching" : "lab"); configureCamera(runtime.meta.camera || {}); elements.entryTitle.textContent = runtime.lessonData.title; setEntryCategory(entryUnitTitle(runtime.lessonData));
     updateEntry(55, "กำลังเตรียมสื่อและคำแนะนำ…", runtime.meta.welcomeMessage);
     if (runtime.mode === "student-quiz" && !runtime.meta.quiz.length) throw new Error("บทเรียน Quiz ต้องมีคำถามอย่างน้อย 1 ข้อ");
     failureStage = "assets";
@@ -2470,7 +2809,7 @@ bindLessonCloseButton($("#close-runtime"));
 bindLessonCloseButton($("#entry-close"));
 $("#show-information").addEventListener("click", showInformation); $("#edit-lesson").addEventListener("click", showEditor); $("#previous-step").addEventListener("click", () => setStep(runtime.stepIndex - 1)); $("#next-step").addEventListener("click", () => setStep(runtime.stepIndex + 1)); $("#reset-lesson").addEventListener("click", async () => { uiSound(); runtime.values = { ...runtime.meta.defaultValue }; if (runtime.mode === "student-quiz") readyQuiz(); else { await resetLessonScene(); await setStep(0); } }); $("#next-question").addEventListener("click", async () => { if (quizNextButton.disabled || !runtime.quiz?.acceptingAnswers) return; runtime.quiz.acceptingAnswers = false; hideQuizNext(); uiSound(); commitQuizAnswer(); await playQuizMascotReaction(); await showQuestion(runtime.quiz.index + 1); });
 elements.mascotNotice.addEventListener("click", () => { uiSound(); revealPendingMascotOption(); });
-window.addEventListener("message", event => { if (event.origin !== location.origin || event.source !== window.parent || event.data?.channel !== "edu-widget") return; if (event.data.type === "host.openLesson") openLesson(event.data.payload); if (event.data.type === "host.closeLesson") closeLesson(); if (event.data.type === "host.toggleRuntimeSetting") runtimeSettingMenu?.toggle(); });
+window.addEventListener("message", event => { if (event.origin !== location.origin || event.source !== window.parent || event.data?.channel !== "edu-widget") return; if (event.data.type === "host.openLesson") openLesson(event.data.payload); if (event.data.type === "host.closeLesson") closeLesson(); if (event.data.type === "host.toggleRuntimeSetting" && !runtime.preview) runtimeSettingMenu?.toggle(); });
 postToHost("runtime.ready");
 let guiDebugSnapshot = null;
 const worldDebugDisplays = new Map();
@@ -2478,23 +2817,32 @@ function captureGuiDebugSnapshot() {
   if (guiDebugSnapshot) return;
   guiDebugSnapshot = {
     question: { hidden: elements.lessonQuestion.hidden, label: elements.lessonQuestionLabel.textContent, text: elements.lessonQuestionText.textContent, tone: elements.lessonQuestion.dataset.tone || "primary" },
+    answer: { hidden: elements.guiAnswer?.hidden !== false, ...guiService.guiAnswer.state },
     console: { objective: elements.objective.textContent, title: elements.stepTitle.textContent, message: elements.stepDescription.textContent, quizMessage: elements.question.textContent, labClass: elements.howto.className, quizClass: elements.quizPanel.className, icon: elements.consoleStateImage.src }
   };
 }
 function clearGuiDebug() {
   guiService.clearScope("debug");
+  guiService.guiAnswer.hide();
   worldGuiSystem.clear("debug");
   for (const handle of worldDebugDisplays.values()) handle.remove();
   worldDebugDisplays.clear();
   if (!guiDebugSnapshot) return;
   const snapshot = guiDebugSnapshot;
   if (snapshot.question.hidden) guiService.question.hide(); else guiService.question.show(snapshot.question);
+  if (snapshot.answer.hidden) guiService.guiAnswer.hide(); else guiService.guiAnswer.show(snapshot.answer);
   elements.objective.textContent = snapshot.console.objective; elements.stepTitle.textContent = snapshot.console.title; elements.stepDescription.textContent = snapshot.console.message; elements.question.textContent = snapshot.console.quizMessage; elements.howto.className = snapshot.console.labClass; elements.quizPanel.className = snapshot.console.quizClass; elements.consoleStateImage.src = snapshot.console.icon; guiDebugSnapshot = null; syncConsoleDockHeight();
 }
 function guiLabAction(action, payload) {
   if (action === "clear") { clearGuiDebug(); return { action, cleared: true }; }
   captureGuiDebugSnapshot(); const message = String(payload.text || "ตัวอย่าง GUI Service"), tone = payload.tone || "primary", service = payload.service;
   if (service === "question") guiService.question.show({ label: "GUI LAB", text: message, tone });
+  else if (service === "gui-answer") {
+    const options = { label: "คำตอบ", text: message };
+    if (tone === "success") guiService.guiAnswer.correct(options);
+    else if (tone === "error") guiService.guiAnswer.wrong(options);
+    else guiService.guiAnswer.show(options);
+  }
   else if (service === "console") guiService.console.set({ objective: "GUI Service Debug", title: "Console Preview", message, tone, icon: "book" });
   else if (service === "top-message") {
     const existing = guiService.topMessage.current; if (existing && action === "update") existing.update({ message, tone }); else guiService.topMessage.show({ id: "debug-top-message", scope: "debug", title: "ข้อความด้านบน", message, tone, duration: 0, dismissible: true, icon: "info.svg" });
@@ -2552,13 +2900,28 @@ const runtimeSettingMenu = runtimeSettingTools.setupRuntimeSettingMenu({
     location.reload();
   },
   onRetest: ({ mode } = {}) => requestRetest(mode),
-  onToggleDebugArea: () => toggleDebugArea(),
+  onToggleDebugArea: force => toggleDebugArea(force),
   onGuiLabAction: guiLabAction
 });
-function requestRetest(mode) { postToHost("lesson.retestRequested", mode ? { mode } : {}); }
+let modeSwitching = false;
+async function requestRetest(mode) {
+  if (["teacher-lab", "student-quiz"].includes(mode) && (runtime.preview || setting.debugHUD === true)) {
+    if (modeSwitching || !runtime.lastOpenPayload?.lessonData || runtime.mode === mode) return;
+    modeSwitching = true;
+    try {
+      const previous = runtime.lastOpenPayload;
+      await openLesson({ ...previous, lessonData: { ...previous.lessonData, mode } });
+    } finally {
+      modeSwitching = false;
+    }
+    return;
+  }
+  postToHost("lesson.retestRequested", mode ? { mode } : {});
+}
 elements.debugHud?.addEventListener("click", event => {
   const button = event.target.closest("[data-debug-action]");
   if (!button) return;
+  if (runtime.preview && button.dataset.debugAction !== "switch-mode") return;
   uiSound();
   if (button.dataset.debugAction === "refresh") requestRetest();
   else if (button.dataset.debugAction === "panel") runtimeSettingMenu.toggle();

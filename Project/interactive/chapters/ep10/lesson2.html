@@ -70,7 +70,7 @@
 
       PuzzleLesson.define({
         id: "ep10-lesson2-exponent-stack",
-        version: "3.0.0",
+        version: "3.0.1",
         meta: {
           worldType: "3d-world-space",
           lessonId: "ep10-lesson2-exponent-stack",
@@ -82,11 +82,13 @@
           background: "green",
           camera: { fov: 43, startYaw: 2, startPitch: 55, startDistance: 23.5, minDistance: 12, maxDistance: 35, minPitch: 34, maxPitch: 76, target: [0, .45, -.25] },
           welcomeMessage: [
+            "ไดโนจะช่วยนับถาดสายฟ้าและหาเลขชี้กำลังคำตอบ",
             "กองซ้ายและขวาคือเลขชี้กำลังในโจทย์",
             "ดูว่าต้องบวก ลบ หรือคูณเลขชี้กำลัง",
-            "ลากถาดด้านหน้าไปซ้อนเป็นกองคำตอบ"
+            "สายฟ้า ⚡ บนถาดแทนตัวยกกำลัง +1",
+            "ลากถาดด้านหน้าไปซ้อนจนได้ตัวยกกำลังของคำตอบ"
           ],
-          tooltip: "ลากถาดเลขชี้กำลัง +1 จากด้านหน้าไปยังพื้นที่คำตอบ",
+          tooltip: "สายฟ้า ⚡ 1 ถาด = ตัวยกกำลัง +1 ลากไปยังพื้นที่คำตอบ",
           defaultValue: { operation: "multiply", base: 3, leftExponent: 2, rightExponent: 3, animationSpeed: "normal" },
           editSchema: [
             { key: "operation", name: "สมบัติที่ทดลอง", type: "dropdown", option: [
@@ -102,12 +104,12 @@
             ] }
           ],
           howto: [
-            { index: 0, title: "อ่านกองเลขชี้กำลัง", type: "sequence", desc: "จำนวนถาดในกองซ้ายและขวาตรงกับเลขชี้กำลังในโจทย์" },
-            { index: 1, title: "คูณคือบวก", type: "sequence", desc: "เมื่อฐานเหมือนกัน ให้นำเลขชี้กำลังมาบวกกัน" },
-            { index: 2, title: "หารคือลบ", type: "sequence", desc: "เมื่อฐานเหมือนกัน ให้นำเลขชี้กำลังมาลบกัน" },
-            { index: 3, title: "ยกกำลังซ้อนคือคูณ", type: "sequence", desc: "นำเลขชี้กำลังด้านในคูณกับเลขชี้กำลังด้านนอก" },
-            { index: 4, title: "จำการกระทำสามแบบ", type: "sequence", desc: "คูณพจน์ใช้บวก หารพจน์ใช้ลบ และยกกำลังซ้อนใช้คูณเลขชี้กำลัง" },
-            { index: 5, title: "สร้างกองคำตอบ", type: "freestyle", desc: "ลากถาด +1 ไปซ้อนจนตัวเลขด้านบนตรงกับคำตอบ" }
+            { index: 0, title: "อ่านกองเลขชี้กำลัง", type: "sequence", desc: "จำนวนถาดในกองซ้ายและขวาตรงกับเลขชี้กำลังในโจทย์", option: { type: "instruction", header: "ไดโนชวนอ่านสายฟ้า", message: "สายฟ้าแต่ละถาดแทนเลขชี้กำลังเพิ่ม 1 ดูก่อนว่าโจทย์ต้องบวก ลบ หรือคูณเลขชี้กำลัง" } },
+            { index: 1, title: "คูณคือบวก", type: "sequence", desc: "เมื่อฐานเหมือนกัน ให้นำเลขชี้กำลังมาบวกกัน", option: { type: "instruction", header: "คูณฐานเดียวกัน รวมจำนวนตัวคูณ", message: "a² × a³ มี a ซ้ำทั้งหมด 2 + 3 ตัว จึงได้ a⁵ ลากสายฟ้าจากทั้งสองกองมารวมกัน" } },
+            { index: 2, title: "หารคือลบ", type: "sequence", desc: "เมื่อฐานเหมือนกัน ให้นำเลขชี้กำลังมาลบกัน", option: { type: "instruction", header: "หารฐานเดียวกัน ตัดตัวที่ซ้ำกัน", message: "ตัวประกอบด้านบนกับด้านล่างตัดกันได้ทีละคู่ จำนวนที่เหลือจึงเท่ากับเลขชี้กำลังตัวตั้งลบตัวหาร" } },
+            { index: 3, title: "ยกกำลังซ้อนคือคูณ", type: "sequence", desc: "นำเลขชี้กำลังด้านในคูณกับเลขชี้กำลังด้านนอก", option: { type: "instruction", header: "ยกกำลังซ้อน คือทำกองเดิมซ้ำ", message: "(a²)³ หมายถึงนำ a² มาคูณซ้ำ 3 กอง จึงมี a ทั้งหมด 2 × 3 ตัว และได้ a⁶" } },
+            { index: 4, title: "จำการกระทำสามแบบ", type: "sequence", desc: "คูณพจน์ใช้บวก หารพจน์ใช้ลบ และยกกำลังซ้อนใช้คูณเลขชี้กำลัง", option: { type: "instruction", header: "ดูเครื่องหมายก่อนเลือกกฎ", message: "คูณพจน์ฐานเดียวกันให้บวก หารพจน์ฐานเดียวกันให้ลบ และวงเล็บยกกำลังซ้อนให้คูณเลขชี้กำลัง" } },
+            { index: 5, title: "สร้างกองคำตอบ", type: "freestyle", desc: "สายฟ้า ⚡ แต่ละถาดแทนตัวยกกำลัง +1 ลากไปซ้อนจนตัวเลขด้านบนตรงกับคำตอบ", option: { type: "instruction", header: "สายฟ้าหนึ่งถาดเพิ่มตัวยกกำลังหนึ่ง", message: "คำนวณเลขชี้กำลังก่อน แล้วลากสายฟ้าให้ครบตามจำนวนนั้น ตัวเลขเหนือกองจะช่วยตรวจว่าคุณวางครบหรือยัง" } }
           ],
           quiz
         },
@@ -283,17 +285,18 @@
             objective: interactive
               ? (zeroExponentLab ? "คำตอบคือยกกำลัง 0 — ปล่อยกองคำตอบว่างไว้" : `สร้างกองคำตอบให้ได้ ${this.expectedCount} ถาด`)
               : nested ? "อ่านกลุ่มชั้นใน แล้วดูจำนวนครั้งที่ซ้อนทั้งกลุ่ม" : "อ่านเลขชี้กำลังจากกองซ้ายและขวา",
-            title: this.operationTitle(values.operation),
+            title: interactive ? "ไดโนมีคำใบ้!" : this.operationTitle(values.operation),
             message: interactive
               ? (this.mode === "student-quiz" && this.expectedCount === 0
-                ? "ถ้าคิดว่าคำตอบเป็น 0 สามารถกดส่งจำนวนนี้ได้โดยไม่ต้องวางถาด"
-                : zeroExponentLab ? "ยกกำลัง 0 ใช้กองว่าง ไม่ต้องลากถาดเพิ่ม" : nested ? "คูณเลขชี้กำลังชั้นในกับชั้นนอก แล้วลากถาดสร้างคำตอบ" : "ลากถาดด้านหน้าไปวางในพื้นที่คำตอบ สามารถล้างแล้วเริ่มใหม่ได้")
+                ? "ไดโนคิดว่าคำตอบอาจเป็น 0 นะ ถ้าเห็นด้วยก็กดส่งได้เลย ไม่ต้องวางถาด"
+                : zeroExponentLab ? "ไดโนบอกใบ้ว่า ยกกำลัง 0 ใช้กองว่าง ไม่ต้องลากถาดเพิ่ม" : `${this.operationHint(values)} สายฟ้า ⚡ แต่ละถาดแทนตัวยกกำลัง +1 ลากให้ครบคำตอบนะ`)
               : this.ruleExplanation(values),
             tone: "info"
           });
 
           if (interactive) {
-            this.spawnSourceTray();
+            if (this.expectedCount > 0) this.spawnSourceTray();
+            else this.stopSourceGuide();
             this.showControls();
           } else {
             this.add(this.context.world.addGroup({
@@ -525,6 +528,7 @@
 
         spawnSourceTray() {
           this.sourceTray?.setDraggable?.(false);
+          this.stopSourceGuide();
           let handle;
           handle = this.add(this.context.world.addGroup({
             name: `exponent-tray-${this.answerCount}`,
@@ -542,12 +546,21 @@
             onDrag: () => this.sourceGizmo?.show(),
             onDrop: position => this.handleTrayDrop(position, handle)
           }));
-          this.sourceGizmo?.remove();
-          this.sourceGizmo = this.context.ui.gizmo.attach(handle, { id: "source-charge-hint", scope: "step", type: "label", text: "เพิ่มตัวยกกำลัง", placement: "top", worldOffset: [0, 1.05, 0], clamp: true });
+          this.sourceGizmo = this.context.ui.gizmo.attach(handle, { id: "source-charge-hint", scope: "step", type: "label", text: "⚡ ตัวยกกำลัง +1", placement: "top", worldOffset: [0, 1.05, 0], clamp: true });
           this.sourceGizmo.hide();
           this.sourceTray = handle;
+          this.sourceClickmeCue = this.context.ui.clickme?.attach(handle, { size: 36, anchor: "bottom", offset: [0, .1, 0] }) || null;
           this.context.world.showDragCue(handle,[LAYOUT.answerX + LAYOUT.stackOffsetX,.25,LAYOUT.stackZ]);
           return handle;
+        },
+
+        stopSourceGuide() {
+          this.context?.world?.hideDragCue?.();
+          this.sourceGizmo?.remove?.();
+          this.sourceGizmo = null;
+          this.sourceClickmeCue?.remove?.();
+          this.sourceClickmeCue = null;
+          this.sourceTray = null;
         },
 
         handleTrayDrop(position, handle) {
@@ -570,16 +583,18 @@
           handle.animateTo(answerStackX, targetY, LAYOUT.stackZ, { duration, arcHeight: .75 });
           this.updateAnswerDisplays();
           this.recordAnswer();
+          const complete = this.answerCount === this.expectedCount;
+          if (complete) this.stopSourceGuide();
+          else this.spawnSourceTray();
           this.delay(() => {
-            if (this.mode === "student-quiz") {
-              this.context.ui.console.set({ objective: `ตอนนี้ซ้อนแล้ว ${this.answerCount} ถาด`, title: "บันทึกจำนวนล่าสุดแล้ว", message: "ลากเพิ่ม ล้างคำตอบ หรือกดส่งจำนวนนี้เมื่อพอใจ", tone: "info" });
-            } else if (this.answerCount === this.expectedCount) {
+            if (this.answerCount === this.expectedCount) {
               this.showResult(false);
+            } else if (this.mode === "student-quiz") {
+              this.context.ui.console.set({ objective: `ตอนนี้ซ้อนแล้ว ${this.answerCount} ถาด`, title: "ไดโนเชียร์อยู่นะ!", message: `${this.operationHint(this.activeValues)} สายฟ้าแต่ละถาดเพิ่มตัวยกกำลังทีละ 1 คิดว่าพอแล้วก็กดส่งได้เลย`, tone: "info" });
             } else {
-              this.context.ui.console.set({ objective: `ตอนนี้ซ้อนแล้ว ${this.answerCount} ถาด`, title: "ลากเพิ่มหรือล้างคำตอบ", message: `โจทย์นี้ต้องใช้ ${this.expectedCount} ถาด`, tone: "info" });
+              this.context.ui.console.set({ objective: `ตอนนี้ซ้อนแล้ว ${this.answerCount} ถาด`, title: "ไดโนเชียร์อยู่นะ!", message: `ถูกทางแล้ว! สายฟ้าแต่ละถาดคือตัวยกกำลัง +1 เหลืออีก ${this.expectedCount - this.answerCount} ถาด`, tone: "info" });
             }
           }, duration + 80);
-          this.spawnSourceTray();
           return { accepted: true, commit: true };
         },
 
@@ -610,6 +625,7 @@
 
         clearAnswer() {
           this.clearTimers();
+          const reusableSource = this.sourceTray && !this.answerTrays.includes(this.sourceTray) ? this.sourceTray : null;
           for (const handle of this.answerTrays) {
             const index = this.handles.indexOf(handle);
             if (index >= 0) this.handles.splice(index, 1);
@@ -619,8 +635,16 @@
           this.answerCount = 0;
           this.updateAnswerDisplays();
           this.context.world.hideDragCue();
+          if (this.expectedCount > 0) {
+            if (reusableSource) {
+              this.sourceTray = reusableSource;
+              this.context.world.showDragCue(reusableSource, [LAYOUT.answerX + LAYOUT.stackOffsetX, .25, LAYOUT.stackZ]);
+            } else {
+              this.spawnSourceTray();
+            }
+          }
           if (this.mode === "student-quiz") this.context.quiz.answer(this.expectedCount === 0, this.answerDetails(this.expectedCount === 0));
-          this.context.ui.console.set({ objective: `สร้างกองคำตอบให้ได้ ${this.expectedCount} ถาด`, title: "ล้างคำตอบแล้ว", message: "ลากถาด +1 จากด้านหน้าเพื่อเริ่มใหม่", tone: "info" });
+          this.context.ui.console.set({ objective: `สร้างกองคำตอบให้ได้ ${this.expectedCount} ถาด`, title: "ไม่เป็นไร ไดโนช่วยคิดใหม่!", message: `${this.operationHint(this.activeValues)} จำไว้ว่า สายฟ้า ⚡ 1 ถาดคือตัวยกกำลัง +1`, tone: "info" });
         },
 
         recordAnswer() {
@@ -636,7 +660,7 @@
           this.context.ui.console.set({
             objective: `คำตอบคือ ${this.activeValues.base}${this.sup(this.expectedCount)}`,
             title: `${this.expression(this.activeValues).replace("?", `${this.activeValues.base}${this.sup(this.expectedCount)}`)}`,
-            message: this.ruleExplanation(this.activeValues),
+            message: `เก่งมาก! ${this.ruleExplanation(this.activeValues)} ไดโนนับได้ ${this.expectedCount} ถาดพอดี ไม่ต้องลากเพิ่มแล้ว`,
             tone: "success"
           });
         },
@@ -662,7 +686,16 @@
         submitQuizAnswer() {
           const correct = this.answerCount === this.expectedCount;
           this.context.quiz.answer(correct, this.answerDetails(correct));
-          this.context.ui.console.set({ objective: `ส่งจำนวน ${this.answerCount} แล้ว`, title: "บันทึกคำตอบเรียบร้อย", message: "สามารถปรับกองแล้วส่งใหม่ หรือไปข้อถัดไป", tone: "info" });
+          if (correct) {
+            this.showResult(false);
+          } else {
+            this.context.ui.console.set({
+              objective: `ส่งจำนวน ${this.answerCount} แล้ว`,
+              title: "เกือบแล้ว ลองฟังไดโนอีกนิด!",
+              message: `${this.operationHint(this.activeValues)} ตอนนี้มี ${this.answerCount} ถาด ลองล้างแล้วนับใหม่ได้เลย`,
+              tone: "warning"
+            });
+          }
         },
 
         showQuestion(values) {
@@ -734,6 +767,11 @@
         exponentOperator(operation) { return operation === "multiply" ? "+" : operation === "divide" ? "-" : "×"; },
         operationLabel(operation) { return operation === "multiply" ? "คูณเลขยกกำลัง" : operation === "divide" ? "หารเลขยกกำลัง" : "ยกกำลังซ้อน"; },
         operationTitle(operation) { return operation === "multiply" ? "บวกเลขชี้กำลัง" : operation === "divide" ? "ลบเลขชี้กำลัง" : "คูณเลขชี้กำลัง"; },
+        operationHint(values) {
+          if (values.operation === "multiply") return `ไดโนบอกใบ้: ฐาน ${values.base} เหมือนกันและเป็นการคูณ ให้นำเลขชี้กำลังมาบวกกัน`;
+          if (values.operation === "divide") return `ไดโนบอกใบ้: ฐาน ${values.base} เหมือนกันและเป็นการหาร ให้นำเลขชี้กำลังมาลบกัน`;
+          return "ไดโนบอกใบ้: ยกกำลังซ้อน ให้นำเลขชี้กำลังชั้นในคูณกับชั้นนอก";
+        },
         ruleText(values) {
           const sign = this.exponentOperator(values.operation);
           return `${sign === "+" ? "บวก" : sign === "-" ? "ลบ" : "คูณ"} ${values.leftExponent} ${sign} ${values.rightExponent}`;
@@ -794,7 +832,7 @@
           this.stopSlimeIdle();
           this.stopCharger();
           this.clearTimers();
-          this.context.world.hideDragCue();
+          this.stopSourceGuide();
           this.control?.remove?.();
           this.control = null;
           for (const handle of this.uiHandles || []) handle?.remove?.();
@@ -806,8 +844,6 @@
           this.answerSlimeGroup = [];
           this.answerZone = null;
           this.sourceTray = null;
-          this.sourceGizmo?.remove();
-          this.sourceGizmo = null;
           this.answerGizmo = null;
           this.answerFactors = null;
         },

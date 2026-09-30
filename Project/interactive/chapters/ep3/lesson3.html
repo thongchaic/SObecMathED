@@ -256,6 +256,7 @@
             target: [0, .48, -.25]
           },
           welcomeMessage: [
+            "ไดโนจะช่วยแยกสิ่งที่มีเดิม สิ่งที่เพิ่ม และจำนวนกลุ่ม",
             "ดูว่าในฉากมีของเดิมกี่ชิ้น",
             "นับจำนวนกลุ่มและจำนวนต่อกลุ่ม",
             "ดูตะกร้าและรั้วว่าแบ่งของเป็นกลุ่มอย่างไร"
@@ -296,10 +297,10 @@
             ] }
           ],
           howto: [
-            { index: 0, title: "มองจำนวนเริ่มต้น", type: "sequence", desc: "ดูของเดิมหรือจำนวนทั้งหมดทางซ้ายก่อน" },
-            { index: 1, title: "ดูสิ่งที่เปลี่ยน", type: "sequence", desc: "ดูว่ามีการเพิ่ม นำออก หรือแบ่งเป็นกลุ่มอย่างไร" },
-            { index: 2, title: "ดูการจัดพื้นที่", type: "sequence", desc: "ใช้พื้นที่และตะกร้าช่วยแยกจำนวนแต่ละส่วนให้ชัดเจน" },
-            { index: 3, title: "เลือกประโยคที่ตรงกับภาพ", type: "freestyle", desc: "เลือก 1 จาก 2 ประโยค แล้วดูภาพพิสูจน์ลำดับการคิด" }
+            { index: 0, title: "มองจำนวนเริ่มต้น", type: "sequence", desc: "ดูของเดิมหรือจำนวนทั้งหมดทางซ้ายก่อน", option: { type: "instruction", header: "ไดโนชวนอ่านภาพเป็นเรื่อง", message: "เริ่มจากดูของเดิมทางซ้ายก่อน แล้วค่อยดูว่ามีการเพิ่ม นำออก หรือแบ่งเป็นกลุ่มอย่างไร" } },
+            { index: 1, title: "ดูสิ่งที่เปลี่ยน", type: "sequence", desc: "ดูว่ามีการเพิ่ม นำออก หรือแบ่งเป็นกลุ่มอย่างไร", option: { type: "instruction", header: "เปลี่ยนภาพให้เป็นการคำนวณ", message: "ของที่เข้ามาเพิ่มชี้ไปที่บวก ของที่ถูกนำออกชี้ไปที่ลบ กลุ่มซ้ำชี้ไปที่คูณ และการแบ่งเท่า ๆ กันชี้ไปที่หาร" } },
+            { index: 2, title: "ดูการจัดพื้นที่", type: "sequence", desc: "ใช้พื้นที่และตะกร้าช่วยแยกจำนวนแต่ละส่วนให้ชัดเจน", option: { type: "instruction", header: "การจัดกลุ่มบอกลำดับคิด", message: "สิ่งที่อยู่ในพื้นที่หรือตะกร้าเดียวกันควรคำนวณเป็นกลุ่มก่อน มองขอบเขตเหล่านี้เหมือนวงเล็บในประโยคสัญลักษณ์" } },
+            { index: 3, title: "เลือกประโยคที่ตรงกับภาพ", type: "freestyle", desc: "เลือก 1 จาก 2 ประโยค แล้วดูภาพพิสูจน์ลำดับการคิด", option: { type: "instruction", header: "เล่าโจทย์ตามลำดับก่อนเลือก", message: "พูดเรื่องจากภาพทีละช่วงว่าเริ่มด้วยอะไร ทำอะไรต่อ และได้อะไร แล้วเลือกประโยคที่เรียงการคำนวณตามเรื่องนั้น" } }
           ],
           quiz
         },
@@ -357,7 +358,7 @@
           this.context.ui.question.show({ label: "โจทย์สถานการณ์", text: this.problem.question, tone: "primary" });
           this.context.ui.console.set({
             objective: "เลือกประโยคสัญลักษณ์ที่ตรงกับภาพ",
-            title: this.mode === "student-quiz" ? "ดูภาพก่อนเลือก" : "เริ่มจากจำนวน กลุ่ม และสิ่งที่เกิดก่อน",
+            title: this.mode === "student-quiz" ? "ไดโนชวนดูภาพก่อนเลือก" : "ไดโนชวนเริ่มจากจำนวน กลุ่ม และลำดับเหตุการณ์",
             message: this.mode === "student-quiz"
               ? "กดตะกร้าเพื่อนับซ้ำหรือเล่นภาพ แล้วเลือกได้หนึ่งข้อ"
               : "ขั้นสุดท้ายจึงจะเปิดตัวเลือกให้ลองตอบ",
@@ -842,7 +843,7 @@
               misconception: selectedCorrect ? null : this.problem.misconception,
               result: this.problem.result
             });
-            this.context.ui.console.update({ title: "รับคำตอบแล้ว", message: "ยังเปลี่ยนตัวเลือกหรือเล่นภาพซ้ำได้ก่อนกดไปต่อ", tone: "info" });
+            this.context.ui.console.update({ title: "ไดโนรับคำตอบแล้ว!", message: "ยังเปลี่ยนตัวเลือกหรือเล่นภาพซ้ำเพื่อตรวจลำดับเหตุการณ์ได้", tone: "info" });
             return;
           }
           this.resetNpcPose();
@@ -852,7 +853,7 @@
             this.playLabSuccessReaction();
             this.context.ui.console.set({
               objective: "เชื่อมภาพกับวงเล็บ",
-              title: `ตรงกับภาพ · คำตอบ ${this.problem.result}`,
+              title: `เก่งมาก ไดโนเห็นว่าตรงกับภาพ · คำตอบ ${this.problem.result}`,
               message: this.summaryMessage(), tone: "success"
             });
             this.context.ui.feedback.success("เลือกโครงสร้างได้ถูกต้อง", { duration: 2200 });
@@ -860,7 +861,7 @@
             this.updateGround();
             this.context.ui.console.set({
               objective: "ลองดูว่าเหตุการณ์เกิดกับทุกกลุ่มหรือครั้งเดียว",
-              title: "ภาพนี้เริ่มคิดคนละจุด",
+              title: "ไดโนมีคำใบ้: ภาพนี้เริ่มคิดคนละจุด",
               message: this.hintMessage(), tone: "info"
             });
             this.context.ui.hint.show({ id: "story-choice-hint", scope: "step", title: "ลองสังเกต", message: this.hintMessage(), type: "hint", duration: 3600 });
@@ -981,7 +982,7 @@
             this.problem.groupCount ? "ตะกร้าแต่ละใบแสดงผลไม้หนึ่งกลุ่มโดยไม่ต้องมีรั้วซ้อน" : "พื้นที่สองฝั่งแยกจำนวนก่อนและหลังให้เห็นชัดเจน",
             "เลือกประโยคหนึ่งข้อ แล้วระบบจะเล่นลำดับการคิดตามที่เลือก"
           ];
-          this.context.ui.console.set({ objective: step.desc, title: step.title, message: messages[index] || step.desc, tone: "info" });
+          this.context.ui.console.set({ objective: step.desc, title: `ไดโนสอน: ${step.title}`, message: messages[index] || step.desc, tone: "info" });
         },
 
         clearTimers() {

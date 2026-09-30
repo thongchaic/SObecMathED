@@ -52,9 +52,9 @@
             { key: "boxTheme", name: "สีของกล่อง", type: "dropdown", option: ["blue", "pink", "green"] }
           ],
           howto: [
-            { index: 0, title: "สังเกตวัตถุ", type: "sequence", desc: "สังเกตกล่องสีฟ้าทางซ้าย" },
-            { index: 1, title: "ดูพื้นที่เป้าหมาย", type: "sequence", desc: "วงแสงแสดงพื้นที่สำหรับวางคำตอบ" },
-            { index: 2, title: "ลองลากด้วยตนเอง", type: "freestyle", desc: "ลากกล่องไปวางในพื้นที่คำตอบ" }
+            { index: 0, title: "สังเกตวัตถุ", type: "sequence", desc: "สังเกตกล่องสีฟ้าทางซ้าย", option: { type: "instruction", header: "เริ่มจากสิ่งที่รู้", message: "สังเกตจำนวนและตำแหน่งของกล่องก่อนลงมือ" } },
+            { index: 1, title: "ดูพื้นที่เป้าหมาย", type: "sequence", desc: "วงแสงแสดงพื้นที่สำหรับวางคำตอบ", option: { type: "instruction", header: "มองหาพื้นที่คำตอบ", message: "วงแสงบอกตำแหน่งปลายทางที่ต้องนำกล่องไปวาง" } },
+            { index: 2, title: "ลองลากด้วยตนเอง", type: "freestyle", desc: "ลากกล่องไปวางในพื้นที่คำตอบ", option: { type: "hint", header: "ลากแล้วตรวจตำแหน่ง", message: "จับกล่องจากตรงกลางและปล่อยเมื่ออยู่ภายในวงคำตอบ" } }
           ],
           quiz
         },

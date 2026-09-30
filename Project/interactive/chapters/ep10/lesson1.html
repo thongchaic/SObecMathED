@@ -59,7 +59,7 @@
           keyResult: "ผู้เรียนเชื่อมโยงฐานกับจำนวนสไลม์ที่แตกออก และเชื่อมโยงเลขชี้กำลังกับจำนวนครั้งที่ทำซ้ำได้",
           background: "green",
           camera: { fov: 43, startYaw: 7, startPitch: 61, startDistance: 34.5, minDistance: 15, maxDistance: 42, minPitch: 36, maxPitch: 78, target: [0, .25, 0] },
-          welcomeMessage: ["สไลม์สีชมพูตรงกลางคือจุดเริ่มต้น", "กดหนึ่งครั้ง คือเพิ่มเลขชี้กำลังหนึ่งขั้น", "สไลม์แม่จะยุบตัวแล้วเด้งสไลม์ตัวเล็กออกมาตามจำนวนฐาน"],
+          welcomeMessage: ["ไดโนจะช่วยนับจำนวนครั้งที่สไลม์แตกตัว", "สไลม์สีชมพูตรงกลางคือจุดเริ่มต้น", "กดหนึ่งครั้ง คือเพิ่มเลขชี้กำลังหนึ่งขั้น", "สไลม์แม่จะยุบตัวแล้วเด้งสไลม์ตัวเล็กออกมาตามจำนวนฐาน"],
           tooltip: "กดสไลม์สีชมพูตรงกลางเพื่อเพิ่มเลขชี้กำลังทีละ 1",
           defaultValue: { base: 3, exponent: 3, animationSpeed: "normal", showConnections: "on" },
           editSchema: [
@@ -296,7 +296,7 @@
           this.setControls(false, true);
           this.valueGizmo?.update({ text: "ผลรวม 1", tone: "primary" });
           this.context.ui.question.show({ label: "ภารกิจเลขยกกำลัง", text: this.question?.question || `${this.expression()} = ? · กดแตกตัวตามจำนวนเลขชี้กำลัง`, tone: "primary" });
-          this.context.ui.console.set({ objective: "กดแตกตัวตามจำนวนเลขชี้กำลัง", title: `เริ่มจาก Root 1 ตัว · ${this.expression()}`, message: "กดสไลม์กลางหรือปุ่มแตกตัว และใช้ล้างกระดานเมื่อต้องการเริ่มนับใหม่", tone: "info" });
+          this.context.ui.console.set({ objective: "กดแตกตัวตามจำนวนเลขชี้กำลัง", title: `ไดโนชวนเริ่มจาก Root 1 ตัว · ${this.expression()}`, message: "กดหนึ่งครั้งเพิ่มเลขชี้กำลังหนึ่งขั้น แล้วสังเกตว่าจำนวนสไลม์ถูกคูณด้วยฐาน", tone: "info" });
         },
 
         async onStep(index) {
@@ -371,7 +371,7 @@
             this.setControls(this.labStep === 5, this.controls.element.hidden !== true);
             this.context.audio.play(reachedTarget ? "success" : "onDrop");
             if (this.mode === "student-quiz" && reachedTarget) this.recordQuizAttempt(this.round, source);
-            else if (this.mode !== "student-quiz" && reachedTarget) this.context.ui.console.feedback(`ครบแล้ว! ${this.expression()} = ${this.base ** this.exponent}`, { tone: "success" });
+            else if (this.mode !== "student-quiz" && reachedTarget) this.context.ui.console.feedback(`เก่งมาก ไดโนนับครบแล้ว! ${this.expression()} = ${this.base ** this.exponent}`, { tone: "success" });
           }, launchDelay + duration + stagger + 360);
         },
 
@@ -524,7 +524,7 @@
             return;
           }
           this.context.ui.question.update({ text: `${this.expression()} · ยกกำลัง ${this.round}/${this.exponent} · รุ่นล่าสุด ${value} ตัว` });
-          this.context.ui.console.set({ objective: remaining ? `กดต่อไปอีก ${remaining} ครั้ง` : "ถึงเลขชี้กำลังแล้ว", title: `ผลรวมรุ่นล่าสุด = ${value}`, message: `ลำดับ ${this.historyText()}`, tone: remaining ? "info" : "success" });
+          this.context.ui.console.set({ objective: remaining ? `กดต่อไปอีก ${remaining} ครั้ง` : "ถึงเลขชี้กำลังแล้ว", title: remaining ? `ไดโนนับได้ ${value} ตัว` : `ไดโนนับครบ ${value} ตัว!`, message: `ลำดับ ${this.historyText()}`, tone: remaining ? "info" : "success" });
         },
 
         resetDiagram() {
@@ -549,7 +549,18 @@
           this.updateLessonUi();
         },
 
-        setRootInteractive(value) { this.rootBall?.setClickable(Boolean(value)); },
+        setRootInteractive(value) {
+          const enabled = Boolean(value);
+          this.rootBall?.setClickable(enabled);
+          if (!enabled) {
+            this.rootClickmeCue?.remove?.();
+            this.rootClickmeCue = null;
+            return;
+          }
+          if (!this.rootBall || !this.context.ui.clickme) return;
+          if (!this.rootClickmeCue) this.rootClickmeCue = this.context.ui.clickme.attach(this.rootBall, { size: 38, anchor: "bottom", offset: [0, .12, 0] });
+          else this.context.ui.clickme.restoreFor(this.rootBall);
+        },
         syncRingVisibility() {
           for (let round = 1; round <= 4; round++) {
             const visible = this.mode === "student-quiz" || round <= this.exponent;
@@ -633,7 +644,7 @@
         clampInt(value, minimum, maximum) { return Math.min(maximum, Math.max(minimum, Math.round(Number(value) || minimum))); },
         delay(callback, milliseconds) { const timer = setTimeout(() => { this.timers = this.timers.filter(value => value !== timer); callback(); }, milliseconds); this.timers.push(timer); return timer; },
         clearTimers() { for (const timer of this.timers || []) clearTimeout(timer); this.timers = []; },
-        dispose() { this.stopSlimeAnimation(); this.clearTimers(); this.removeGenerations(); this.removeArena(); this.controls?.remove?.(); this.controls = null; this.valueGizmo?.remove?.(); this.valueGizmo = null; this.ringHandles = []; this.ringLabels = []; this.slimeActors = []; this.rootBall = null; this.context = null; }
+        dispose() { this.stopSlimeAnimation(); this.clearTimers(); this.rootClickmeCue?.remove?.(); this.rootClickmeCue = null; this.removeGenerations(); this.removeArena(); this.controls?.remove?.(); this.controls = null; this.valueGizmo?.remove?.(); this.valueGizmo = null; this.ringHandles = []; this.ringLabels = []; this.slimeActors = []; this.rootBall = null; this.context = null; }
       });
     })();
   </script>
