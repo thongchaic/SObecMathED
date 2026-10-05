@@ -55,7 +55,7 @@ export function consumeRuntimeLessonRestore() {
   } catch { sessionStorage.removeItem(LESSON_RESTORE_KEY); return null; }
 }
 
-export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, onRefresh, onRestore, onRetest, onGuiLabAction, onToggleDebugArea, debugEnabled = true }) {
+export function setupRuntimeSettingMenu({ setting, baseline, getMode, getSceneTime, onApply, onRefresh, onRestore, onRetest, onGuiLabAction, onToggleDebugArea, onShowQuizResult, onSceneTimeChange, debugEnabled = true }) {
   let draft = clone(setting), jsonDirty = false, previewMode = false;
   const panel = document.createElement("section");
   panel.className = "runtime-setting-panel";
@@ -74,6 +74,12 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
       </div>
     </header>
     <div class="runtime-setting-toolbar">
+      <div class="runtime-scene-time" role="group" aria-label="ทดสอบช่วงเวลาในฉาก">
+        <span>รูปแบบฉาก <small>Live preview</small></span>
+        <button type="button" data-scene-time="standard">Standard</button>
+        <button type="button" data-scene-time="day">กลางวัน</button>
+        <button type="button" data-scene-time="night">กลางคืน</button>
+      </div>
       <div class="runtime-setting-search-tools">
         <label><span>ค้นหาค่า</span><input type="search" data-setting-search placeholder="เช่น fog, scale, color"></label>
         <div class="runtime-setting-tree-actions" data-tree-actions>
@@ -159,13 +165,15 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
 
   function modifiedValue() { if (!readJson()) return null; return diffObject(draft, baseline) || {}; }
   function showModified() { const modified = modifiedValue(); if (modified === null) return null; result.hidden = false; resultCode.textContent = JSON.stringify(modified, null, 2); setStatus(Object.keys(modified).length ? "แสดงเฉพาะค่าที่ต่างจากไฟล์หลักแล้ว" : "ยังไม่มีค่าที่เปลี่ยน", "success"); return modified; }
-  function openPanel() { if (previewMode || debugEnabled !== true) return; draft = clone(setting); renderGui(); syncJson(); syncQuickActions(); result.hidden = true; setStatus("แก้ค่าแล้วกด Apply & Rebuild เพื่อดูผลทันที"); panel.hidden = false; panel.classList.remove("is-closing"); requestAnimationFrame(() => panel.classList.add("is-open")); search.focus(); }
+  function syncSceneTime(){const current=getSceneTime?.() || 'day';panel.querySelectorAll('[data-scene-time]').forEach(button=>{const active=button.dataset.sceneTime===current;button.classList.toggle('is-active',active);button.setAttribute('aria-pressed',String(active));});}
+  function openPanel() { if (previewMode || debugEnabled !== true) return; draft = clone(setting); renderGui(); syncJson(); syncQuickActions(); syncSceneTime(); result.hidden = true; setStatus("ทดสอบช่วงเวลาได้ทันที หรือแก้ค่าแล้วกด Apply & Rebuild"); panel.hidden = false; panel.classList.remove("is-closing"); requestAnimationFrame(() => panel.classList.add("is-open")); search.focus(); }
   function closePanel() { panel.classList.remove("is-open"); panel.classList.add("is-closing"); setTimeout(() => { panel.hidden = true; panel.classList.remove("is-closing"); }, 180); }
 
   gui.addEventListener("input", event => { const input = event.target.closest("[data-setting-path],[data-color-path]"); if (input) updateDraft(input); });
   search.addEventListener("input", filterRows);
   jsonEditor.addEventListener("input", () => { jsonDirty = true; setStatus("JSON มีการแก้ไข กด Apply หรือ Get Modified เพื่อตรวจสอบ"); });
   panel.querySelector(".runtime-setting-close").addEventListener("click", closePanel);
+  panel.querySelectorAll('[data-scene-time]').forEach(button=>button.addEventListener('click',()=>{onSceneTimeChange?.(button.dataset.sceneTime);syncSceneTime();setStatus(`เปลี่ยนฉากเป็น ${button.textContent} แล้ว`,'success');}));
   panel.querySelectorAll("[data-runtime-mode]").forEach(button => button.addEventListener("click", () => { setStatus(`กำลังเปิดบทเรียนเดิมเป็น ${button.dataset.runtimeMode === "student-quiz" ? "Student Quiz" : "Teacher Lab"}…`, "success"); onRetest?.({ mode: button.dataset.runtimeMode }); }));
   panel.querySelector("[data-runtime-retest]").addEventListener("click", () => { setStatus("กำลัง Refresh ทั้งหน้าและเปิดบทเรียนเดิม…", "success"); onRetest?.({}); });
   panel.querySelectorAll("[data-setting-tab]").forEach(button => button.addEventListener("click", () => { const tab = button.dataset.settingTab; if (tab !== "json" && jsonDirty && !readJson()) return; panel.querySelectorAll("[data-setting-tab]").forEach(item => item.classList.toggle("is-active", item === button)); for (const view of panel.querySelectorAll("[data-setting-view]")) { const active = view.dataset.settingView === tab; view.hidden = !active; view.classList.toggle("is-active", active); } treeActions.hidden = tab !== "gui"; search.closest("label").hidden = tab === "service"; if (tab === "gui") { renderGui(); syncJson(); } }));
@@ -187,7 +195,7 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
   debugTools.hidden = debugEnabled !== true;
   debugTools.setAttribute("aria-label", "เครื่องมือ Debug");
   const gearIcon = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.03-.66-.08-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1a.49.49 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64l2.11 1.65c-.05.32-.08.66-.08.98s.03.66.08.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.12.22.38.31.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .45-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.12-1.65ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>`;
-  debugTools.innerHTML = `<button type="button" data-debug-action="refresh" aria-label="Refresh และเปิดบทเรียนเดิม" title="Refresh · F4">↻</button><button type="button" data-debug-action="settings" aria-label="เปิด Runtime Setting" title="Runtime Setting · F6">${gearIcon}</button><button type="button" data-debug-action="debug-area" aria-label="เปิด Debug Area แสดงพิกัดและ Transform" aria-pressed="false" title="เปิด Debug Area · พิกัด X/Z และ Transform โมเดล">XYZ</button><button type="button" data-debug-action="teacher-lab" aria-label="เปิดเป็น Teacher Lab" title="Teacher Lab">Lab</button><button type="button" data-debug-action="student-quiz" aria-label="เปิดเป็น Student Quiz" title="Student Quiz">Quiz</button>`;
+  debugTools.innerHTML = `<button type="button" data-debug-action="refresh" aria-label="Refresh และเปิดบทเรียนเดิม" title="Refresh · F4">↻</button><button type="button" data-debug-action="settings" aria-label="เปิด Runtime Setting" title="Runtime Setting · F6">${gearIcon}</button><button type="button" data-debug-action="debug-area" aria-label="เปิด Debug Area แสดงพิกัดและ Transform" aria-pressed="false" title="เปิด Debug Area · พิกัด X/Z และ Transform โมเดล">XYZ</button><button type="button" data-debug-action="quiz-result" aria-label="ทดสอบหน้าสรุปผล Quiz" title="ทดสอบหน้าสรุปผล Quiz">Result</button><button type="button" data-debug-action="teacher-lab" aria-label="เปิดเป็น Teacher Lab" title="Teacher Lab">Lab</button><button type="button" data-debug-action="student-quiz" aria-label="เปิดเป็น Student Quiz" title="Student Quiz">Quiz</button>`;
   document.body.append(debugTools);
   debugTools.addEventListener("click", async event => {
     const action = event.target.closest("[data-debug-action]")?.dataset.debugAction;
@@ -203,6 +211,7 @@ export function setupRuntimeSettingMenu({ setting, baseline, getMode, onApply, o
         button.title = `${enabled ? "ปิด" : "เปิด"} Debug Area · พื้นเกาะ X/Z · ความสูง Y`;
       }
       else if (action === "refresh") await onRefresh?.();
+      else if (action === "quiz-result") onShowQuizResult?.();
       else await onRetest?.({ mode: action });
     } catch (error) { console.warn("[Runtime Debug]", error); }
   });

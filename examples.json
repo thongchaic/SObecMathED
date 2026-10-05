@@ -121,6 +121,24 @@
       "validation": "source-index-only; not runtime-certified"
     },
     {
+      "path": "Project/interactive/chapters/ep12/lesson1.html",
+      "linkFromRoot": "Project/interactive/chapters/ep12/lesson1.html",
+      "title": "การสังเกตกฎเกณฑ์ของแบบรูปและการหาพจน์ถัดไป",
+      "lessonId": "ep12-lesson1-pattern-next-term",
+      "format": "lesson-package",
+      "observedCalls": ["ui.choice", "ui.console", "ui.control", "ui.feedback", "ui.gizmo", "ui.question", "world.addGroup", "world.addTargetFocus", "world.addWorldGui"],
+      "validation": "source-index-only; not runtime-certified"
+    },
+    {
+      "path": "Project/interactive/chapters/ep14/lesson3.html",
+      "linkFromRoot": "Project/interactive/chapters/ep14/lesson3.html",
+      "title": "ภารกิจคลี่รูปทรง — รวมพื้นที่ทุกด้าน",
+      "lessonId": "ep14-lesson3-surface-formulas",
+      "format": "lesson-package",
+      "observedCalls": ["ui.guiAnswer", "ui.question", "world.addCallout", "world.addGroup", "world.addOperatorSign"],
+      "validation": "source-index-only; image assets excluded; not runtime-certified"
+    },
+    {
       "path": "Project/interactive/chapters/leesonExternal.html",
       "linkFromRoot": "Project/interactive/chapters/leesonExternal.html",
       "title": "",

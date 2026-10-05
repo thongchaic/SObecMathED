@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>การสังเกตกฎเกณฑ์ของแบบรูปและการหาพจน์ถัดไป</title>
+</head>
+<body>
+  <script data-lesson-app>
+    /**
+     * หน่วยที่ 12 บทย่อยที่ 1 — สถานีต่อบล็อก
+     * สเปกจาก [Internal] SRRU-3D Interactive-Template (1hjDtznzZ-We80b8VYeML32eFWPBrdY8Qp2NP_fEqH9s)
+     *   Topic: สังเกตกฎของแบบรูปและสร้างพจน์ถัดไป
+     *   Objective: บอกการซ้ำ เพิ่ม ลด หรือคูณ · ตรวจว่ากฎใช้ได้ทุกช่วง · เลือกหรือสร้างพจน์ถัดไป
+     *   Adapt (Internal "How Interactive"):
+     *     เดาจากช่วงเดียว        → สังเกตบล็อกส้ม/เงาทุกพจน์แล้วตอบกฎ ตอบถูกลูกศรจึงเฉลยการเปลี่ยนทุกคู่
+     *     ตัวเลขล้วนมองกฎยาก     → แต่ละพจน์เป็นกำแพงบล็อก แถวละ 5 ก้อน บล็อกที่เพิ่มมาเป็นสีส้ม
+     *     ผิดแล้วต้องเริ่มใหม่หมด → เลือกคำตอบใหม่ได้ทันที และแก้บล็อกในช่อง ? ทีละก้อน
+     *   External (ส่งมอบงวดที่ 1): ลากวาง item แล้วนับผลจากการเพิ่ม/ลดจำนวน
+     *   TOR Topic 34: แบบรูปซ้ำ เพิ่ม/ลดค่าคงที่ แบบรูปคูณ และการหาพจน์ถัดไป
+     *
+     * ฉาก "ลานของเล่น" ใช้ Asset Catalog เป็นฉากหลังแบบ ep2/lesson2 ส่วนบล็อกที่ใช้นับเป็น primitive
+     * ช่อง ? เริ่มด้วยบล็อกเท่าพจน์ก่อนหน้าเสมอ เด็กเห็นว่า "พจน์ถัดไป = พจน์ก่อน + การเปลี่ยน"
+     * แล้วเพิ่มบล็อก (ลาก/แตะบล็อกในกระบะกลางฉาก) หรือเอาออก (แตะแท่น ?) ทีละก้อน
+     */
+    (() => {
+      const COLORS = {
+        block: "#8cc8ff",
+        added: "#ffb35c",
+        removed: "#ff9aa2",
+        pink: "#ff8a8a",
+        blue: "#7fb8ff",
+        pending: "#b9bec8",
+        plate: "#fff4dc",
+        plateTarget: "#ffe0ef",
+        arrow: "#c9bff5",
+        arrowSeen: "#6fd39b",
+        tray: "#c98f5a",
+        focus: "#ffffff"
+      };
+      const CLAY = { roughness: .6, clearcoat: .18 };
+      const Y = .12;
+      const B = .44;          // ขนาดบล็อก
+      const P = .5;           // ระยะห่างศูนย์กลางบล็อก
+      const PER_ROW = 5;      // แถวละ 5 ก้อน นับเป็นกลุ่มห้าได้ง่าย
+      const TERM_GAP = 3.2;
+      const TERMS = 5;        // โจทย์ 4 พจน์ + ช่อง ?
+      const ARROW_Z = 1.05;
+      const TAG_Z = 1.95;
+      const TRAY = [0, Y, 3.4];
+      const MAX_VALUE = 20;
+
+      const CAMERA = Object.freeze({
+        fov: 42, startYaw: 0, startPitch: 30, startDistance: 19.5,
+        minDistance: 10, maxDistance: 32, minPitch: 12, maxPitch: 78,
+        target: [0, 1.1, 1.4]
+      });
+      // จอแนวตั้ง: แถว 5 พจน์กว้างราว 17 หน่วย ต้องถอยกล้องให้เห็นครบตั้งแต่พจน์แรกถึงกระบะ แล้วค่อยให้เด็กซูมเอง
+      const CAMERA_PORTRAIT = Object.freeze({
+        ...CAMERA, startPitch: 38, startDistance: 44, maxDistance: 54, mobileDistanceScale: 1,
+        target: [0, 1.1, 3.4]
+      });
+
+      const BACKDROP = [
+        { asset: "environment/playground-slide", position: [-10.4, 0, -6.4], targetSize: 3.4, rotation: [0, 35, 0] },
+        { asset: "toy/wooden-toy-house", position: [10.2, 0, -6.6], targetSize: 3.0, rotation: [0, -30, 0] },
+        { asset: "environment/tree-stylized", position: [-4.8, 0, -10.2], targetSize: 3.8, rotation: [0, 20, 0] },
+        { asset: "environment/tree", position: [5.6, 0, -10.4], targetSize: 3.6, rotation: [0, -15, 0] },
+        { asset: "environment/tree-stylized", position: [-12.6, 0, -1.4], targetSize: 3.4, rotation: [0, 60, 0] },
+        { asset: "environment/fence-wood", position: [.6, 0, -10.8], targetSize: 3.0, rotation: [0, 4, 0] },
+        { asset: "environment/sandbox-wood", position: [12.4, 0, -1.8], targetSize: 3.0, rotation: [0, -50, 0] },
+        { asset: "toy/ring-stack", position: [-7.6, 0, -8.4], targetSize: 1.6 },
+        { asset: "toy/three-foam-cubes", position: [8.0, 0, -8.6], targetSize: 1.7, rotation: [0, -20, 0] },
+        { asset: "environment/toy-train", position: [-11.8, 0, 3.0], targetSize: 2.2, rotation: [0, 70, 0] },
+        { asset: "toy/rubber-duck", position: [12.0, 0, 3.0], targetSize: 1.3, rotation: [0, -60, 0] },
+        { asset: "environment/flower-daisy", position: [-2.6, 0, -9.0], targetSize: 1.2 },
+        { asset: "environment/flower-daisy", position: [13.0, 0, -5.4], targetSize: 1.2, rotation: [0, 40, 0] }
+      ];
+
+      /* พจน์แรก การเปลี่ยน และชนิดของแบบรูป — ตัวอย่างคงที่ของขั้นลดและขั้นคูณ */
+      const DECREASE_DEMO = { patternType: "ลดลง", first: 17, change: 3 };
+      const MULTIPLY_DEMO = { patternType: "คูณ 2", first: 1, change: 2 };
+
+      const quiz = [
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 2 }, { key: "change", value: 3 }] },
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "ลดลง" }, { key: "first", value: 18 }, { key: "change", value: 2 }] },
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "คูณ 2" }, { key: "first", value: 1 }, { key: "change", value: 2 }] },
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 3 }, { key: "change", value: 4 }] },
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "ลดลง" }, { key: "first", value: 20 }, { key: "change", value: 4 }] },
+        { question: "แบบรูปนี้เป็นอย่างไร?", data: [{ key: "task", value: "rule" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 1 }, { key: "change", value: 1 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 3 }, { key: "change", value: 2 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "ลดลง" }, { key: "first", value: 15 }, { key: "change", value: 3 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "คูณ 2" }, { key: "first", value: 1 }, { key: "change", value: 2 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 4 }, { key: "change", value: 4 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "ลดลง" }, { key: "first", value: 12 }, { key: "change", value: 2 }] },
+        { question: "ต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป", data: [{ key: "task", value: "next" }, { key: "patternType", value: "เพิ่มขึ้น" }, { key: "first", value: 6 }, { key: "change", value: 1 }] }
+      ];
+
+      PuzzleLesson.define({
+        id: "ep12-lesson1-pattern-next-term",
+        version: "1.0.0",
+        meta: {
+          worldType: "3d-world-space",
+          lessonId: "ep12-lesson1-pattern-next-term",
+          title: "การสังเกตกฎเกณฑ์ของแบบรูปและการหาพจน์ถัดไป",
+          category: "คณิตศาสตร์",
+          subcategory: "แบบรูปและความสัมพันธ์",
+          description: "สถานีต่อบล็อกในลานของเล่น แต่ละพจน์เป็นกำแพงบล็อก สังเกตว่าแต่ละพจน์เพิ่ม ลด หรือคูณ เลือกคำตอบ แล้วต่อบล็อกในช่อง ? ให้เป็นพจน์ถัดไป",
+          keyResult: "ผู้เรียนบอกได้ว่าแบบรูปซ้ำ เพิ่ม ลด หรือคูณ ตรวจว่ากฎใช้ได้กับทุกคู่ที่ติดกัน และสร้างพจน์ถัดไปตามกฎได้",
+          background: "green",
+          camera: CAMERA,
+          welcomeMessage: ["ยินดีต้อนรับสู่สถานีต่อบล็อก!", "แต่ละกำแพงคือหนึ่งพจน์ของแบบรูป", "ดูว่าเปลี่ยนไปเท่าไรทุกคู่ แล้วต่อพจน์ถัดไปเอง"],
+          tooltip: "บล็อกส้ม = ที่เพิ่ม · เงาจาง = ที่หายไป · ลากบล็อกเพื่อเพิ่ม · แตะแท่น ? เพื่อเอาออก",
+          defaultValue: { patternType: "เพิ่มขึ้น", first: 2, change: 3 },
+          editSchema: [
+            { key: "patternType", name: "ชนิดแบบรูป (ขั้น 2–4)", type: "dropdown", option: ["เพิ่มขึ้น", "ลดลง"] },
+            { key: "first", name: "พจน์แรก", type: "slider", option: [1, 20], step: 1, help: "ระบบปรับให้ทุกพจน์อยู่ระหว่าง 1–20 ก้อน เพื่อให้นับบล็อกได้" },
+            { key: "change", name: "เปลี่ยนทีละ", type: "slider", option: [1, 4], step: 1 }
+          ],
+          howto: [
+            { index: 0, title: "สังเกตแบบรูปซ้ำ", type: "sequence", desc: "ชมพู ฟ้า ชมพู ฟ้า ชมพู … ช่อง ? เป็นสีอะไร" },
+            { index: 1, title: "ช่อง ? คือสีฟ้า", type: "sequence", desc: "ชมพู ฟ้า วนซ้ำ ต่อจากชมพูจึงเป็นฟ้า" },
+            { index: 2, title: "สังเกตแล้วตอบกฎ", type: "freestyle", desc: "ดูบล็อกส้มที่เพิ่มในแต่ละพจน์ แล้วเลือกคำตอบ" },
+            { index: 3, title: "ต่อพจน์ถัดไป", type: "freestyle", desc: "ช่อง ? เริ่มเท่าพจน์ก่อนหน้า เพิ่มหรือเอาบล็อกออกตามกฎ" },
+            { index: 4, title: "แบบรูปที่ลดลง", type: "freestyle", desc: "ดูเงาจางที่หายไป เลือกกฎ แล้วแตะแท่น ? เพื่อเอาบล็อกออก" },
+            { index: 5, title: "แบบรูปที่คูณ", type: "freestyle", desc: "ทุกพจน์เป็นสองเท่าของพจน์ก่อน" },
+            { index: 6, title: "ทดลองเอง", type: "freestyle", desc: "กดแบบรูปใหม่ แล้วหากฎและต่อพจน์ถัดไปเอง" }
+          ],
+          quiz
+        },
+
+        mount(context) {
+          this.context = context;
+          this.worldHandles = [];
+          this.uiHandles = [];
+          this.backdropHandles = [];
+          this.backdropToken = 0;
+          this.timers = [];
+          this.arrows = [];
+          this.choice = null;
+          this.controls = null;
+        },
+
+        reset({ values, mode, question }) {
+          this.clearScene();
+          this.mode = mode;
+          this.question = question || null;
+          this.values = { ...values, ...this.questionData() };
+          this.portraitView = false; // runtime เริ่มจาก meta.camera (แนวนอน) ทุกครั้งที่ reset
+          this.buildBackdrop();
+          if (mode === "student-quiz") this.buildQuiz();
+        },
+
+        onStep(index) {
+          if (this.mode === "student-quiz") return;
+          this.clearScene();
+          this.fitView();
+          this.stepIndex = index;
+          const steps = [
+            this.stepRepeat, this.stepRepeatReveal, this.stepChooseRule, this.stepBuildNext,
+            this.stepDecrease, this.stepMultiply, this.stepFreePlay
+          ];
+          (steps[index] || steps[steps.length - 1]).call(this);
+        },
+
+        /* ================================================================
+         * ขั้น 1–2 — แบบรูปซ้ำ ชมพู ฟ้า ชมพู ฟ้า ชมพู ? แล้วกล่องเทาในช่อง ? เปลี่ยนเป็นฟ้า
+         * ================================================================ */
+        stepRepeat() {
+          this.buildRepeat(true);
+          this.ask("สังเกตแบบรูป", "ชมพู ฟ้า ชมพู ฟ้า ชมพู … ช่อง ? เป็นสีอะไร");
+          this.say({ objective: "ชมพู ฟ้า ชมพู ฟ้า ชมพู ?", title: "สังเกตแบบรูปซ้ำ", message: "นึกคำตอบก่อน แล้วกดต่อไป" });
+        },
+
+        stepRepeatReveal() {
+          const { answer, tags } = this.buildRepeat(false);
+          const frames = 8;
+          for (let frame = 1; frame <= frames; frame += 1) {
+            const t = frame / frames;
+            this.later(() => {
+              answer.setColor(this.mixColor(COLORS.pending, COLORS.blue, t));
+              answer.setOpacity(.35 + .65 * t);
+              if (t < 1) return;
+              answer.playCommit();
+              this.context.audio.play("success");
+              tags[tags.length - 1].setText?.("ฟ้า");
+              this.chip(0, 2.6, "กฎ: ชมพู ฟ้า วนซ้ำ", "repeat-rule", "success");
+            }, 250 + frame * 35);
+          }
+          this.ask("ช่อง ? คือสีฟ้า", "ชมพู ฟ้า วนซ้ำ ต่อจากชมพูจึงเป็นฟ้า");
+          this.say({ objective: "ชมพู ฟ้า ชมพู ฟ้า ชมพู ฟ้า", title: "แบบรูปซ้ำ", message: "ต่อไปดูแบบรูปที่จำนวนเปลี่ยน" });
+        },
+
+        buildRepeat(animate) {
+          const spawn = x => animate ? this.pop(x) : { spawn: false };
+          const colors = [COLORS.pink, COLORS.blue, COLORS.pink, COLORS.blue, COLORS.pink];
+          const gap = 1.7;
+          const startX = -gap * 2.5;
+          const answerX = startX + colors.length * gap;
+          this.add(this.context.world.addGroup({
+            name: "repeat-base", position: [0, Y, 0], ...spawn(0),
+            parts: [{ shape: "box", size: [gap * 6 + .4, .16, 1.5], position: [0, .08, 0], color: COLORS.plate, material: CLAY }]
+          }));
+          colors.forEach((color, index) => this.add(this.context.world.addGroup({
+            name: `repeat-${index}`, position: [startX + index * gap, Y, 0], ...spawn(startX + index * gap),
+            parts: [{ shape: "box", size: [1.0, 1.0, 1.0], position: [0, .62, 0], color, material: CLAY }]
+          })));
+          const answer = this.add(this.context.world.addGroup({
+            name: "repeat-answer", position: [answerX, Y, 0], ...spawn(answerX),
+            parts: [{ shape: "box", size: [1.0, 1.0, 1.0], position: [0, .62, 0], color: COLORS.pending, material: { ...CLAY, opacity: .35, transparent: true } }]
+          }));
+          this.blink(this.dashedOval([answerX, Y + .2, 0], 1.05, 1.05, "repeat-focus"));
+          const tags = [...colors, null].map((color, index) => this.tag(startX + index * gap, TAG_Z, color === null ? "?" : (color === COLORS.pink ? "ชมพู" : "ฟ้า"), `repeat-tag-${index}`, 1.4));
+          return { answer, tags };
+        },
+
+        /** เด้งขึ้นเป็นคลื่นจากซ้ายไปขวาตอนเปลี่ยนโจทย์ */
+        pop(x) { return this.animateBuild === false ? { spawn: false } : { spawn: true, spawnDuration: Math.round(380 + (x + 8) * 22) }; },
+
+        /** วงรีเส้นปะแบบเดียวกับวงโฟกัส วางขีดห่างเท่ากันตามความยาวเส้นรอบวง */
+        dashedOval(center, rx, rz, name) {
+          const parts = [];
+          let walked = 0;
+          let next = 0;
+          let [px, pz] = [rx, 0];
+          for (let step = 1; step <= 720; step += 1) {
+            const angle = step / 720 * Math.PI * 2;
+            const [x, z] = [Math.cos(angle) * rx, Math.sin(angle) * rz];
+            walked += Math.hypot(x - px, z - pz);
+            if (walked >= next) {
+              next += .6;
+              parts.push({
+                shape: "box", size: [.38, .055, .105], position: [x, 0, z],
+                rotation: [0, Math.atan2(-(z - pz), x - px) * 180 / Math.PI, 0],
+                color: COLORS.focus, material: { ...CLAY, opacity: .85, transparent: true, depthWrite: false }
+              });
+            }
+            [px, pz] = [x, z];
+          }
+          return this.add(this.context.world.addGroup({ name, position: center, spawn: false, parts }));
+        },
+
+        blink(handle) {
+          this.stopBlink();
+          const start = Date.now();
+          this.blinkTimer = setInterval(() => handle.setOpacity(.5 + .45 * Math.cos((Date.now() - start) / 160)), 50);
+        },
+
+        stopBlink() {
+          clearInterval(this.blinkTimer);
+          this.blinkTimer = null;
+        },
+
+        mixColor(from, to, t) {
+          const channels = hex => [1, 3, 5].map(start => parseInt(hex.slice(start, start + 2), 16));
+          const [a, b] = [channels(from), channels(to)];
+          return `#${a.map((value, index) => Math.round(value + (b[index] - value) * t).toString(16).padStart(2, "0")).join("")}`;
+        },
+
+        addTower(index, parts) {
+          return this.add(this.context.world.addGroup({ name: `term-${index}`, position: [this.termX(index), Y, 0], ...this.pop(this.termX(index)), parts }));
+        },
+
+        addTargetMark(x) {
+          this.targetMark = this.add(this.context.world.addGroup({
+            name: "target-mark", position: [x, Y, 0], ...this.pop(x),
+            parts: [{ shape: "box", size: [.9, .9, .9], position: [0, .6, 0], color: COLORS.plateTarget, material: { ...CLAY, opacity: .65, transparent: true } }]
+          }));
+        },
+
+        /* ================================================================
+         * ขั้น 3 — สังเกตแบบรูปแล้วเลือกคำตอบ
+         * ================================================================ */
+        stepChooseRule() {
+          const pattern = this.teacherPattern();
+          this.startCycle(pattern, { build: false });
+        },
+
+        /* ================================================================
+         * ขั้น 4 — ต่อพจน์ถัดไป (รู้กฎแล้ว) · ฉากเดิมจากขั้น 3 เด้งเฉพาะช่อง ? และกระบะ
+         * ================================================================ */
+        stepBuildNext() {
+          const pattern = this.teacherPattern();
+          this.buildPattern(pattern, { showNext: true, animate: false });
+          this.arrows.forEach(arrow => this.revealArrow(arrow, true));
+          this.ruleChip = this.chip(0, this.topY(pattern) + 1.6, `กฎ: ${this.ruleLabel(pattern)} ทุกคู่`, "build-rule", "success");
+          this.startBuilding(pattern);
+        },
+
+        stepDecrease() { this.startCycle(this.makePattern(DECREASE_DEMO), { build: true }); },
+        stepMultiply() { this.startCycle(this.makePattern(MULTIPLY_DEMO), { build: true }); },
+
+        stepFreePlay() {
+          this.freePattern = this.freePattern || this.randomPattern();
+          this.startCycle(this.freePattern, { build: true });
+          this.controls = this.context.ui.control.show({
+            id: "ep12-1-free-actions", scope: "step", position: "middle-right", objectiveAction: false,
+            items: [{ id: "new", label: "แบบรูปใหม่", icon: "reset.svg" }],
+            onAction: () => {
+              this.freePattern = this.randomPattern(this.freePattern);
+              this.onStep(this.stepIndex);
+            }
+          });
+        },
+
+        /* ================================================================
+         * วงจรเต็ม: สังเกตแบบรูป → เลือกคำตอบ → ลูกศรเฉลยทุกคู่ → (ต่อบล็อก)
+         * ================================================================ */
+        startCycle(pattern, { build }) {
+          this.buildAfterRule = build;
+          this.buildPattern(pattern, { showNext: false });
+          this.countOval = this.dashedOval([this.termX(2), Y + .2, 0], TERM_GAP + 1.7, 1.15, "count-oval");
+          this.blink(this.countOval);
+          this.showRuleChoice(pattern, false);
+          this.ask("แบบรูปนี้เป็นอย่างไร?", `${this.changeCue(pattern)} แล้วเลือกคำตอบ`);
+          this.say({ objective: this.valuesText(pattern, 4), title: "สังเกตแบบรูป", message: "เพิ่ม ลด หรือคูณ ทีละเท่าไร" });
+        },
+
+        showRuleChoice(pattern, quizMode) {
+          if (this.choice) return;
+          const answer = this.ruleLabel(pattern);
+          this.choice = this.context.ui.choice.show({
+            id: quizMode ? "ep12-1-quiz-rule" : "ep12-1-rule", scope: this.scope(), title: "แบบรูปนี้เป็นอย่างไร?", layout: "row",
+            items: this.ruleOptions(pattern).map(label => ({ id: label, label: this.ruleText(label) })),
+            onSelect: event => {
+              const correct = event.id === answer;
+              if (quizMode) {
+                this.context.quiz.answer(correct, { task: "rule", selectedRule: event.id, expectedRule: answer, terms: pattern.terms.slice(0, 4) });
+                this.say({ objective: `เลือก ${this.ruleText(event.id)}`, title: "บันทึกคำตอบแล้ว", message: "ยังเปลี่ยนคำตอบได้ก่อนไปข้อถัดไป" });
+                return;
+              }
+              if (!correct) {
+                this.context.ui.feedback.warning(`"${this.ruleText(event.id)}" ยังไม่ใช่ ลอง${this.changeCue(pattern)}อีกครั้ง`, { id: "rule-feedback", scope: "step" });
+                return;
+              }
+              this.context.audio.play("success");
+              this.context.ui.feedback.success(`ถูกต้อง! ${this.ruleText(answer)} ทุกคู่`, { id: "rule-feedback", scope: "step" });
+              this.choice?.remove?.();
+              this.choice = null;
+              this.stopBlink();
+              this.countOval?.remove();
+              this.countOval = null;
+              this.confirmRule(pattern);
+            }
+          });
+        },
+
+        confirmRule(pattern) {
+          const gap = 450;
+          this.arrows.forEach((arrow, index) => this.later(() => this.revealArrow(arrow), 300 + index * gap));
+          this.say({ objective: `กฎ ${this.ruleLabel(pattern)}`, title: "ตรวจทุกคู่", message: "ลูกศรบอกการเปลี่ยนทุกคู่", tone: "success" });
+          this.later(() => {
+            this.ruleChip = this.chip(0, this.topY(pattern) + 1.6, `กฎ: ${this.ruleLabel(pattern)} ทุกคู่`, "cycle-rule", "success");
+            if (this.buildAfterRule) { this.startBuilding(pattern); return; }
+            this.ask("ถูกต้อง!", `แบบรูปนี้${this.ruleText(this.ruleLabel(pattern))} ทุกคู่`);
+            this.say({ objective: `กฎ ${this.ruleLabel(pattern)}`, title: "ตอบกฎถูกแล้ว", message: "ต่อไปใช้กฎนี้ต่อพจน์ถัดไป", tone: "success" });
+          }, 300 + this.arrows.length * gap);
+        },
+
+        /* ================================================================
+         * ช่อง ? — เริ่มด้วยบล็อกเท่าพจน์ก่อนหน้า แล้วเพิ่ม/เอาออกทีละก้อน
+         * ================================================================ */
+        startBuilding(pattern) {
+          this.pattern = pattern;
+          const index = TERMS - 1;
+          const x = this.termX(index);
+          this.target = { x, value: pattern.terms[index], count: pattern.terms[index - 1], done: false };
+          this.targetMark?.remove?.();
+          this.targetMark = null;
+          this.targetFocusHandle = this.add(this.context.world.addTargetFocus({ position: [x, Y + .05, 0], radius: 1.7, color: COLORS.focus, opacity: .7, animate: true }));
+          this.targetPlate?.setClickable(true);
+          this.renderTarget(true);
+          this.buildTray();
+          const add = this.target.value > this.target.count;
+          if (this.mode !== "student-quiz") {
+            if (add) this.context.world.showDragCue?.(this.trayBlock, [x, Y, 0]);
+            else this.removeCue = this.context.ui.clickme?.attach(this.targetPlate, { size: 36, anchor: "bottom", offset: [0, .1, 0] }) || null;
+          }
+          this.ask("ต่อพจน์ถัดไป", add
+            ? `ลากบล็อกมาเพิ่มในช่อง ? ตามกฎ ${this.ruleLabel(pattern)}`
+            : `แตะแท่น ? เพื่อเอาบล็อกออกตามกฎ ${this.ruleLabel(pattern)}`);
+          this.say({ objective: `${this.target.count} ก้อน`, title: "ต่อพจน์ถัดไป", message: `กฎ ${this.ruleLabel(pattern)}` });
+        },
+
+        buildTray() {
+          this.add(this.context.world.addGroup({
+            name: "block-tray", position: [TRAY[0], TRAY[1], TRAY[2]], ...this.pop(TRAY[0]),
+            parts: [
+              { shape: "box", size: [2.0, .3, 1.4], position: [0, .15, 0], color: COLORS.tray, material: CLAY }
+            ]
+          }));
+          this.tag(TRAY[0], TRAY[2] + 1.15, "กระบะบล็อก", "tray-name", 2.0);
+          const home = [TRAY[0], TRAY[1] + .42, TRAY[2]];
+          this.trayBlock = this.add(this.context.world.addGroup({
+            name: "tray-block", position: home, ...this.pop(TRAY[0]),
+            draggable: true, dragAxis: "xz", dragFromCenter: true,
+            clickable: true, tapToClick: true, hitArea: [1.4, 1.2, 1.4],
+            guideTarget: [this.target.x, Y, 0],
+            hoverMessage: "ลากไปวางที่แท่น ? หรือแตะเพื่อเพิ่มหนึ่งก้อน",
+            onClick: () => this.changeTarget(1),
+            onDrop: position => {
+              const near = Math.abs(position.x - this.target.x) < 2.2 && Math.abs(position.z) < 2.2;
+              this.trayBlock.setPosition(...home);
+              if (near) this.changeTarget(1);
+              else this.context.ui.feedback.info("ลากไปวางใกล้แท่น ? อีกนิด", { id: "tray-miss", scope: this.scope() });
+              return true;
+            },
+            parts: [{ shape: "box", size: [B * 1.35, B * 1.35, B * 1.35], color: COLORS.added, material: CLAY }]
+          }));
+        },
+
+        changeTarget(delta) {
+          if (!this.target) return;
+          const next = Math.max(0, Math.min(MAX_VALUE + 5, this.target.count + delta));
+          if (next === this.target.count) return;
+          this.context.objectiveAction?.();
+          this.context.world.hideDragCue?.();
+          this.removeCue?.remove();
+          this.removeCue = null;
+          this.target.count = next;
+          this.renderTarget();
+          this.context.audio.play(delta > 0 ? "onDrop" : "onClick");
+          const { count, value } = this.target;
+          const correct = count === value;
+          if (this.mode === "student-quiz") {
+            this.context.quiz.answer(correct, { task: "next", placedBlocks: count, expectedBlocks: value, rule: this.ruleLabel(this.pattern), terms: this.pattern.terms.slice(0, 4) });
+            this.say({ objective: `${count} ก้อน`, title: "บันทึกคำตอบแล้ว", message: "แก้ได้ทีละก้อนก่อนไปข้อถัดไป" });
+            return;
+          }
+          if (correct) {
+            this.target.done = true;
+            this.targetTag?.setText?.(`พจน์ที่ ${TERMS} = ${value}`);
+            this.targetBlocks?.playCommit?.();
+            this.context.audio.play("success");
+            this.context.ui.feedback.success(`ถูกต้อง! ${this.pattern.terms[TERMS - 2]} ${this.ruleLabel(this.pattern)} = ${value}`, { id: "build-feedback", scope: "step" });
+            this.say({ objective: this.valuesText(this.pattern, TERMS), title: "ต่อพจน์ถัดไปสำเร็จ", message: "กฎเดิมใช้ต่อได้ทุกพจน์", tone: "success" });
+            return;
+          }
+          this.target.done = false;
+          this.targetTag?.setText?.(`พจน์ที่ ${TERMS} = ?`);
+          const diff = count - value;
+          this.say({
+            objective: `${count} ก้อน`,
+            title: diff > 0 ? `เกินมา ${diff} ก้อน` : `ยังขาดอีก ${-diff} ก้อน`,
+            message: diff > 0 ? "แตะแท่น ? เพื่อเอาบล็อกออก" : "ลากบล็อกมาเพิ่ม",
+            tone: diff > 0 ? "warning" : "info"
+          });
+        },
+
+        renderTarget(spawn = false) {
+          this.targetBlocks?.remove?.();
+          const base = this.pattern.terms[TERMS - 2];
+          this.targetBlocks = this.add(this.context.world.addGroup({
+            name: "target-blocks", position: [this.target.x, Y, 0], ...(spawn ? this.pop(this.target.x) : { spawn: false }),
+            parts: this.towerParts(this.target.count, Math.min(base, this.target.count), base)
+          }));
+          this.countChip?.update?.({ text: `${this.target.count} ก้อน` });
+          if (!this.countChip) this.countChip = this.chip(this.target.x, this.towerHeight(Math.max(this.target.count, this.target.value)) + .5, `${this.target.count} ก้อน`, "target-count", "warning");
+        },
+
+        /* ================================================================
+         * ฉากแบบรูป: แท่น + กำแพงบล็อก + ป้าย + ลูกศร
+         * ================================================================ */
+        buildPattern(pattern, { showNext, animate = true }) {
+          this.animateBuild = animate;
+          this.pattern = pattern;
+          this.arrows = [];
+          for (let index = 0; index < TERMS; index += 1) {
+            const x = this.termX(index);
+            const isTarget = index === TERMS - 1;
+            const plate = this.plate(x, isTarget);
+            if (isTarget) {
+              this.targetPlate = plate;
+              this.targetTag = this.tag(x, TAG_Z, `พจน์ที่ ${TERMS} = ?`, "term-tag-target", 2.4);
+              if (!showNext) this.addTargetMark(x);
+              continue;
+            }
+            this.addTower(index, this.termParts(pattern, index));
+            this.tag(x, TAG_Z, `พจน์ที่ ${index + 1} = ${pattern.terms[index]}`, `term-tag-${index}`, 2.4);
+          }
+          for (let index = 0; index < TERMS - 2; index += 1) this.arrows.push(this.addArrow(index, pattern));
+          this.animateBuild = true;
+        },
+
+        addArrow(index, pattern) {
+          const from = this.termX(index);
+          const to = this.termX(index + 1);
+          const position = [(from + to) / 2, Y, ARROW_Z];
+          const length = TERM_GAP - 1.5;
+          const arrow = { index, position, seen: false, change: this.changeBetween(pattern, index), handle: null, badge: null };
+          arrow.handle = this.add(this.context.world.addGroup({
+            name: `arrow-${index}`, position, ...this.pop(position[0]),
+            parts: [
+              { shape: "box", size: [length - .5, .18, .34], position: [-.25, .2, 0], color: COLORS.arrow, material: CLAY },
+              { shape: "cone", size: [.62, .6, .62], position: [length / 2 - .3, .2, 0], rotation: [0, 0, -90], color: COLORS.arrow, material: CLAY }
+            ]
+          }));
+          return arrow;
+        },
+
+        revealArrow(arrow, instant = false) {
+          arrow.seen = true;
+          arrow.handle.setColor(COLORS.arrowSeen);
+          if (!instant) arrow.handle.playCommit();
+          if (!instant) this.context.audio.play("onClick");
+          arrow.badge = this.chip(arrow.position[0], Y + 1.0, arrow.change, `arrow-change-${arrow.index}`, "success", ARROW_Z);
+        },
+
+        plate(x, isTarget) {
+          const plate = this.add(this.context.world.addGroup({
+            name: isTarget ? "target-plate" : `plate-${Math.round(x * 10)}`, position: [x, Y, 0], ...this.pop(x),
+            clickable: false, tapToClick: true,
+            hitArea: isTarget ? [2.9, 3.2, 1.6] : null, hitAreaOffset: isTarget ? [0, 1.5, 0] : [0, 0, 0],
+            hoverMessage: isTarget ? "แตะเพื่อเอาบล็อกออกหนึ่งก้อน" : undefined,
+            onClick: isTarget ? () => this.changeTarget(-1) : undefined,
+            parts: [{ shape: "cylinder", size: [2.9, .16, 1.5], position: [0, .08, 0], color: isTarget ? COLORS.plateTarget : COLORS.plate, material: CLAY }]
+          }));
+          if (isTarget) plate.setClickable(false);
+          return plate;
+        },
+
+        /** พจน์ที่ index: ส่วนที่เพิ่มจากพจน์ก่อนเป็นสีส้ม ส่วนที่หายไปเป็นเงา */
+        termParts(pattern, index) {
+          const value = pattern.terms[index];
+          if (index === 0) return this.towerParts(value, value);
+          const previous = pattern.terms[index - 1];
+          return pattern.patternType === "ลดลง"
+            ? this.towerParts(value, value, previous)
+            : this.towerParts(value, Math.min(previous, value));
+        },
+
+        /**
+         * กำแพงบล็อกแถวละ 5 ก้อน ก้อนที่ index ≥ keep เป็นสีส้ม (ส่วนที่เพิ่มขึ้นจากพจน์ก่อน)
+         * ghostUntil > count วาดก้อนที่ถูกเอาออกเป็นเงาจางต่อท้าย (แบบรูปลดลง)
+         */
+        towerParts(count, keep, ghostUntil = count) {
+          return Array.from({ length: Math.max(count, ghostUntil) }, (unused, index) => {
+            const column = index % PER_ROW;
+            const row = Math.floor(index / PER_ROW);
+            const ghost = index >= count;
+            return {
+              shape: "box", size: [B, B, B],
+              position: [(column - (PER_ROW - 1) / 2) * P, .16 + B / 2 + row * P, 0],
+              color: ghost ? COLORS.removed : index >= keep ? COLORS.added : COLORS.block,
+              material: ghost ? { ...CLAY, opacity: .28, transparent: true, depthWrite: false } : CLAY
+            };
+          });
+        },
+
+        towerHeight(count) { return Y + .16 + Math.ceil(Math.max(1, count) / PER_ROW) * P; },
+        topY(pattern) { return this.towerHeight(Math.max(...pattern.terms)); },
+        termX(index) { return (index - (TERMS - 1) / 2) * TERM_GAP; },
+
+        /* ================================================================
+         * Quiz — ทุกข้อเริ่มฉากใหม่ ไม่เฉลยระหว่างทำ
+         * ================================================================ */
+        buildQuiz() {
+          this.fitView();
+          const pattern = this.makePattern(this.values);
+          const task = String(this.values.task || "rule");
+          this.buildPattern(pattern, { showNext: task === "next" });
+          if (task === "rule") {
+            this.showRuleChoice(pattern, true);
+            this.say({ objective: this.valuesText(pattern, 4), title: "หากฎของแบบรูป", message: "สังเกตทุกพจน์ แล้วเลือกคำตอบ" });
+          } else {
+            this.startBuilding(pattern);
+            this.say({ objective: `${this.target.count} ก้อน`, title: "ต่อพจน์ถัดไป", message: "หากฎ แล้วเพิ่มหรือเอาบล็อกออกในช่อง ?" });
+          }
+          this.context.ui.question.show({ label: "โจทย์แบบรูป", text: this.question?.question || "หากฎและพจน์ถัดไป", tone: "primary" });
+        },
+
+        /* ================================================================
+         * ตัวเลขของแบบรูป
+         * ================================================================ */
+        makePattern(source) {
+          const type = String(source.patternType || "เพิ่มขึ้น");
+          const change = this.clamp(source.change, 1, 4);
+          let first = this.clamp(source.first, 1, MAX_VALUE);
+          let terms;
+          if (type === "คูณ 2") {
+            first = Math.max(1, Math.min(first, Math.floor(MAX_VALUE / 16)));
+            terms = Array.from({ length: TERMS }, (unused, index) => first * 2 ** index);
+          } else if (type === "ลดลง") {
+            first = Math.max(first, change * (TERMS - 1) + 1);
+            terms = Array.from({ length: TERMS }, (unused, index) => first - index * change);
+          } else {
+            first = Math.min(first, MAX_VALUE - change * (TERMS - 1));
+            terms = Array.from({ length: TERMS }, (unused, index) => first + index * change);
+          }
+          return { patternType: type, change, first, terms };
+        },
+
+        teacherPattern() {
+          return this.makePattern({ patternType: this.values.patternType, first: this.values.first, change: this.values.change });
+        },
+
+        randomPattern(previous) {
+          const options = [
+            { patternType: "เพิ่มขึ้น", first: 1 + Math.floor(Math.random() * 6), change: 1 + Math.floor(Math.random() * 3) },
+            { patternType: "ลดลง", first: 20 - Math.floor(Math.random() * 4), change: 1 + Math.floor(Math.random() * 4) },
+            { patternType: "คูณ 2", first: 1, change: 2 }
+          ];
+          let pick = options[Math.floor(Math.random() * options.length)];
+          if (previous && pick.patternType === previous.patternType && pick.patternType === "คูณ 2") pick = options[0];
+          return this.makePattern(pick);
+        },
+
+        changeBetween(pattern, index) {
+          const diff = pattern.terms[index + 1] - pattern.terms[index];
+          return pattern.patternType === "คูณ 2" ? "×2" : `${diff >= 0 ? "+" : "−"}${Math.abs(diff)}`;
+        },
+
+        ruleLabel(pattern) {
+          if (pattern.patternType === "คูณ 2") return "×2";
+          return `${pattern.patternType === "ลดลง" ? "−" : "+"}${pattern.change}`;
+        },
+
+        ruleOptions(pattern) {
+          const answer = this.ruleLabel(pattern);
+          const d = pattern.change;
+          const pool = pattern.patternType === "คูณ 2"
+            ? ["+1", "+2", "×2", "×3"]
+            : pattern.patternType === "ลดลง"
+              ? [`+${d}`, `−${d}`, `−${d + 1}`, d > 1 ? `−${d - 1}` : "×2"]
+              : [`+${d}`, `+${d + 1}`, `−${d}`, d > 1 ? `+${d - 1}` : "×2"];
+          return [...new Set([answer, ...pool])].slice(0, 4).sort();
+        },
+
+        ruleText(label) {
+          const amount = label.slice(1);
+          if (label[0] === "×") return `คูณ ${amount}`;
+          return `${label[0] === "+" ? "เพิ่ม" : "ลด"}ทีละ ${amount}`;
+        },
+
+        changeCue(pattern) {
+          if (pattern.patternType === "ลดลง") return "นับเงาจางที่หายไปในแต่ละพจน์";
+          if (pattern.patternType === "คูณ 2") return "เทียบแต่ละพจน์กับพจน์ก่อนหน้า";
+          return "นับบล็อกส้มที่เพิ่มในแต่ละพจน์";
+        },
+
+        valuesText(pattern, count) { return pattern.terms.slice(0, count).join(", ") + (count < TERMS ? ", ?" : ""); },
+
+        questionData() {
+          return Object.fromEntries((this.question?.data || []).map(item => [item.key, item.value]));
+        },
+
+        /** ตั้งกล้องตามแนวจอ เฉพาะเมื่อแนวจอเปลี่ยน (หมุนจอระหว่างขั้นหรือระหว่างข้อ) */
+        fitView() {
+          const portrait = globalThis.innerWidth / Math.max(1, globalThis.innerHeight) < .82;
+          if (portrait === this.portraitView) return;
+          this.portraitView = portrait;
+          this.context.world.camera?.configure?.(portrait ? CAMERA_PORTRAIT : CAMERA);
+        },
+
+        clamp(value, min, max) { return Math.min(max, Math.max(min, Math.round(Number(value) || min))); },
+
+        /* ================================================================
+         * ฉากหลัง "ลานของเล่น" จาก Asset Catalog — ไม่ล้างตอนเปลี่ยนขั้น
+         * ================================================================ */
+        buildBackdrop() {
+          this.removeBackdrop();
+          const token = ++this.backdropToken;
+          BACKDROP.forEach((item, index) => {
+            Promise.resolve(this.context.world.addLibraryObject({
+              ...item, name: `backdrop-${index}`,
+              spawn: false, draggable: false, clickable: false, selectionFeedback: false
+            })).then(handle => {
+              if (token !== this.backdropToken) { handle?.remove?.(); return; }
+              this.backdropHandles.push(handle);
+            }).catch(error => console.warn(`ep12-1: ข้ามฉาก ${item.asset}`, error));
+          });
+        },
+
+        removeBackdrop() {
+          this.backdropToken += 1;
+          (this.backdropHandles || []).forEach(handle => handle?.remove?.());
+          this.backdropHandles = [];
+        },
+
+        /* ================================================================
+         * UI Service
+         * ================================================================ */
+        ask(label, text) { this.context.ui.question.show({ label, text, tone: "primary" }); },
+        say({ objective, title, message, tone = "info" }) { this.context.ui.console.set({ objective, title, message, tone }); },
+
+        tag(x, z, text, id, width = 2.3) {
+          return this.add(this.context.world.addWorldGui({
+            name: id, text, position: [x, Y + .06, z], size: [width, .6],
+            backgroundColor: "#fffdf5", backgroundOpacity: .96, borderColor: COLORS.arrow,
+            textColor: "#4a3f73", color: "#4a3f73", mobileScale: 1.1, lift: .07
+          }));
+        },
+
+        chip(x, y, text, id, tone = "primary", z = 0) {
+          const handle = this.context.ui.gizmo.at([x, y, z], { id, scope: this.scope(), type: "badge", size: "small", text, tone });
+          this.uiHandles.push(handle);
+          return handle;
+        },
+
+        scope() { return this.mode === "student-quiz" ? "question" : "step"; },
+
+        later(callback, delay) {
+          const id = setTimeout(callback, delay);
+          this.timers.push(id);
+          return id;
+        },
+
+        add(handle) {
+          if (handle) this.worldHandles.push(handle);
+          return handle;
+        },
+
+        clearScene() {
+          (this.timers || []).forEach(clearTimeout);
+          this.timers = [];
+          this.controls?.remove?.();
+          this.choice?.remove?.();
+          this.removeCue?.remove();
+          this.removeCue = null;
+          this.controls = null;
+          this.choice = null;
+          (this.uiHandles || []).forEach(handle => handle?.remove?.());
+          (this.worldHandles || []).forEach(handle => handle?.remove?.());
+          this.uiHandles = [];
+          this.worldHandles = [];
+          this.arrows = [];
+          this.tags = null;
+          this.target = null;
+          this.targetBlocks = null;
+          this.targetMark = null;
+          this.targetPlate = null;
+          this.targetTag = null;
+          this.targetFocusHandle = null;
+          this.trayBlock = null;
+          this.countChip = null;
+          this.ruleChip = null;
+          this.stopBlink();
+          this.countOval = null;
+          this.context?.world.hideDragCue?.();
+        },
+
+        dispose() {
+          this.clearScene();
+          this.removeBackdrop();
+          this.freePattern = null;
+          this.context = null;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

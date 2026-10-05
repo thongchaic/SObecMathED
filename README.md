@@ -60,7 +60,9 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
     ├── main-world-setting.js
     ├── runtime-setting-menu.js
     ├── world.css
-    ├── chapters/             ← ตัวอย่าง HTML ทั้งหมด
+    ├── chapters/             ← ตัวอย่าง HTML ที่คัดเลือก (รวม ep12 และ ep14)
+    ├── quiz-protection.js    ← ตัวอ่าน Lesson ที่ compile แล้ว; ไม่มี WASM/key ในชุดนี้
+    ├── quiz-result-view.js   ← โครงหน้าสรุปคะแนนของ Runtime
     └── assets/library/
         ├── README.md
         └── catalog.json      ← ข้อมูล Asset ID ไม่ใช่ไฟล์โมเดล
@@ -89,6 +91,14 @@ Host เรียก EduSDK → ตรวจ `script[data-lesson-app]` → เ�
 - `world.addLineRender()` รองรับ `points` และ `closed` สำหรับเส้นหลายช่วง/กรอบ polygon ส่วน `world.camera.focus({ position, normal })` หันกล้องแบบนุ่มโดยรักษาระยะซูม
 - `world.addOperatorSign()` ใช้ prefab กลางทุกบท รูปทรงและความหนาแนวตั้งถูกกำหนดจาก `mainWorldSetting.lessonGraphics.operatorBase` ห้ามแก้ internal scale ของเครื่องหมายรายบท
 
+### กฎใหม่สำหรับ Preview และ Quiz production
+
+- `lessonData.preview: true` ใช้สำหรับคุณครูทดลอง Lab/Quiz โดยซ่อนเครื่องมือ Debug และคงปุ่มสลับโหมดไว้; ค่าเริ่มต้นคือ `false` และต้องเป็น boolean ค่านี้เป็นตัวเลือกของ Host ไม่ใช่ `meta` หรือ API ที่ Lesson HTML เรียกเอง
+- ใน Quiz บทเรียนเรียก `context.quiz.answer(correct, details)` เมื่อผู้เรียนสร้างหรือเปลี่ยนคำตอบจริง Runtime เก็บคำตอบล่าสุดไว้ชั่วคราวและบันทึกเมื่อกดปุ่มยืนยันหรือไปข้อถัดไป; ห้ามเรียกใน `reset()` ห้ามเฉลย ถูก/ผิด หรือทำสีสำเร็จระหว่างข้อสอบ
+- `context.objectiveAction()` อย่างเดียวไม่สร้างคำตอบและไม่เปิดปุ่มไปต่อเมื่อยังไม่มี pending answer ถ้าล้างคำตอบให้เรียก `context.quiz.answer(false, { hasAnswer: false })` เพื่อซ่อนปุ่มไปต่อ จากนั้นส่งคำตอบใหม่เมื่อผู้เรียนลงมืออีกครั้ง
+- Source สำหรับผู้พัฒนายังเป็น Lesson Package ที่มี `meta.quiz` อ่านได้ตามปกติ เจ้าของระบบใช้ `AI/Compile` ใน workspace หลักเพื่อสร้าง `productionChapters` ก่อนเผยแพร่; ห้ามเผยแพร่ RAW `chapters` เป็น production ชุด GitHub นี้ไม่มี compiler, WASM หรือ key และไม่ใช่ deploy artifact
+- `world.addOperatorSign()` เป็น prefab กลางสำหรับ `= ≠ < > ≤ ≥ + - × ÷` ต้องย่อหรือขยายผ่าน `scale` ที่ Public API เท่านั้น ไม่แก้ child mesh หรือ `userData` ภายใน
+
 ### เปิดบทเรียนเต็มจอหรือภายใน Preview Panel
 
 EduSDK เปิดบทเรียนแบบเต็ม viewport เป็นค่าเริ่มต้น เพื่อรักษาพฤติกรรมเดิมของระบบ:
@@ -115,7 +125,7 @@ EduSDK.init({
 EduSDK.openLesson({ ...lessonData, fullScreen: false }, onComplete, onClose);
 ```
 
-กำหนดรูปแบบการแสดงผลด้วย `lessonData.fullScreen` ตอนเปิดบทเรียน โดยรับค่า boolean เท่านั้น: ใช้ `true` สำหรับบทเรียนเต็ม viewport และ `false` สำหรับ iframe, preview card หรือ panel ขนาดเล็ก หากไม่ส่งค่า ค่าเริ่มต้นของ SDK คือ `true`
+กำหนดรูปแบบการแสดงผลด้วย `lessonData.fullScreen` ตอนเปิดบทเรียน โดยรับค่า boolean เท่านั้น: ใช้ `true` สำหรับบทเรียนเต็ม viewport และ `false` สำหรับ iframe, preview card หรือ panel ขนาดเล็ก SDK เริ่มต้นที่ `true`; หากเคยสลับรูปแบบแล้วและเปิดบทใหม่โดยไม่ส่งค่า จะคงการตั้งค่าที่ใช้อยู่ ดังนั้น Host ที่ต้องการรูปแบบแน่นอนควรส่งค่าทุกครั้ง
 
 ในโหมด `false` SDK จะวัดพื้นที่จริงของ `container` ด้วย `ResizeObserver`, สร้าง virtual viewport อ้างอิง 1280×720 และย่อทั้ง Three.js, System UI และ Gizmos ด้วยสเกลเดียวกัน จึงไม่ควรแก้ขนาด UI หรือ Gizmos แยกในบทเรียนเพื่อชดเชย iframe ขนาดเล็ก เมื่อ panel เปลี่ยนขนาด SDK จะคำนวณ layout ใหม่ให้อัตโนมัติ เมื่อต้องเปิดบทเรียนใหม่ในรูปแบบอื่น ให้กำหนด `lessonData.fullScreen` ของครั้งนั้น
 

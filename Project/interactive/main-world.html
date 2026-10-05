@@ -31,7 +31,7 @@
       }
     </script>
   <script>
-    const cacheVersion = new URLSearchParams(location.search).get("v") || Date.now();
+    const cacheVersion = new URLSearchParams(location.search).get("v") || "1.0.0";
     window.eduCacheVersion = cacheVersion;
     const worldStyle = document.createElement("link");
     window.eduRuntimeStyleReady = new Promise((resolve, reject) => {
@@ -41,6 +41,24 @@
     worldStyle.rel = "stylesheet";
     worldStyle.href = `./world.css?v=${encodeURIComponent(cacheVersion)}`;
     document.head.append(worldStyle);
+    const resultStyle = document.createElement("link");
+    resultStyle.rel = "stylesheet";
+    resultStyle.href = `./quiz-result.css?v=${encodeURIComponent(cacheVersion)}`;
+    const baseStyleReady = window.eduRuntimeStyleReady;
+    window.eduRuntimeStyleReady = Promise.all([baseStyleReady, new Promise((resolve, reject) => {
+      resultStyle.onload = resolve;
+      resultStyle.onerror = () => reject(new Error("โหลด quiz-result.css ไม่สำเร็จ"));
+    })]);
+    document.head.append(resultStyle);
+    const mascotStyle = document.createElement("link");
+    mascotStyle.rel = "stylesheet";
+    mascotStyle.href = `./mascot-hybrid.css?v=${encodeURIComponent(cacheVersion)}`;
+    const previousStyleReady = window.eduRuntimeStyleReady;
+    window.eduRuntimeStyleReady = Promise.all([previousStyleReady, new Promise((resolve, reject) => {
+      mascotStyle.onload = resolve;
+      mascotStyle.onerror = () => reject(new Error("โหลด mascot-hybrid.css ไม่สำเร็จ"));
+    })]);
+    document.head.append(mascotStyle);
   </script>
 </head>
 
@@ -114,11 +132,13 @@
         <div class="mascot-particles" id="mascot-particles" aria-hidden="true"></div>
         <img class="mascot-perch" id="mascot-perch-image" alt="" aria-hidden="true" />
         <button class="mascot-notice" id="mascot-notice" type="button" hidden aria-label="เปิดคำแนะนำใหม่">
-          <img class="mascot-quest-bubble" data-runtime-asset="./assets/image/mascot-quest-bubble.png" alt=""
+          <img class="mascot-quest-bubble" data-runtime-asset="./assets/image/mascot-quest-bubble.webp" alt=""
             aria-hidden="true" />
           <img class="mascot-quest-icon" data-runtime-asset="./assets/icon/quest-alert.svg" alt="" aria-hidden="true" />
         </button>
         <div class="mascot-character" id="mascot-character" aria-hidden="true">
+          <canvas class="mascot-sprite-layer" id="mascot-sprite" aria-hidden="true"></canvas>
+          <canvas class="mascot-eye-layer" id="mascot-eyes" aria-hidden="true"></canvas>
           <img class="mascot-pose mascot-pose-idle" id="mascot-idle-image" alt="" />
           <img class="mascot-pose mascot-pose-speaking" id="mascot-speaking-image" alt="" />
           <img class="mascot-pose mascot-pose-fly mascot-pose-fly-up" id="mascot-fly-image" alt="" />
@@ -152,6 +172,18 @@
         <button id="zoom-out" type="button" aria-label="ซูมออก"><img data-icon="zoom-out.svg" alt="" /></button>
         <button id="reset-view" class="reset-control" type="button" aria-label="รีเซ็ตกล้อง"><img data-icon="home.svg"
             alt="" /></button>
+        <div class="scene-mode-control">
+          <button id="scene-mode-toggle" class="scene-mode-toggle" type="button" aria-label="เลือกฉาก" aria-haspopup="true" aria-expanded="false">
+            <svg data-scene-icon="day" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>
+            <svg data-scene-icon="night" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" hidden><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.6 8.6 0 1 0 20 15.2Z"/></svg>
+            <svg data-scene-icon="standard" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" hidden><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
+          </button>
+          <div id="scene-mode-menu" class="scene-mode-menu" role="menu" aria-label="เลือกบรรยากาศของฉาก" hidden>
+            <button type="button" role="menuitemradio" data-play-scene-mode="day" aria-label="ฉากกลางวัน" title="กลางวัน"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg></button>
+            <button type="button" role="menuitemradio" data-play-scene-mode="night" aria-label="ฉากกลางคืน" title="กลางคืน"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.6 8.6 0 1 0 20 15.2Z"/></svg></button>
+            <button type="button" role="menuitemradio" data-play-scene-mode="standard" aria-label="ฉาก Standard" title="Standard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg></button>
+          </div>
+        </div>
         <button id="zoom-in" type="button" aria-label="ซูมเข้า"><img data-icon="zoom-in.svg" alt="" /></button>
         <button id="rotate-right" type="button" aria-label="หมุนกล้องไปทางขวา"><img data-icon="rotate-right.svg"
             alt="" /></button>

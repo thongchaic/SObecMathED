@@ -40,6 +40,8 @@
 | Mode Badge | `ui.modeBadge` | ป้าย LAB / TEACHER LAB ใน Topbar |
 | Quiz Badge | `ui.quizBadge` | ป้าย PRE-TEST ใต้ Topbar |
 | System Popup | `ui.popup` | ฐาน modal ของ Information, Quiz Welcome, Result และ Edit Lab |
+| Quiz Result | System-owned | สรุปคะแนนหลังยืนยันข้อสุดท้าย; Lesson ส่งเฉพาะข้อมูลผ่าน `context.quiz.answer()` ไม่สร้างผลคะแนนเอง |
+| Scene Mode | `sceneModes` | ผู้เรียนสลับ Standard / กลางวัน / กลางคืนผ่านเมนูของ Runtime; ไม่ใช่ `meta.background` หรือสีที่ Lesson กำหนดเอง |
 | Camera Controls | `ui.cameraControls` | ปุ่มควบคุมกล้องมุมขวาล่าง; ระบบซ่อนบน Mobile |
 | World Hint | `ui.worldHint` | ข้อความ `meta.tooltip` มุมซ้ายล่าง; ระบบซ่อนบน Mobile |
 | World Callout | `ui.worldCallout` | ป้ายพร้อมเส้นชี้พื้นที่; ใส่ `insight` เพื่อเพิ่ม icon/hover และเปิด Insight Dialog |
@@ -50,6 +52,7 @@
 | Celebration VFX | `vfx.celebrationEffect` | Ribbon, confetti และพลุเมื่อจบบทเรียน |
 | Debug Area / Transform Editor | `ui.worldGuiSystem` | เครื่องมือ Dev แสดงพิกัด X/Z และ Position/Rotation/Scale; กดป้ายโมเดลเพื่อปรับและคัดลอกค่า |
 | Runtime Setting | `ui.theme` และ Setting ราย Service | เครื่องมือ Dev ที่เปิดด้วย `F6` เพื่อแก้ค่าระหว่างรันและทดสอบ GUI Service |
+| Debug HUD | `debugHUD` | ปุ่มทดสอบ F4, F6 และสลับ Lab/Quiz เมื่อเปิด Debug; `lessonData.preview: true` ซ่อนเครื่องมือ Debug เหลือเฉพาะสลับ Lab/Quiz ให้ครู |
 
 `World Callout` ไม่ใช่ `Gizmo`: Callout ชี้ “พื้นที่” ด้วยเส้นในฉาก ส่วน Gizmo เป็น GUI 2D ที่วิ่งตาม object/ตำแหน่งและหันเข้าหาจอเสมอ
 
@@ -85,7 +88,7 @@ Control Menu อยู่ภายใต้ phase policy กลางของ r
 | GUI Service Lab | หมวดทดสอบในหน้า `F6` | Preview, Update และ Clear Service กลาง เพื่อเช็กหน้าตา, animation และ responsive layout โดยไม่ต้องเขียน UI ทดสอบใน lesson |
 | Debug Area | ปุ่ม Debug Area ในหน้า `F6` | เปิดพิกัด X/Z และป้าย transform ของโมเดล; กดป้ายเพื่อแก้ Position/Rotation/Scale แบบสดและคัดลอกค่ากลับไปใช้ |
 
-ฉาก Main World ปัจจุบันใช้ `background: "green"` เพียงแบบเดียว สี Grid ต้องมาจาก Setting กลาง `ground.gridColor`, `ground.gridOpacity` และ `ground.ringColor`; lesson และ background preset ห้ามกำหนดสี Grid ทับเอง สำหรับบทเรียน 3D runtime ใช้ Storybook UI สีน้ำตาล/ครีมบน felt environment โดย theme เป็น System-owned และ lesson ห้ามกำหนดเอง
+ฉาก Main World ปัจจุบันใช้ `background: "green"` เป็น base environment เดียว แต่ผู้เรียนสลับการนำเสนอ Standard / กลางวัน / กลางคืนผ่าน `mainWorldSetting.sceneModes` ได้ สี Grid ต้องมาจาก Setting กลาง ไม่ใช่ lesson หรือ background preset ที่สร้างเอง สำหรับบทเรียน 3D runtime ใช้ Storybook UI สีน้ำตาล/ครีมบน felt environment โดย theme เป็น System-owned และ lesson ห้ามกำหนดเอง
 
 
 

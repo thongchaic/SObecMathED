@@ -2,7 +2,9 @@
   "use strict";
 
   const scriptUrl = new URL(document.currentScript.src);
-  const cacheVersion = Date.now();
+  // Production uses the SDK script version as a stable cache key. Deployments
+  // can invalidate the shell deliberately by changing ?v= on eduSdk.js.
+  const cacheVersion = scriptUrl.searchParams.get("v") || "1.0.0";
   const runtimeUrl = new URL("./main-world.html", scriptUrl);
   runtimeUrl.searchParams.set("v", cacheVersion);
   const runtimeChannel = "edu-widget";
@@ -247,7 +249,7 @@
     state.removeTimer = global.setTimeout(removeLessonOverlay, 380);
 
     // จุดส่ง callback กลับไปยังเว็บหลัก เมื่อบทเรียนกำลังถูกปิด
-    console.log("[EduSDK] เรียก onClose()", { lessonData });
+    //console.log("[EduSDK] เรียก onClose()", { lessonData });
     onClose?.();
     return true;
   }
@@ -295,10 +297,12 @@
 
       // จุดส่งผลลัพธ์กลับไปยังเว็บหลัก: argument แรกคือ lessonData เดิม
       // และ argument ที่สองคือ result ที่ส่งมาจากบทเรียน
+      /*
       console.log("[EduSDK] เรียก onComplete(lessonData, result)", {
         lessonData,
         result
       });
+      */
       state.activeLesson?.onComplete?.(lessonData, result);
     }
 
@@ -384,6 +388,7 @@
       runtimeUrl,
       new URL("./main-world.js", runtimeUrl),
       new URL("./main-world-setting.js", runtimeUrl),
+      new URL("./debug-scene-time.mjs", runtimeUrl),
       new URL("./runtime-setting-menu.js", runtimeUrl),
       new URL("./world.css", runtimeUrl),
       new URL("../plugins/vendor/three/0.180.0/three.module.min.js", runtimeUrl),

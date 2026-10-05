@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="th">
+<head><meta charset="UTF-8"><title>ภารกิจคลี่รูปทรง — รวมพื้นที่ทุกด้าน</title></head>
+<body><script data-lesson-app>
+(() => {
+  const ACCENT_COLORS = ["#ff5f7a", "#3488ff", "#9b63ff", "#2fcf83", "#ff8a3d", "#20c8d2", "#f15fa8"];
+  const COLORS = ["#ffb8c8", "#b7ddff", "#dac4ff", "#baf2d2", "#ffd09d", "#aef1f5", "#ffc1df"];
+  const FRAME = "#17355c";
+  const CYLINDER_ROLL_STRIPS = 31;
+  const OPTION_LABELS = {
+    rectangle: "ผืนผ้า · ยาว × กว้าง", triangle: "สามเหลี่ยม · ฐาน × สูง ÷ 2",
+    square: "จัตุรัส · ด้าน × ด้าน", house: "รูปบ้าน · ผนัง + หลังคา",
+    circle: "วงกลม · π × รัศมี²", semicircle: "ครึ่งวงกลม · π × รัศมี² ÷ 2",
+    trapezoid: "คางหมู · (บน + ล่าง) × สูง ÷ 2",
+    lshape: "รูปตัว L · รูปใหญ่ − ช่องว่าง"
+  };
+  const FORMULAS = {
+    rectangle: { name: "พื้นที่สี่เหลี่ยมผืนผ้า", expression: "ยาว × กว้าง", icon: "shape-rectangle", calculate: (a, b) => a * b },
+    triangle: { name: "พื้นที่สามเหลี่ยม", expression: "ฐาน × สูง ÷ 2", icon: "shape-triangle", calculate: (a, b) => a * b / 2 },
+    square: { name: "พื้นที่สี่เหลี่ยมจัตุรัส", expression: "ด้าน × ด้าน", icon: "shape-square", calculate: a => a * a },
+    house: { name: "พื้นที่รูปบ้าน", expression: "กว้าง × สูงผนัง + กว้าง × สูงหลังคา ÷ 2", icon: "shape-house", calculate: (w, wall, roof) => w * wall + w * roof / 2 },
+    circle: { name: "พื้นที่วงกลม", expression: "π × รัศมี²", icon: "shape-circle", calculate: a => 3.14 * Math.pow(a / 2, 2) },
+    semicircle: { name: "พื้นที่ครึ่งวงกลม", expression: "π × รัศมี² ÷ 2", icon: "shape-semicircle", calculate: a => 3.14 * Math.pow(a / 2, 2) / 2 },
+    trapezoid: { name: "พื้นที่สี่เหลี่ยมคางหมู", expression: "(ด้านคู่ขนาน 1 + 2) × สูง ÷ 2", icon: "shape-trapezoid", calculate: (a, b, h = b) => (a + b) * h / 2 },
+    lshape: { name: "พื้นที่รูปตัว L", expression: "สี่เหลี่ยมใหญ่ − ช่องว่าง", icon: "shape-l", calculate: (a, b) => a * b * .75 }
+  };
+  const SHAPE_NAMES = { cuboid: "ทรงสี่เหลี่ยมมุมฉาก", cube: "ทรงลูกบาศก์", triangularPrism: "ปริซึมสามเหลี่ยม", pyramid: "พีระมิดฐานสี่เหลี่ยม", house: "รูปทรงประกอบกล่องกับปริซึมสามเหลี่ยม", cylinder: "ทรงกระบอก", lprism: "รูปทรงประกอบกล่อง 3 กล่อง" };
+  const SCENE_DECOR = [
+    { asset: "environment/tree-stylized", position: [-10.65, .08, -3.7], rotation: [0, 28, 0], targetSize: 2.65 },
+    { asset: "environment/fence-wood", position: [-9.7, .08, -5.6], rotation: [0, 150, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [-7.92, .08, -7.92], rotation: [0, 135, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [-5.6, .08, -9.7], rotation: [0, 120, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [-2.9, .08, -10.82], rotation: [0, 105, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [0, .08, -11.2], rotation: [0, 90, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [2.9, .08, -10.82], rotation: [0, 75, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [5.6, .08, -9.7], rotation: [0, 60, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [7.92, .08, -7.92], rotation: [0, 45, 0], targetSize: 3.05 },
+    { asset: "environment/fence-wood", position: [9.7, .08, -5.6], rotation: [0, 30, 0], targetSize: 3.05 },
+    { asset: "environment/tree-stylized", position: [10.65, .08, -3.7], rotation: [0, -28, 0], targetSize: 2.65 }
+  ];
+  const DECOR = SCENE_DECOR;
+  const quizQuestion = (question, figureType, a, b, c, unit) => ({
+    question,
+    data: [
+      { key: "figureType", value: figureType }, { key: "sideA", value: a },
+      { key: "sideB", value: b }, { key: "sideC", value: c }, { key: "unit", value: unit }
+    ]
+  });
+
+  PuzzleLesson.define({
+    id: "ep14-lesson3-surface-formulas",
+    version: "3.8.1",
+    meta: {
+      worldType: "3d-world-space", scenePersistence: "lesson", lessonId: "ep14-lesson3-surface-formulas",
+      title: "ภารกิจคลี่รูปทรง — รวมพื้นที่ทุกด้าน", category: "คณิตศาสตร์", subcategory: "พื้นที่ผิวของรูปทรง 3 มิติ",
+      description: "กดฐานเพื่อคลี่รูปทรง จัดด้านที่เท่ากันเป็นกลุ่ม แล้วเลือกสูตรพื้นที่ 2 มิติ",
+      keyResult: "ผู้เรียนเห็นว่าพื้นที่ผิวคือผลรวมของแผ่น 2 มิติ และย่อด้านที่เท่ากันเป็น 2× หรือ 4× ได้",
+      background: "green",
+      camera: { fov: 43, startYaw: 18, startPitch: 51, startDistance: 23, minDistance: 13, maxDistance: 34, minPitch: 25, maxPitch: 76, target: [0, .2, .4] },
+      welcomeMessage: ["ไดโนจะช่วยคลี่รูปทรงและรวมพื้นที่ทุกด้าน", "กดฐานใต้รูปทรงเพื่อคลี่ผิวทุกด้าน", "แผ่นที่เท่ากันจะวางเหลื่อมกันเป็นกลุ่ม 2× หรือ 4×", "เลือกสูตรครบและถูกต้อง รูปทรงจะประกอบกลับ"],
+      tooltip: "ก่อนคลี่ให้กดฐานเพียงจุดเดียว หลังคลี่จึงกดแผ่นเพื่อเลือกสูตรได้",
+      defaultValue: { figureType: "cuboid", sideA: 6, sideB: 4, sideC: 3, unit: "cm" },
+      editSchema: [
+        { key: "figureType", name: "รูปทรง", type: "dropdown", option: [{ value: "cuboid", label: "กล่องสี่เหลี่ยมมุมฉาก" }, { value: "cube", label: "ลูกบาศก์" }, { value: "triangularPrism", label: "ปริซึมสามเหลี่ยม" }, { value: "cylinder", label: "ทรงกระบอก" }, { value: "pyramid", label: "พีระมิด" }, { value: "lprism", label: "กล่อง 3 กล่องต่อกัน (รูปตัว L)" }, { value: "house", label: "กล่อง + ปริซึมสามเหลี่ยม (รูปบ้าน)" }] },
+        { key: "sideA", name: "ความยาว/ด้านฐาน", type: "slider", option: [2, 10], step: 1 },
+        { key: "sideB", name: "ความกว้าง/สูงเอียง", type: "slider", option: [2, 10], step: 1 },
+        { key: "sideC", name: "ความสูง", type: "slider", option: [2, 10], step: 1 },
+        { key: "unit", name: "หน่วยความยาว", type: "dropdown", option: ["mm", "cm", "m"] }
+      ],
+      howto: [
+        { index: 0, title: "สำรวจรูปทรงเดิม", type: "sequence", desc: "ดูรูปทรง 3 มิติและตัวเลขกำกับแต่ละด้านก่อนคลี่", option: { type: "instruction", header: "ไดโนชวนคลี่รูปทรง", message: "พื้นที่ผิวคือผลรวมพื้นที่ทุกด้าน ดูขนาดของรูปทรงก่อน แล้วคลี่ออกเพื่อเลือกสูตรให้แต่ละแผ่น" } },
+        { index: 1, title: "คลี่ผิวออกเป็นแผ่น", type: "sequence", desc: "กดรูปทรง แล้วสังเกตว่าผิวแต่ละด้านแยกเป็นรูป 2 มิติชนิดใด", option: { type: "instruction", header: "คลี่แล้วอย่าให้ด้านใดหาย", message: "ทุกแผ่นบนรูปคลี่คือหนึ่งผิวของรูปทรงเดิม ลองนับก่อนและหลังคลี่ว่าจำนวนหน้าครบเท่ากัน" } },
+        { index: 2, title: "อ่านขนาดจากลูกศร", type: "sequence", desc: "ลูกศรสองหัวและป้ายตัวเลขบอกด้านที่ต้องใช้ในสูตรพื้นที่", option: { type: "instruction", header: "อ่านมิติของแต่ละแผ่น", message: "ตามลูกศรสองหัวเพื่อเลือกความยาวที่เป็นฐาน สูง รัศมี หรือด้านเอียงของแผ่นนั้น แล้วจึงใช้สูตรพื้นที่ของรูป 2 มิติให้ถูก" } },
+        { index: 3, title: "จับคู่แผ่นที่เท่ากัน", type: "sequence", desc: "แผ่นขนาดเท่ากันวางเหลื่อมกันเล็กน้อย จึงเขียนย่อเป็น 2× หรือ 4× ได้", option: { type: "instruction", header: "หน้าที่เท่ากันคิดครั้งเดียวแล้วคูณ", message: "ถ้ามีแผ่นรูปร่างและขนาดเท่ากันหลายหน้า ให้หาพื้นที่หนึ่งหน้าแล้วคูณจำนวนหน้า เช่น 2× หรือ 4× ช่วยไม่ให้ลืมหรือนับซ้ำ" } },
+        { index: 4, title: "เลือกสูตรและรวมพื้นที่", type: "freestyle", desc: "กดแผ่น เลือกสูตรให้ครบ แล้วรวมพื้นที่ทุกกลุ่ม", option: { type: "instruction", header: "พื้นที่ผิวต้องรวมทุกหน้า", message: "เลือกสูตรให้แต่ละกลุ่มแผ่น คูณจำนวนหน้าที่เท่ากัน แล้วบวกทั้งหมด ตรวจครั้งสุดท้ายว่าฐาน ฝา และด้านข้างถูกนับครบ" } }
+      ],
+      quiz: [
+        quizQuestion("คลี่กล่องแล้วหาพื้นที่ผิวรวม", "cuboid", 5, 3, 4, "cm"),
+        quizQuestion("คลี่พีระมิด แล้วรวมฐานกับสามเหลี่ยม 4 หน้า", "pyramid", 6, 5, 4, "cm"),
+        quizQuestion("คลี่บ้าน แล้วรวมผนัง หลังคา พื้น และหน้าบ้าน", "house", 6, 5, 4, "m"),
+        quizQuestion("เลือกสูตรของด้านที่เท่ากันให้ถูกต้อง", "cuboid", 7, 4, 6, "cm"),
+        quizQuestion("หาพื้นที่ผิวพีระมิดฐานสี่เหลี่ยม", "pyramid", 8, 5, 6, "m"),
+        quizQuestion("หาพื้นที่ผิวของทรงรูปบ้าน", "house", 8, 6, 5, "cm"),
+        quizQuestion("คลี่ทรงกระบอก แล้วรวมวงกลม 2 แผ่นกับผิวด้านข้าง", "cylinder", 3, 7, 5, "cm"),
+        quizQuestion("หาพื้นที่ผิวของทรงกระบอกจากวงกลมและสี่เหลี่ยม", "cylinder", 4, 9, 6, "m"),
+        quizQuestion("คลี่ลูกบาศก์ แล้วรวมสี่เหลี่ยมจัตุรัส 6 หน้า", "cube", 5, 5, 5, "cm"),
+        quizQuestion("คลี่ปริซึมฐานตัว L แล้วรวมพื้นที่ทุกด้าน", "lprism", 6, 3, 4, "cm"),
+        quizQuestion("คลี่ปริซึมสามเหลี่ยม แล้วรวมสามเหลี่ยม 2 ด้านกับสี่เหลี่ยม 3 ด้าน", "triangularPrism", 6, 4, 5, "cm"),
+        quizQuestion("แยกผิวปริซึมสามเหลี่ยมเป็น 5 แผ่น", "triangularPrism", 8, 3, 6, "m")
+      ]
+    },
+
+    mount(context) {
+      this.context = context;
+      this.worldHandles = []; this.uiHandles = []; this.timers = [];
+      this.panels = []; this.panelGroups = []; this.decorPool = [];
+      this.decorLoading = null; this.poolVersion = (this.poolVersion || 0) + 1;
+    },
+
+    async reset({ values, mode, question }) {
+      this.clearScene();
+      this.values = { ...values, figureType: values.figureType || "cuboid" };
+      this.mode = mode; this.question = question || null;
+      this.sceneState = "assembled"; this.completed = false; this.activeOption = null;
+      this.currentStep = mode === "student-quiz" ? 4 : 0;
+      this.modelShellDetails = [];
+      this.createShapePanels();
+      this.createModelBase();
+      this.createPanelGroups();
+      this.updateQuestion();
+      this.updateAnswer("assembled");
+      this.updateConsole("assembled");
+      if (mode !== "student-quiz") this.controls?.hide?.();
+      void this.ensureDecor();
+    },
+
+    createShapePanels() {
+      if (this.values.figureType === "triangularPrism") this.createTriangularPrismPanels();
+      else if (this.values.figureType === "pyramid") this.createPyramidPanels();
+      else if (this.values.figureType === "house") this.createHousePanels();
+      else if (this.values.figureType === "cylinder") this.createCylinderPanels();
+      else if (this.values.figureType === "cube") this.createCubePanels();
+      else if (this.values.figureType === "lprism") this.createLPrismPanels();
+      else this.createCuboidPanels();
+    },
+
+    framedBoxParts(size, plane) {
+      const [w, h, d] = size;
+      const edge = .105;
+      const lift = .018;
+      const gridSize = plane === "xz" ? [w, d] : plane === "xy" ? [w, h] : [d, h];
+      const surface = { shape: "sharp-box", size, gridSize };
+      if (plane === "xz") return [
+        surface,
+        { shape: "sharp-box", size: [w + edge, h + lift, edge], position: [0, lift, d / 2], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [w + edge, h + lift, edge], position: [0, lift, -d / 2], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [edge, h + lift, d], position: [w / 2, lift, 0], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [edge, h + lift, d], position: [-w / 2, lift, 0], color: FRAME, frame: true }
+      ];
+      if (plane === "xy") return [
+        surface,
+        { shape: "sharp-box", size: [w + edge, edge, d + lift], position: [0, h / 2, lift], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [w + edge, edge, d + lift], position: [0, -h / 2, lift], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [edge, h, d + lift], position: [w / 2, 0, lift], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [edge, h, d + lift], position: [-w / 2, 0, lift], color: FRAME, frame: true }
+      ];
+      return [
+        surface,
+        { shape: "sharp-box", size: [w + lift, edge, d + edge], position: [lift, h / 2, 0], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [w + lift, edge, d + edge], position: [lift, -h / 2, 0], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [w + lift, h, edge], position: [lift, 0, d / 2], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [w + lift, h, edge], position: [lift, 0, -d / 2], color: FRAME, frame: true }
+      ];
+    },
+
+    trianglePanelParts(width, height) {
+      const rail = .105, diagonal = Math.sqrt((width / 2) ** 2 + height ** 2);
+      const angle = Math.atan2(height, width / 2) * 180 / Math.PI;
+      return [
+        { shape: "wedge", size: [width / 2, .08, height], gridSize: [width / 2, height], position: [-width / 4, 0, 0], rotation: [0, 180, 0] },
+        { shape: "wedge", size: [width / 2, .08, -height], gridSize: [width / 2, height], position: [width / 4, 0, 0] },
+        { shape: "sharp-box", size: [width + rail, .09, rail], position: [0, .025, -height / 2], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [diagonal, .09, rail], position: [-width / 4, .025, 0], rotation: [0, -angle, 0], color: FRAME, frame: true },
+        { shape: "sharp-box", size: [diagonal, .09, rail], position: [width / 4, .025, 0], rotation: [0, angle, 0], color: FRAME, frame: true }
+      ];
+    },
+
+    surfaceGridRepeat(part) {
+      const dimensions = part.gridSize || (part.size || [1, 1, 1]).map(value => Math.abs(Number(value) || 0)).sort((a, b) => b - a).slice(0, 2);
+      const cellSize = .42;
+      return [Math.max(1, Math.abs(dimensions[0]) / cellSize), Math.max(1, Math.abs(dimensions[1]) / cellSize)];
+    },
+
+    panelMaterial(part, color) {
+      const frameColor = part.color || FRAME;
+      return {
+        unlit: !part.frame,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+        roughness: part.frame ? .82 : .58,
+        clearcoat: part.frame ? .08 : .24,
+        clearcoatRoughness: part.frame ? .5 : .34,
+        metalness: 0,
+        emissive: part.frame ? frameColor : color,
+        emissiveIntensity: part.frame ? .08 : .1,
+        ...(part.frame ? {} : {
+          pattern: "simple-grid",
+          patternColors: ["#ffffff", "#315f86", "#ffffff"],
+          patternRepeat: part.gridRepeat || this.surfaceGridRepeat(part),
+          ...(part.gridOffset ? { patternOffset: part.gridOffset } : {})
+        })
+      };
+    },
+
+    boxSurfaceParts(size, thickness = .055) {
+      const [width, height, depth] = size, halfWidth = width / 2, halfHeight = height / 2, halfDepth = depth / 2;
+      return [
+        { shape: "sharp-box", size: [width, thickness, depth], position: [0, halfHeight, 0], gridSize: [width, depth] },
+        { shape: "sharp-box", size: [width, thickness, depth], position: [0, -halfHeight, 0], gridSize: [width, depth] },
+        { shape: "sharp-box", size: [width, height, thickness], position: [0, 0, halfDepth], gridSize: [width, height] },
+        { shape: "sharp-box", size: [width, height, thickness], position: [0, 0, -halfDepth], gridSize: [width, height] },
+        { shape: "sharp-box", size: [thickness, height, depth], position: [halfWidth, 0, 0], gridSize: [depth, height] },
+        { shape: "sharp-box", size: [thickness, height, depth], position: [-halfWidth, 0, 0], gridSize: [depth, height] }
+      ];
+    },
+
+    styleSurfaceParts(parts, color) {
+      return parts.map(part => {
+        const partColor = part.frame ? (part.color || FRAME) : (part.color || color);
+        return { ...part, color: partColor, material: this.panelMaterial(part, partColor) };
+      });
+    },
+
+    createTexturedShell(name, position, rotation, parts, color) {
+      this.modelShellParts ||= [];
+      const handle = this.addWorld(this.context.world.addGroup({
+        name, position, rotation: rotation || [0, 0, 0], clickable: false, selectionFeedback: false,
+        parts: this.styleSurfaceParts(parts, color)
+      }));
+      if (!this.modelShell) this.modelShell = handle;
+      else this.modelShellParts.push(handle);
+      return handle;
+    },
+
+    createPanel(def) {
+      const panel = {
+        ...def, color: COLORS[this.panels.length % COLORS.length], accentColor: ACCENT_COLORS[this.panels.length % ACCENT_COLORS.length], selectedFormula: null,
+        selectedValue: null, correct: false, group: null
+      };
+      panel.area = FORMULAS[panel.correctFormula].calculate(...panel.dimensions);
+      panel.handle = this.addWorld(this.context.world.addGroup({
+        name: `surface-panel-${panel.id}`,
+        position: panel.assembledPosition,
+        rotation: panel.assembledRotation,
+        clickable: false,
+        selectionFeedback: false,
+        tapToClick: true,
+        hitArea: panel.hitArea,
+        hoverMessage: "เลือกสูตรพื้นที่ของแผ่นนี้",
+        onClick: () => this.handlePanelClick(panel.id),
+        parts: this.styleSurfaceParts(panel.parts, panel.color)
+      }));
+      panel.handle.setClickable(false);
+      this.panels.push(panel);
+      return panel;
+    },
+
+    createCuboidPanels() {
+      const a = +this.values.sideA, b = +this.values.sideB, c = +this.values.sideC;
+      const scale = 3.45 / Math.max(a, b, c), x = a * scale, z = b * scale, y = c * scale, t = .085;
+      const center = [0, .32, -.65];
+      this.modelCenter = center; this.modelHeight = y; this.modelFootprint = [x, z];
+      const defs = [
+        ["bottom", "ด้านล่าง", [a, b], [x, t, z], "xz", [0, 0, 0], [0, 0, 0]],
+        ["top", "ด้านบน", [a, b], [x, t, z], "xz", [0, y, 0], [0, 0, 0]],
+        ["front", "ด้านหน้า", [a, c], [x, y, t], "xy", [0, y / 2, z / 2], [-90, 0, 0]],
+        ["back", "ด้านหลัง", [a, c], [x, y, t], "xy", [0, y / 2, -z / 2], [-90, 0, 0]],
+        ["left", "ด้านซ้าย", [b, c], [t, y, z], "yz", [-x / 2, y / 2, 0], [0, 0, 90]],
+        ["right", "ด้านขวา", [b, c], [t, y, z], "yz", [x / 2, y / 2, 0], [0, 0, 90]]
+      ];
+      defs.forEach(([id, name, dimensions, size, plane, p, flat]) => this.createPanel({
+        id, name, dimensions,
+        flatSize: plane === "xz" ? [size[0], size[2]] : plane === "xy" ? [size[0], size[1]] : [size[2], size[1]],
+        correctFormula: dimensions[0] === dimensions[1] ? "square" : "rectangle",
+        assembledPosition: [center[0] + p[0], center[1] + p[1], center[2] + p[2]],
+        assembledRotation: [0, 0, 0], flatRotation: flat,
+        hitArea: [Math.max(.9, size[0] + .24), Math.max(.35, size[1] + .24), Math.max(.9, size[2] + .24)],
+        parts: this.framedBoxParts(size, plane)
+      }));
+    },
+
+    createCubePanels() {
+      const originalB = this.values.sideB, originalC = this.values.sideC;
+      this.values.sideB = this.values.sideA;
+      this.values.sideC = this.values.sideA;
+      this.createCuboidPanels();
+      this.values.sideB = originalB;
+      this.values.sideC = originalC;
+    },
+
+    createTriangularPrismPanels() {
+      const base = +this.values.sideA, triangleHeight = +this.values.sideB, length = +this.values.sideC;
+      const slope = Math.hypot(base / 2, triangleHeight);
+      const scale = 3.45 / Math.max(base, triangleHeight, length);
+      const x = base * scale, z = triangleHeight * scale, y = length * scale;
+      const center = [0, .32, -.65], thickness = .085;
+      this.modelCenter = center; this.modelHeight = y; this.modelFootprint = [x, z];
+      for (const [id, name, level] of [["bottom", "สามเหลี่ยมฐานล่าง", 0], ["top", "สามเหลี่ยมฐานบน", y]]) {
+        this.createPanel({
+          id, name, dimensions: [base, triangleHeight], correctFormula: "triangle", flatSize: [x, z],
+          assembledPosition: [center[0], center[1] + level, center[2]], assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+          hitArea: [x + .25, .35, z + .25], parts: this.trianglePanelParts(x, z)
+        });
+      }
+      [["front", "สี่เหลี่ยมด้านฐานสามเหลี่ยม", base], ["left", "สี่เหลี่ยมด้านเอียงซ้าย", slope], ["right", "สี่เหลี่ยมด้านเอียงขวา", slope]]
+        .forEach(([id, name, edge], index) => {
+          const width = edge * scale;
+          this.createPanel({
+            id, name, dimensions: [edge, length], correctFormula: "rectangle", flatSize: [width, y],
+            assembledPosition: [center[0], center[1] + y / 2, center[2]], assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+            hitArea: [width + .25, .35, y + .25], parts: this.framedBoxParts([width, thickness, y], "xz")
+          });
+        });
+      this.panels.forEach(panel => { panel.shellStart = [center[0], center[1] + y * .5, center[2]]; panel.handle.setVisible(false); });
+      const panelById = id => this.panels.find(panel => panel.id === id);
+      for (const [id, level] of [["bottom", 0], ["top", y]]) {
+        const panel = panelById(id);
+        this.createTexturedShell(`surface-triangular-prism-${id}`, [center[0], center[1] + level, center[2]], [0, 180, 0], panel.parts, panel.color);
+      }
+      const lower = [[-x / 2, center[1], center[2] + z / 2], [x / 2, center[1], center[2] + z / 2], [0, center[1], center[2] - z / 2]];
+      const upper = lower.map(point => [point[0], point[1] + y, point[2]]);
+      const sideIds = ["front", "right", "left"];
+      for (let index = 0; index < 3; index++) {
+        const from = lower[index], to = lower[(index + 1) % 3];
+        const dx = to[0] - from[0], dz = to[2] - from[2], width = Math.hypot(dx, dz);
+        const panel = panelById(sideIds[index]);
+        this.createTexturedShell(
+          `surface-triangular-prism-${sideIds[index]}`,
+          [(from[0] + to[0]) / 2, center[1] + y / 2, (from[2] + to[2]) / 2],
+          [0, -Math.atan2(dz, dx) * 180 / Math.PI, 0],
+          this.framedBoxParts([width, y, thickness], "xy"), panel.color
+        );
+        this.createShellEdge(lower[index], lower[(index + 1) % 3], `tri-prism-lower-edge-${index}`);
+        this.createShellEdge(upper[index], upper[(index + 1) % 3], `tri-prism-upper-edge-${index}`);
+        this.createShellEdge(lower[index], upper[index], `tri-prism-side-edge-${index}`);
+      }
+    },
+
+    createLPrismPanels() {
+      const width = +this.values.sideA, depth = +this.values.sideB, height = +this.values.sideC;
+      const scale = 3.45 / Math.max(width, depth, height), x = width * scale, z = depth * scale, y = height * scale;
+      const center = [0, .32, -.65];
+      this.modelCenter = center; this.modelHeight = y; this.modelFootprint = [x, z];
+      const blockCenters = [[-x / 4, -z / 4], [x / 4, -z / 4], [-x / 4, z / 4]];
+      for (const [blockIndex, [offsetX, offsetZ]] of blockCenters.entries()) {
+        for (const [levelName, level] of [["ล่าง", 0], ["บน", y]]) {
+          const formula = width === depth ? "square" : "rectangle";
+          const panel = this.createPanel({
+            id: `block-${blockIndex + 1}-${levelName === "บน" ? "top" : "bottom"}`,
+            name: `สี่เหลี่ยม${levelName}ของกล่อง ${blockIndex + 1}`,
+            dimensions: [width / 2, depth / 2], correctFormula: formula, flatSize: [x / 2, z / 2],
+            assembledPosition: [center[0] + offsetX, center[1] + level, center[2] + offsetZ], assembledRotation: [0,0,0], flatRotation: [0,0,0],
+            hitArea: [x / 2 + .25,.35,z / 2 + .25], parts: this.framedBoxParts([x / 2,.085,z / 2], "xz")
+          });
+          panel.shellStart = [...panel.assembledPosition];
+        }
+      }
+      const edges = [width, depth / 2, width / 2, depth / 2, width / 2, depth];
+      const footprint = [[-x/2,-z/2],[x/2,-z/2],[x/2,0],[0,0],[0,z/2],[-x/2,z/2]];
+      edges.forEach((length, index) => {
+        const panelW = Math.max(.8, length * scale);
+        const from = footprint[index], to = footprint[(index + 1) % footprint.length];
+        const panel = this.createPanel({
+          id: `side-${index + 1}`, name: `ผนังด้านที่ ${index + 1}`, dimensions: [length, height], correctFormula: "rectangle",
+          flatSize: [panelW, y], assembledPosition: [center[0] + (from[0] + to[0]) / 2, center[1] + y / 2, center[2] + (from[1] + to[1]) / 2], assembledRotation: [0,0,0], flatRotation: [0,0,0],
+          hitArea: [panelW + .25,.35,y + .25], parts: this.framedBoxParts([panelW,.085,y], "xz")
+        });
+        panel.shellStart = [...panel.assembledPosition];
+      });
+      this.panels.forEach(panel => panel.handle.setVisible(false));
+      const blocks = [
+        { position: [-x / 4, 0, -z / 4], color: "#b7ddff" },
+        { position: [x / 4, 0, -z / 4], color: "#dac4ff" },
+        { position: [-x / 4, 0, z / 4], color: "#baf2d2" }
+      ];
+      blocks.forEach((block, index) => this.createTexturedShell(
+        `surface-l-prism-block-${index + 1}`,
+        [center[0] + block.position[0], center[1] + y / 2, center[2] + block.position[2]],
+        [0, 0, 0],
+        this.boxSurfaceParts([x / 2, y, z / 2]).map(part => ({ ...part, color: block.color })),
+        block.color
+      ));
+      const lower = footprint.map(([px,pz]) => [center[0] + px, center[1], center[2] + pz]);
+      const upper = lower.map(point => [point[0], point[1] + y, point[2]]);
+      for (let index = 0; index < footprint.length; index++) {
+        this.createShellEdge(lower[index], lower[(index + 1) % footprint.length], `l-prism-lower-edge-${index}`);
+        this.createShellEdge(upper[index], upper[(index + 1) % footprint.length], `l-prism-upper-edge-${index}`);
+        this.createShellEdge(lower[index], upper[index], `l-prism-side-edge-${index}`);
+      }
+    },
+
+    createShellEdge(from, to, name) {
+      if (!this.context.world.addConnector) return null;
+      const edge = this.addWorld(this.context.world.addConnector({ name, from, to, color: "#102f59", thickness: .065, opacity: 1, depthTest: true, renderOrder: 0 }));
+      this.modelShellDetails = this.modelShellDetails || [];
+      this.modelShellDetails.push(edge);
+      return edge;
+    },
+
+    createPyramidPanels() {
+      const base = +this.values.sideA, slant = +this.values.sideB;
+      const scale = 3.55 / Math.max(base, slant), b = base * scale, s = slant * scale;
+      const center = [0, .32, -.65], h = Math.sqrt(Math.max(.16, s * s - b * b / 4));
+      const shellHeight = h;
+      const faceAngle = Math.atan2(b / 2, h) * 180 / Math.PI;
+      this.modelCenter = center; this.modelHeight = shellHeight; this.modelFootprint = [b, b];
+      this.createPanel({
+        id: "base", name: "ฐานสี่เหลี่ยม", dimensions: [base, base], correctFormula: "square",
+        flatSize: [b, b],
+        assembledPosition: center, assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+        hitArea: [b + .25, .35, b + .25], parts: this.framedBoxParts([b, .085, b], "xz")
+      });
+      [
+        ["front", "สามเหลี่ยมด้านหน้า", [0, h * .5, b * .25], [-faceAngle, 0, 0]],
+        ["back", "สามเหลี่ยมด้านหลัง", [0, h * .5, -b * .25], [faceAngle, 180, 0]],
+        ["left", "สามเหลี่ยมด้านซ้าย", [-b * .25, h * .5, 0], [-faceAngle, -90, 0]],
+        ["right", "สามเหลี่ยมด้านขวา", [b * .25, h * .5, 0], [-faceAngle, 90, 0]]
+      ].forEach(([id, name, p, r]) => this.createPanel({
+        id, name, dimensions: [base, slant], correctFormula: "triangle",
+        flatSize: [b, s],
+        assembledPosition: [center[0] + p[0], center[1] + p[1], center[2] + p[2]], assembledRotation: r,
+        flatRotation: [0, 0, 0], hitArea: [b + .3, .4, s + .3],
+        parts: this.trianglePanelParts(b, s)
+      }));
+      this.panels.forEach(panel => {
+        panel.shellStart = [center[0], center[1] + shellHeight * .5, center[2]];
+        panel.handle.setVisible(false);
+      });
+      this.createTexturedShell(
+        "surface-pyramid-assembly-shell", [center[0], center[1] + shellHeight * .5, center[2]], [0, 0, 0],
+        [
+          { shape: "pyramid", size: [b * Math.SQRT2, shellHeight, b * Math.SQRT2], rotation: [0, 45, 0], gridSize: [4 * b, s], color: "#d9efff", geometry: { sides: 4, openEnded: true } },
+          { shape: "sharp-box", size: [b, .085, b], position: [0, -shellHeight / 2, 0], gridSize: [b, b], color: this.panels[0].color }
+        ],
+        "#d9efff"
+      );
+      const cy = center[1], apex = [center[0], cy + shellHeight, center[2]];
+      const corners = [[-b/2,0,-b/2],[b/2,0,-b/2],[b/2,0,b/2],[-b/2,0,b/2]].map(p => [center[0]+p[0],cy,center[2]+p[2]]);
+      corners.forEach((point, index) => {
+        this.createShellEdge(point, corners[(index + 1) % corners.length], `pyramid-base-edge-${index}`);
+        this.createShellEdge(point, apex, `pyramid-slope-edge-${index}`);
+      });
+    },
+
+    createHousePanels() {
+      const width = +this.values.sideA, depth = +this.values.sideB, total = +this.values.sideC;
+      const wall = total * .6, roof = total - wall, slope = Math.sqrt((width / 2) ** 2 + roof ** 2);
+      const scale = 3.6 / Math.max(width, depth, total), x = width * scale, z = depth * scale;
+      const y = wall * scale, ry = roof * scale, rs = slope * scale, t = .085, center = [0, .32, -.65];
+      this.modelCenter = center; this.modelHeight = y + ry; this.modelFootprint = [x, z];
+      this.createPanel({
+        id: "floor", name: "พื้นบ้าน", dimensions: [width, depth], correctFormula: "rectangle",
+        flatSize: [x, z],
+        assembledPosition: center, assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+        hitArea: [x + .25, .35, z + .25], parts: this.framedBoxParts([x, t, z], "xz")
+      });
+      [["left", "ผนังซ้าย", -x / 2], ["right", "ผนังขวา", x / 2]].forEach(([id, name, px]) => this.createPanel({
+        id, name, dimensions: [depth, wall], correctFormula: "rectangle",
+        flatSize: [z, y],
+        assembledPosition: [center[0] + px, center[1] + y / 2, center[2]], assembledRotation: [0, 0, 0],
+        flatRotation: [0, 0, 90], hitArea: [.4, y + .25, z + .25], parts: this.framedBoxParts([t, y, z], "yz")
+      }));
+      const angle = Math.atan2(roof, width / 2) * 180 / Math.PI;
+      [["roofL", "หลังคาซ้าย", -1], ["roofR", "หลังคาขวา", 1]].forEach(([id, name, side]) => this.createPanel({
+        id, name, dimensions: [slope, depth], correctFormula: "rectangle",
+        flatSize: [rs, z],
+        assembledPosition: [center[0] + side * x * .25, center[1] + y + ry * .5, center[2]],
+        assembledRotation: [0, 0, -side * angle], flatRotation: [0, 0, 0],
+        hitArea: [rs + .25, .35, z + .25], parts: this.framedBoxParts([rs, t, z], "xz")
+      }));
+      [["front", "ด้านหน้า", z / 2], ["back", "ด้านหลัง", -z / 2]].forEach(([id, name, pz]) => {
+        this.createPanel({
+          id: `${id}-wall`, name: `สี่เหลี่ยมผนัง${name}`, dimensions: [width, wall], correctFormula: "rectangle",
+          flatSize: [x, y], assembledPosition: [center[0], center[1] + y / 2, center[2] + pz],
+          assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0], hitArea: [x + .25, .35, y + .25],
+          parts: this.framedBoxParts([x, t, y], "xz")
+        });
+        this.createPanel({
+          id: `${id}-roof`, name: `สามเหลี่ยมหน้าตัด${name}`, dimensions: [width, roof], correctFormula: "triangle",
+          flatSize: [x, ry], assembledPosition: [center[0], center[1] + y + ry / 2, center[2] + pz],
+          assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0], hitArea: [x + .25, .35, ry + .25],
+          parts: this.trianglePanelParts(x, ry)
+        });
+      });
+      const wallOrigin = [center[0], center[1] + y / 2, center[2]];
+      const roofOrigin = [center[0], center[1] + y + ry / 2, center[2]];
+      this.panels.forEach(panel => {
+        panel.shellStart = panel.id.startsWith("roof") || panel.id.endsWith("-roof") ? roofOrigin : wallOrigin;
+        panel.handle.setVisible(false);
+      });
+      const totalY = y + ry;
+      this.createTexturedShell(
+        "surface-house-wall-block", [center[0], center[1] + y / 2, center[2]], [0, 0, 0],
+        this.boxSurfaceParts([x, y, z]).map(part => ({ ...part, color: "#b7ddff" })), "#b7ddff"
+      );
+      for (const panel of this.panels.filter(item => item.id === "roofL" || item.id === "roofR")) {
+        this.createTexturedShell(`surface-house-${panel.id}`, panel.assembledPosition, panel.assembledRotation, panel.parts, panel.color);
+      }
+      for (const panel of this.panels.filter(item => item.id.endsWith("-roof"))) {
+        this.createTexturedShell(`surface-house-${panel.id}`, panel.assembledPosition, [-90, 0, 0], panel.parts, panel.color);
+      }
+      const y0 = center[1], ye = center[1] + y, ya = center[1] + totalY;
+      const points = {
+        fl:[center[0]-x/2,y0,center[2]+z/2], fr:[center[0]+x/2,y0,center[2]+z/2],
+        fel:[center[0]-x/2,ye,center[2]+z/2], fer:[center[0]+x/2,ye,center[2]+z/2], fa:[center[0],ya,center[2]+z/2],
+        bl:[center[0]-x/2,y0,center[2]-z/2], br:[center[0]+x/2,y0,center[2]-z/2],
+        bel:[center[0]-x/2,ye,center[2]-z/2], ber:[center[0]+x/2,ye,center[2]-z/2], ba:[center[0],ya,center[2]-z/2]
+      };
+      [[points.fl,points.fr],[points.fl,points.fel],[points.fr,points.fer],[points.fel,points.fa],[points.fa,points.fer],
+       [points.bl,points.br],[points.bl,points.bel],[points.br,points.ber],[points.bel,points.ba],[points.ba,points.ber],
+       [points.fl,points.bl],[points.fr,points.br],[points.fel,points.bel],[points.fer,points.ber],[points.fa,points.ba]]
+        .forEach((pair, index) => this.createShellEdge(pair[0], pair[1], `house-shell-edge-${index}`));
+    },
+
+    circlePanelParts(diameter) {
+      return [
+        { shape: "cylinder", size: [diameter, .085, diameter], gridSize: [diameter, diameter], geometry: { segments: 64 } },
+        { shape: "ring-sector-flat", size: [diameter + .18, 1, diameter + .18], position: [0, .055, 0], geometry: { angle: 360, innerRadius: .86, orientation: "ground", segments: 64 }, color: FRAME, frame: true }
+      ];
+    },
+
+    createCylinderPanels() {
+      const radius = +this.values.sideA, height = +this.values.sideB;
+      const circumference = 2 * 3.14 * radius;
+      const scale = 3.4 / Math.max(radius * 2, height), diameter = radius * 2 * scale, y = height * scale;
+      const flatWidth = circumference * scale, flatDepth = y;
+      const center = [0, .32, -.65];
+      this.modelCenter = center; this.modelHeight = y; this.modelFootprint = [diameter, diameter];
+      this.createPanel({
+        id: "circle-bottom", name: "วงกลมฐานล่าง", dimensions: [radius * 2], correctFormula: "circle",
+        flatSize: [diameter, diameter],
+        assembledPosition: center, assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+        hitArea: [diameter + .25, .35, diameter + .25], parts: this.circlePanelParts(diameter)
+      });
+      this.createPanel({
+        id: "circle-top", name: "วงกลมฐานบน", dimensions: [radius * 2], correctFormula: "circle",
+        flatSize: [diameter, diameter],
+        assembledPosition: [center[0], center[1] + y, center[2]], assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+        hitArea: [diameter + .25, .35, diameter + .25], parts: this.circlePanelParts(diameter)
+      });
+      const lateral = this.createPanel({
+        id: "cylinder-side", name: "ผิวด้านข้างเมื่อคลี่เป็นสี่เหลี่ยม", dimensions: [circumference, height], correctFormula: "rectangle",
+        assembledPosition: [center[0], center[1] + y / 2, center[2]], assembledRotation: [0, 0, 0], flatRotation: [0, 0, 0],
+        hitArea: [diameter + .3, y + .3, diameter + .3],
+        parts: [{ shape: "cylinder", size: [diameter, y, diameter], gridSize: [flatWidth, flatDepth], geometry: { segments: 64, openEnded: true } }]
+      });
+      lateral.flatSize = [flatWidth, flatDepth];
+      lateral.flatHandle = this.addWorld(this.context.world.addGroup({
+        name: "surface-panel-cylinder-side-flat", position: [0, -20, 0], clickable: false,
+        selectionFeedback: false, tapToClick: true, hitArea: [flatWidth + .3, .4, flatDepth + .3],
+        hoverMessage: "เลือกสูตรพื้นที่ของผิวด้านข้าง", onClick: () => this.handlePanelClick(lateral.id),
+        parts: this.styleSurfaceParts(this.framedBoxParts([flatWidth, .085, flatDepth], "xz"), lateral.color)
+      }));
+      lateral.flatHandle.setVisible(false);
+      lateral.flatHandle.setClickable(false);
+      const stripWidth = flatWidth / CYLINDER_ROLL_STRIPS;
+      const [horizontalRepeats, verticalRepeats] = this.surfaceGridRepeat({ gridSize: [flatWidth, flatDepth] });
+      lateral.roll = {
+        count: CYLINDER_ROLL_STRIPS, width: flatWidth, depth: flatDepth,
+        radius: diameter / 2, height: y, center: [...center], version: 0, handles: []
+      };
+      for (let index = 0; index < CYLINDER_ROLL_STRIPS; index++) {
+        const handle = this.addWorld(this.context.world.addGroup({
+          name: `surface-cylinder-roll-strip-${index}`, position: [0, -20, 0], spawn: false,
+          clickable: false, selectionFeedback: false,
+          parts: this.styleSurfaceParts([{
+            shape: "sharp-box", size: [stripWidth * 1.012, flatDepth, .055], gridSize: [stripWidth, flatDepth],
+            gridRepeat: [horizontalRepeats / CYLINDER_ROLL_STRIPS, verticalRepeats],
+            gridOffset: [index * horizontalRepeats / CYLINDER_ROLL_STRIPS, 0]
+          }], lateral.color)
+        }));
+        handle.setVisible(false);
+        lateral.roll.handles.push(handle);
+      }
+      this.cylinderNet = { center: [.65, .65], width: flatWidth, depth: flatDepth, diameter, lateral };
+    },
+
+    cylinderNetPositions() {
+      if (!this.cylinderNet) return null;
+      const { center, depth, diameter } = this.cylinderNet;
+      return new Map([
+        ["cylinder-side", [center[0], .16, center[1]]],
+        ["circle-bottom", [center[0], .16, center[1] - depth / 2 - diameter / 2]],
+        ["circle-top", [center[0], .16, center[1] + depth / 2 + diameter / 2]]
+      ]);
+    },
+
+    setCylinderRollVisible(panel, visible) {
+      (panel?.roll?.handles || []).forEach(handle => handle.setVisible(Boolean(visible)));
+    },
+
+    placeCylinderRoll(panel, progress) {
+      const roll = panel?.roll;
+      if (!roll) return;
+      const clamp01 = value => Math.max(0, Math.min(1, value));
+      const ease = value => { const t = clamp01(value); return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; };
+      const curl = ease(progress / .82), lay = ease((progress - .28) / .72);
+      const phi = Math.PI * 2 * (1 - curl), k = phi / roll.width;
+      const startScale = (Math.PI * 2 * roll.radius) / roll.width;
+      const visualScale = startScale + (1 - startScale) * curl;
+      const beta = Math.PI / 2 * lay;
+      const endOrigin = panel.unfoldedPosition || [0, .16, 0];
+      const startHinge = [roll.center[0], roll.center[1], roll.center[2] - roll.radius];
+      const halfStripWidth = roll.width / roll.count * 1.012 * visualScale / 2;
+      const halfStripDepth = roll.depth / 2;
+      const halfStripThickness = .055 * visualScale / 2;
+      const endHinge = [endOrigin[0], endOrigin[1] - .055 / 2, endOrigin[2] - roll.depth / 2];
+      const hinge = startHinge.map((value, axis) => value + (endHinge[axis] - value) * lay);
+      let radialEnvelope = halfStripThickness;
+      if (phi >= .0001) {
+        for (let index = 0; index < roll.count; index++) {
+          const s = ((index + .5) / roll.count - .5) * roll.width;
+          const theta = k * s;
+          const radialZ = (Math.cos(theta) - Math.cos(phi / 2)) / k * visualScale;
+          radialEnvelope = Math.max(radialEnvelope,
+            radialZ + halfStripWidth * Math.abs(Math.sin(theta)) + halfStripThickness * Math.abs(Math.cos(theta)));
+        }
+      }
+      const origin = [
+        hinge[0],
+        hinge[1] + halfStripDepth * Math.cos(beta) + radialEnvelope * Math.sin(beta),
+        hinge[2] + halfStripDepth * Math.sin(beta)
+      ];
+      roll.handles.forEach((handle, index) => {
+        const s = ((index + .5) / roll.count - .5) * roll.width;
+        const x = phi < .0001 ? s : Math.sin(k * s) / k;
+        const z = phi < .0001 ? 0 : (Math.cos(k * s) - Math.cos(phi / 2)) / k;
+        const yaw = phi < .0001 ? 0 : k * s;
+        handle.setPosition(origin[0] + x * visualScale, origin[1] - z * visualScale * Math.sin(beta), origin[2] + z * visualScale * Math.cos(beta));
+        handle.setRotation(beta * 180 / Math.PI, yaw * 180 / Math.PI, 0);
+        handle.setScale(visualScale, 1, visualScale);
+      });
+    },
+
+    animateCylinderRoll(panel, from, to, duration, delay = 0) {
+      const roll = panel?.roll;
+      if (!roll) return;
+      const version = ++roll.version;
+      panel.handle.setVisible(false);
+      panel.flatHandle.setVisible(false);
+      this.placeCylinderRoll(panel, from);
+      this.setCylinderRollVisible(panel, true);
+      const startedAt = Date.now() + delay;
+      const tick = () => {
+        if (version !== roll.version) return;
+        const raw = Math.max(0, Math.min(1, (Date.now() - startedAt) / duration));
+        const eased = raw < .5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+        this.placeCylinderRoll(panel, from + (to - from) * eased);
+        if (raw < 1) { this.timers.push(setTimeout(tick, 16)); return; }
+        this.setCylinderRollVisible(panel, false);
+        if (to === 1) {
+          panel.flatHandle.setPosition(...panel.unfoldedPosition);
+          panel.flatHandle.setRotation(...panel.flatRotation);
+          panel.flatHandle.setVisible(true);
+        } else {
+          panel.handle.setPosition(...panel.assembledPosition);
+          panel.handle.setRotation(...panel.assembledRotation);
+          panel.handle.setVisible(true);
+        }
+      };
+      this.timers.push(setTimeout(tick, Math.max(0, delay)));
+    },
+
+    surfaceInsightHtml(type) {
+      const composite = type === "house"
+        ? "รูปบ้านประกอบจาก <strong>กล่อง 1 ก้อน + ปริซึมสามเหลี่ยม 1 ก้อน</strong> เมื่อคลี่แล้วจึงได้เฉพาะสี่เหลี่ยมและสามเหลี่ยม โดยไม่รวมหน้าที่สองทรงประกบกัน"
+        : type === "lprism"
+          ? "รูปตัว L ประกอบจาก <strong>กล่องเล็ก 3 ก้อน</strong> แผ่นด้านบนและด้านล่างจึงแยกเป็นสี่เหลี่ยมของแต่ละกล่อง และหน้าที่กล่องแตะกันอยู่ข้างในไม่นับ"
+          : "ผิวที่ห่อรูปทรงแต่ละด้านสามารถคลี่ออกเป็นรูป 2 มิติ เช่น สี่เหลี่ยม สามเหลี่ยม หรือวงกลม";
+      return `<p class="insight-lead">${composite}</p>
+        <img class="insight-diagram surface-net-diagram" src="../../assets/image/lesson/ep14/ep14-surface-net-explainer-v4.svg" alt="ทรงสี่เหลี่ยมมุมฉากคลี่ออกเป็นแผ่นสองมิติหกด้าน โดยหน้าคู่ตรงข้ามใช้สีเดียวกัน">
+        <div class="insight-equation"><span>พื้นที่ผิวทั้งหมด</span><span class="insight-arrow">=</span><span>พื้นที่ของทุกแผ่นรวมกัน</span></div>
+        <ol class="insight-steps surface-insight-steps"><li><strong>คลี่รูปทรง</strong><br>ให้ทุกด้านวางราบ</li><li><strong>หาทีละแผ่น</strong><br>เลือกสูตรจากรูป 2 มิติ</li><li><strong>รวมทั้งหมด</strong><br>บวกพื้นที่ของทุกแผ่น</li></ol>
+        <p class="insight-note">ด้านที่ประกบอยู่ข้างในมองไม่เห็นจากภายนอก จึงไม่นับเป็นพื้นที่ผิว</p>`;
+    },
+
+    createModelBase() {
+      const width = Math.max(4.9, (this.modelFootprint?.[0] || 4) + .9);
+      const depth = Math.max(4.9, (this.modelFootprint?.[1] || 4) + .9);
+      this.modelBase = this.addWorld(this.context.world.addGroup({
+        name: "surface-model-base", position: [this.modelCenter[0], .13, this.modelCenter[2]],
+        clickable: true, tapToClick: true, selectionFeedback: true,
+        hitArea: [width + .35, .45, depth + .35], hoverMessage: "กดฐานเพื่อคลี่รูปทรง",
+        onHover: hovered => this.setBaseHover(hovered),
+        onClick: () => this.unfoldPanels(),
+        parts: [
+          { shape: "rounded-box", size: [width, .06, .09], position: [0, 0, -depth / 2], color: "#ffffff", geometry: { radius: .03 }, material: { unlit: true } },
+          { shape: "rounded-box", size: [width, .06, .09], position: [0, 0, depth / 2], color: "#ffffff", geometry: { radius: .03 }, material: { unlit: true } },
+          { shape: "rounded-box", size: [.09, .06, depth], position: [-width / 2, 0, 0], color: "#ffffff", geometry: { radius: .03 }, material: { unlit: true } },
+          { shape: "rounded-box", size: [.09, .06, depth], position: [width / 2, 0, 0], color: "#ffffff", geometry: { radius: .03 }, material: { unlit: true } }
+        ]
+      }));
+      const arrowX = width * .37, arrowZ = depth * .37;
+      this.modelBaseArrows = this.addWorld(this.context.world.addGroup({
+        name: "surface-base-split-arrows", position: [this.modelCenter[0], .255, this.modelCenter[2]],
+        clickable: false, selectionFeedback: false,
+        parts: [
+          { shape: "arrow-flat", size: [.55, .72, 1], position: [-arrowX, 0, -arrowZ], rotation: [-90, 0, 45], color: "#ffffff", material: { unlit: true } },
+          { shape: "arrow-flat", size: [.55, .72, 1], position: [arrowX, 0, -arrowZ], rotation: [-90, 0, -45], color: "#ffffff", material: { unlit: true } },
+          { shape: "arrow-flat", size: [.55, .72, 1], position: [-arrowX, 0, arrowZ], rotation: [-90, 0, 135], color: "#ffffff", material: { unlit: true } },
+          { shape: "arrow-flat", size: [.55, .72, 1], position: [arrowX, 0, arrowZ], rotation: [-90, 0, -135], color: "#ffffff", material: { unlit: true } }
+        ]
+      }));
+      this.modelTapTarget = this.addWorld(this.context.world.addGroup({
+        name: "surface-model-click-target", position: [this.modelCenter[0], this.modelCenter[1] + this.modelHeight * .5, this.modelCenter[2]],
+        clickable: true, tapToClick: true, selectionFeedback: false,
+        hitArea: [Math.max(1.8, this.modelFootprint[0] + .25), Math.max(1.2, this.modelHeight + .35), Math.max(1.8, this.modelFootprint[1] + .25)],
+        hoverMessage: "กดรูปทรงเพื่อคลี่ทุกด้าน", onHover: hovered => this.setBaseHover(hovered), onClick: () => this.unfoldPanels(),
+        parts: [{ shape: "sharp-box", size: [Math.max(1.8, this.modelFootprint[0]), Math.max(1.2, this.modelHeight), Math.max(1.8, this.modelFootprint[1])], color: "#ffffff", material: { opacity: .001, transparent: true, depthWrite: false } }]
+      }));
+      const type = this.values.figureType;
+      const calloutName = type === "house" || type === "lprism" ? "รูปทรงประกอบ" : SHAPE_NAMES[type];
+      const calloutX = this.modelCenter[0];
+      const calloutY = this.modelCenter[1] + this.modelHeight + 1.05;
+      this.shapeCallout = this.addWorld(this.context.world.addCallout({
+        text: `หาพื้นที่ผิว${calloutName}`,
+        position: [calloutX, calloutY, this.modelCenter[2]], compactPosition: [calloutX, calloutY - .12, this.modelCenter[2]],
+        anchor: [this.modelCenter[0], this.modelCenter[1] + this.modelHeight * .58, this.modelCenter[2]],
+        scale: [3.55, .82], compactScale: [3.15, .76], lineColor: "#3488ff",
+        insight: {
+          title: `พื้นที่ผิว${SHAPE_NAMES[type]}`,
+          message: "พื้นที่ผิวเกิดจากการนำพื้นที่รูป 2 มิติทุกด้านมาบวกกัน",
+          html: this.surfaceInsightHtml(type),
+          primaryLabel: "เข้าใจแล้ว — ไปลองคลี่รูปทรง"
+        }
+      }));
+      this.clickmeCue = this.context.ui.clickme?.attach(this.modelTapTarget, { size: 34, anchor: "top", offset: [0, .18, 0] }) || null;
+      this.controls = this.context.ui.control?.show?.({
+        id: "ep14-surface-toggle", scope: "scene", position: "middle-right", objectiveAction: true,
+        items: [{ id: "toggle-net", label: "คลี่รูปทรง", icon: "reset.svg" }],
+        onAction: () => {
+          this.context.objectiveAction?.();
+          if (this.sceneState === "assembled" || this.sceneState === "completed") this.unfoldPanels();
+          else if (this.sceneState === "unfolded") this.reassembleModel(this.completed);
+        }
+      });
+      if (this.controls) this.uiHandles.push(this.controls);
+      this.finalResultGizmo = this.context.ui.worldGuiSystem.attach(this.modelBase, {
+        id: "surface-final-result", scope: "scene", text: "", visible: false,
+        tone: "warning", variant: "badge", size: "large", anchor: "center",
+        offset: [0, Math.max(.8, this.modelHeight * .5 + .3), 0]
+      });
+      this.uiHandles.push(this.finalResultGizmo);
+    },
+
+    createPanelGroups() {
+      const map = new Map();
+      for (const panel of this.panels) {
+        const key = `${panel.correctFormula}:${this.formatNumber(panel.area)}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(panel);
+      }
+      const entries = [...map.entries()];
+      const footprints = entries.map(([, members]) => this.groupFootprint(members));
+      const cylinderPositions = this.cylinderNetPositions();
+      const positions = cylinderPositions
+        ? entries.map(([, members]) => {
+          const points = members.map(panel => cylinderPositions.get(panel.id));
+          return [points.reduce((sum, point) => sum + point[0], 0) / points.length, .12, points.reduce((sum, point) => sum + point[2], 0) / points.length];
+        })
+        : this.groupLayout(footprints);
+      this.panelGroups = entries.map(([key, members], index) => {
+        const group = {
+          id: `group-${index}`, key, members, count: members.length,
+          correctFormula: members[0].correctFormula, dimensions: members[0].dimensions,
+          name: members[0].name, selectedFormula: null, selectedValue: null, correct: false, clickmeCue: null,
+          footprint: footprints[index]
+        };
+        const target = positions[index];
+        members.forEach((panel, layer) => {
+          panel.group = group;
+          panel.unfoldedPosition = cylinderPositions?.get(panel.id) || (() => {
+            const spread = this.groupMemberOffset(members, layer);
+            return [target[0] + spread[0], .16 + layer * .16, target[2] + spread[1]];
+          })();
+        });
+        group.tray = cylinderPositions ? null : this.createGroupTray(group, target, index);
+        const top = members[members.length - 1];
+        group.status = this.context.ui.worldGuiSystem.attach(top.flatHandle || top.handle, {
+          id: `surface-status-${index}`, scope: "scene", text: `${group.count > 1 ? `${group.count} × ` : ""}??`,
+          visible: false, tone: "default", variant: "badge", size: "large", anchor: "center", offset: [0, .34, 0], icon: null,
+          onClick: () => this.openFormulaOptions(group)
+        });
+        group.guide = this.createGroupGuide(group, top);
+        this.uiHandles.push(group.status, ...(group.guideLabels || []));
+        return group;
+      });
+      if (cylinderPositions) this.createCylinderNetTray();
+    },
+
+    createCylinderNetTray() {
+      const net = this.cylinderNet;
+      if (!net) return null;
+      const width = Math.max(net.width, net.diameter) + 1.25;
+      const depth = net.depth + 2 * net.diameter + 1.25;
+      const edge = .085, lift = .035, accent = net.lateral.color;
+      net.tray = this.addWorld(this.context.world.addGroup({
+        name: "surface-cylinder-net-tray", position: [net.center[0], .075, net.center[1]], clickable: false, selectionFeedback: false,
+        parts: [
+          { shape: "sharp-box", size: [width, .04, depth], color: "#111827", material: { unlit: true, opacity: .6, transparent: true, depthWrite: false, roughness: 1 } },
+          { shape: "sharp-box", size: [width, .065, edge], position: [0, lift, -depth / 2], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [width, .065, edge], position: [0, lift, depth / 2], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [edge, .065, depth], position: [-width / 2, lift, 0], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [edge, .065, depth], position: [width / 2, lift, 0], color: accent, material: { unlit: true } }
+        ]
+      }));
+      net.tray.setVisible(false);
+      return net.tray;
+    },
+
+    addGuideSegment(parts, from, to, thickness = .065) {
+      const dx = to[0] - from[0], dz = to[1] - from[1], length = Math.hypot(dx, dz);
+      if (length < .03) return;
+      parts.push({ shape: "rounded-box", size: [length, .055, thickness],
+        position: [(from[0] + to[0]) / 2, 0, (from[1] + to[1]) / 2],
+        rotation: [0, -Math.atan2(dz, dx) * 180 / Math.PI, 0], color: "#ffffff",
+        geometry: { radius: .02 }, material: { unlit: true } });
+    },
+
+    addGuideArrow(parts, from, to) {
+      const dx = to[0] - from[0], dz = to[1] - from[1], length = Math.hypot(dx, dz);
+      if (length < .25) return;
+      const ux = dx / length, uz = dz / length, px = -uz, pz = ux;
+      const head = Math.min(.34, length * .13), wing = .2;
+      this.addGuideSegment(parts, from, to, .075);
+      for (const sign of [-1, 1]) {
+        this.addGuideSegment(parts, from, [from[0] + ux * head + px * wing * sign, from[1] + uz * head + pz * wing * sign], .085);
+        this.addGuideSegment(parts, to, [to[0] - ux * head + px * wing * sign, to[1] - uz * head + pz * wing * sign], .085);
+      }
+    },
+
+    createGroupGuide(group, panel) {
+      const [width, depth] = panel.flatSize || [2.5, 2];
+      const parts = [], margin = .3;
+      this.addGuideArrow(parts, [-width / 2, -depth / 2 - margin], [width / 2, -depth / 2 - margin]);
+      this.addGuideArrow(parts, [width / 2 + margin, -depth / 2], [width / 2 + margin, depth / 2]);
+      const handle = this.addWorld(this.context.world.addGroup({
+        name: `surface-dimension-guide-${group.id}`,
+        position: [panel.unfoldedPosition[0], panel.unfoldedPosition[1] + .11, panel.unfoldedPosition[2]],
+        clickable: false, selectionFeedback: false, parts
+      }));
+      handle.setVisible(false);
+      const unit = this.values.unit;
+      const labels = this.dimensionGuideCopy(group);
+      group.guideLabels = [
+        this.context.ui.worldGuiSystem.at([panel.unfoldedPosition[0], panel.unfoldedPosition[1] + .2, panel.unfoldedPosition[2] - depth / 2 - margin - .24], {
+          id: `surface-dimension-x-${group.id}`, scope: "scene", text: `${labels[0]} ${unit}`, visible: false, tone: "primary", variant: "badge", size: "medium"
+        }),
+        this.context.ui.worldGuiSystem.at([panel.unfoldedPosition[0] + width / 2 + margin + .3, panel.unfoldedPosition[1] + .2, panel.unfoldedPosition[2]], {
+          id: `surface-dimension-z-${group.id}`, scope: "scene", text: `${labels[1]} ${unit}`, visible: false, tone: "primary", variant: "badge", size: "medium"
+        })
+      ];
+      return handle;
+    },
+
+    dimensionGuideCopy(group) {
+      const d = group.dimensions.map(value => this.formatNumber(value));
+      if (group.correctFormula === "circle") return [`เส้นผ่านศูนย์กลาง ${d[0]}`, `เส้นผ่านศูนย์กลาง ${d[0]}`];
+      if (group.correctFormula === "triangle") return [`ฐาน ${d[0]}`, `สูง ${d[1]}`];
+      if (group.correctFormula === "house") return [`กว้าง ${d[0]}`, `สูงรวม ${this.formatNumber((+group.dimensions[1]) + (+group.dimensions[2]))}`];
+      if (group.correctFormula === "square") return [`ด้าน ${d[0]}`, `ด้าน ${d[0]}`];
+      if (group.correctFormula === "lshape") return [`กว้าง ${d[0]}`, `ยาว ${d[1]}`];
+      return [`ยาว ${d[0]}`, `กว้าง ${d[1]}`];
+    },
+
+    setGroupGuides(group, visible) {
+      group.guide?.setVisible(Boolean(visible));
+      (group.guideLabels || []).forEach(label => visible ? label.show() : label.hide());
+    },
+
+    groupFootprint(members) {
+      const width = Math.max(...members.map(panel => panel.flatSize?.[0] || 2.5));
+      const depth = Math.max(...members.map(panel => panel.flatSize?.[1] || 2));
+      const offsets = members.map((_, index) => this.groupMemberOffset(members, index));
+      const spreadX = offsets.length ? Math.max(...offsets.map(offset => offset[0])) - Math.min(...offsets.map(offset => offset[0])) : 0;
+      const spreadZ = offsets.length ? Math.max(...offsets.map(offset => offset[1])) - Math.min(...offsets.map(offset => offset[1])) : 0;
+      return [width + spreadX + 1.25, depth + spreadZ + 1.25];
+    },
+
+    groupLayout(footprints) {
+      const total = footprints.length;
+      if (!total) return [];
+      const columns = total <= 3 ? total : 2;
+      const rows = [];
+      for (let index = 0; index < total; index += columns) rows.push([...Array(Math.min(columns, total - index)).keys()].map(offset => index + offset));
+      const gapX = 1.35, gapZ = 1.45, centerX = .65, centerZ = .65;
+      const rowDepths = rows.map(row => Math.max(...row.map(index => footprints[index][1])));
+      const totalDepth = rowDepths.reduce((sum, value) => sum + value, 0) + gapZ * Math.max(0, rows.length - 1);
+      const positions = Array(total);
+      let zCursor = centerZ - totalDepth / 2;
+      rows.forEach((row, rowIndex) => {
+        const rowWidth = row.reduce((sum, index) => sum + footprints[index][0], 0) + gapX * Math.max(0, row.length - 1);
+        let xCursor = centerX - rowWidth / 2;
+        const z = zCursor + rowDepths[rowIndex] / 2;
+        row.forEach(index => {
+          positions[index] = [xCursor + footprints[index][0] / 2, .12, z];
+          xCursor += footprints[index][0] + gapX;
+        });
+        zCursor += rowDepths[rowIndex] + gapZ;
+      });
+      return positions;
+    },
+
+    createGroupTray(group, target, index) {
+      const [width, depth] = group.footprint;
+      const accent = group.members[0].color;
+      const edge = .085, lift = .035;
+      const tray = this.addWorld(this.context.world.addGroup({
+        name: `surface-layout-tray-${index}`, position: [target[0], .075, target[2]], clickable: false, selectionFeedback: false,
+        parts: [
+          { shape: "sharp-box", size: [width, .04, depth], color: "#111827", material: { unlit: true, opacity: .6, transparent: true, depthWrite: false, roughness: 1 } },
+          { shape: "sharp-box", size: [width, .065, edge], position: [0, lift, -depth / 2], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [width, .065, edge], position: [0, lift, depth / 2], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [edge, .065, depth], position: [-width / 2, lift, 0], color: accent, material: { unlit: true } },
+          { shape: "sharp-box", size: [edge, .065, depth], position: [width / 2, lift, 0], color: accent, material: { unlit: true } }
+        ]
+      }));
+      tray.setVisible(false);
+      return tray;
+    },
+
+    groupMemberOffset(members, index) {
+      const count = members.length;
+      if (count <= 1) return [0, 0];
+      const surface = members[0].parts?.find(part => !part.frame) || members[0].parts?.[0] || {};
+      const width = Math.abs(Number(surface.size?.[0]) || 3);
+      const depth = Math.abs(Number(surface.size?.[2]) || Number(surface.size?.[1]) || 3);
+      const fan = index - (count - 1) / 2;
+      return [fan * Math.min(.62, Math.max(.3, width * .12)), fan * Math.min(.46, Math.max(.2, depth * .1))];
+    },
+
+    setPanelInteraction(enabled) {
+      this.panels.forEach(panel => {
+        panel.handle.setClickable(Boolean(enabled && !panel.flatHandle));
+        panel.flatHandle?.setClickable(Boolean(enabled));
+      });
+    },
+
+    setAnsweredPanelColor(panel) {
+      const selectedColor = this.mode === "student-quiz" ? "#168dff" : panel.accentColor;
+      const paint = (handle, surfaceCount) => {
+        if (!handle) return;
+        handle.setColor(selectedColor);
+        const meshes = handle.object3D?.userData?.visualRoot?.children || [];
+        for (const mesh of meshes.slice(surfaceCount)) {
+          const material = mesh.material;
+          if (!material?.color) continue;
+          material.color.set(FRAME);
+          material.userData?.baseHighlightColor?.copy?.(material.color);
+        }
+      };
+      paint(panel.handle, panel.parts.filter(part => !part.frame).length);
+      paint(panel.flatHandle, 1);
+    },
+
+    setBaseHover(hovered) {
+      const color = hovered ? "#1597ff" : "#ffffff";
+      this.modelBase?.setColor(color);
+      this.modelBaseArrows?.setColor(color);
+    },
+
+    syncGroupClickme(group) {
+      group.clickmeCue?.remove?.();
+      group.clickmeCue = null;
+      if (group.selectedFormula || this.sceneState !== "unfolded") return;
+      if (this.mode !== "student-quiz" && this.currentStep < 4) return;
+      const panel = group.members[group.members.length - 1];
+      const handle = panel?.flatHandle || panel?.handle;
+      if (!handle || !this.context.ui.clickme) return;
+      group.clickmeCue = this.context.ui.clickme.attach(handle, { size: 29, anchor: "top", offset: [0, .14, 0] });
+    },
+
+    syncPanelClickmes() {
+      this.panelGroups.forEach(group => this.syncGroupClickme(group));
+    },
+
+    clearPanelClickmes() {
+      this.panelGroups.forEach(group => { group.clickmeCue?.remove?.(); group.clickmeCue = null; });
+    },
+
+    setShellDetailsVisible(visible) {
+      (this.modelShellDetails || []).forEach(handle => handle?.setVisible?.(Boolean(visible)));
+    },
+
+    shellHandles() {
+      return [this.modelShell, ...(this.modelShellParts || [])].filter(Boolean);
+    },
+
+    setModelShellVisible(visible) {
+      this.shellHandles().forEach(handle => handle.setVisible(Boolean(visible)));
+    },
+
+    setModelShellColor(color) {
+      this.shellHandles().forEach(handle => handle.setColor(color));
+    },
+
+    playModelShellCommit() {
+      this.shellHandles().forEach((handle, index) => {
+        this.timers.push(setTimeout(() => handle.playCommit?.({ spark: true }), index * 90));
+      });
+    },
+
+    hidePanelOverlays() {
+      this.clearPanelClickmes();
+      this.cylinderNet?.tray?.setVisible(false);
+      this.panelGroups.forEach(group => {
+        group.status?.hide?.();
+        this.setGroupGuides(group, false);
+        group.tray?.setVisible(false);
+      });
+    },
+
+    updateToggleControl() {
+      if (!this.controls) return;
+      const assembled = this.sceneState === "assembled" || this.sceneState === "completed";
+      this.controls.setItems([{ id: "toggle-net", label: assembled ? "คลี่รูปทรง" : "ประกอบรูปทรง", icon: "reset.svg", disabled: this.sceneState === "transitioning" }]);
+    },
+
+    handlePanelClick(id) {
+      if (this.completed || this.sceneState !== "unfolded") return;
+      const panel = this.panels.find(item => item.id === id);
+      if (panel?.group) this.openFormulaOptions(panel.group);
+    },
+
+    unfoldPanels() {
+      if (this.sceneState !== "assembled" && this.sceneState !== "completed") return;
+      if (this.sceneState === "completed") this.completed = false;
+      const transitionVersion = this.transitionVersion = (this.transitionVersion || 0) + 1;
+      this.sceneState = "transitioning";
+      this.updateToggleControl();
+      this.clickmeCue?.complete?.();
+      this.modelTapTarget?.setClickable(false);
+      this.modelTapTarget?.setVisible(false);
+      this.modelBase?.setClickable(false);
+      this.modelBase?.setVisible(false);
+      this.modelBaseArrows?.setVisible(false);
+      this.shapeCallout?.setVisible(false);
+      this.finalResultGizmo?.hide?.();
+      this.updateAnswer("unfolding");
+      this.updateConsole("unfolding");
+      this.panelGroups.forEach(group => group.tray?.setVisible(true));
+      this.cylinderNet?.tray?.setVisible(true);
+      const duration = 680, stagger = 80;
+      this.panels.forEach((panel, index) => {
+        if (panel.roll) {
+          this.animateCylinderRoll(panel, 0, 1, 1100, index * stagger);
+          return;
+        }
+        if (panel.flatHandle) {
+          const start = panel.shellStart || panel.assembledPosition;
+          panel.handle.setVisible(false);
+          panel.flatHandle.stopAnimation?.();
+          panel.flatHandle.setPosition(...start);
+          panel.flatHandle.setRotation(...panel.flatRotation);
+          panel.flatHandle.setVisible(true);
+          panel.flatHandle.animateTo(...panel.unfoldedPosition, { duration, delay: index * stagger, arcHeight: .55 });
+          return;
+        }
+        if (panel.shellStart) {
+          panel.handle.setPosition(...panel.shellStart);
+          panel.handle.setVisible(true);
+        }
+        panel.handle.stopAnimation?.();
+        panel.handle.setRotation(...panel.flatRotation);
+        panel.handle.animateTo(...panel.unfoldedPosition, { duration, delay: index * stagger, arcHeight: .55 });
+      });
+      this.setModelShellVisible(false);
+      this.setShellDetailsVisible(false);
+      const rollIndex = this.panels.findIndex(panel => panel.roll);
+      const transitionTime = Math.max(duration + stagger * (this.panels.length - 1), rollIndex >= 0 ? 1100 + rollIndex * stagger : 0);
+      this.timers.push(setTimeout(() => {
+        if (transitionVersion !== this.transitionVersion) return;
+        this.sceneState = "unfolded";
+        this.updateToggleControl();
+        this.panels.forEach(panel => { if (panel.flatHandle) { panel.handle.setVisible(false); panel.flatHandle.setVisible(true); } });
+        this.setPanelInteraction(this.mode === "student-quiz" || this.currentStep >= 4);
+        this.panelGroups.forEach(group => { group.status.show(); this.setGroupGuides(group, true); });
+        this.syncPanelClickmes();
+        this.updateAnswer("unfolded");
+        this.updateConsole("unfolded");
+      }, transitionTime + 70));
+    },
+
+    openFormulaOptions(group) {
+      if (this.sceneState !== "unfolded") return;
+      if (this.mode !== "student-quiz" && this.currentStep < 4) return;
+      this.activeOption?.remove?.();
+      const items = this.formulaChoices(group).map(id => ({ id, icon: FORMULAS[id].icon, label: OPTION_LABELS[id] }));
+      const optionPanel = group.members[group.members.length - 1];
+      this.activeOption = this.context.ui.worldOption.attach(optionPanel.flatHandle || optionPanel.handle, {
+        id: "surface-formula-options", scope: "scene", visible: true, placement: "right", gap: 34, worldOffset: [0, .25, 0],
+        title: `เลือกสูตร${group.count > 1 ? `ของ ${group.count} ด้านที่เท่ากัน` : "ของแผ่นนี้"}`,
+        message: `${group.name} · ${group.dimensions.map(value => this.formatNumber(value)).join(" × ")} ${this.values.unit}`,
+        items, onSelect: event => this.selectFormula(group, event.id)
+      });
+      if (!group.selectedFormula) this.context.ui.clickme?.restoreFor?.(optionPanel.flatHandle || optionPanel.handle);
+    },
+
+    formulaChoices(group) {
+      const distractors = {
+        rectangle: { near: ["square", "trapezoid"], far: ["triangle", "circle"] },
+        square: { near: ["trapezoid"], far: ["triangle", "circle"] },
+        triangle: { near: ["trapezoid", "rectangle"], far: ["circle", "square"] },
+        house: { near: ["trapezoid", "rectangle"], far: ["circle", "triangle"] },
+        circle: { near: ["semicircle"], far: ["triangle", "rectangle"] },
+        semicircle: { near: ["circle"], far: ["triangle", "square"] },
+        trapezoid: { near: ["rectangle", "square"], far: ["circle", "triangle"] },
+        lshape: { near: ["house", "rectangle"], far: ["circle", "triangle"] }
+      };
+      const family = distractors[group.correctFormula] || { near: ["rectangle"], far: ["circle"] };
+      const choices = [group.correctFormula];
+      const usedIcons = new Set([FORMULAS[group.correctFormula]?.icon]);
+      const pickUniqueIcon = candidates => {
+        const available = candidates.filter(id => FORMULAS[id] && !choices.includes(id) && !usedIcons.has(FORMULAS[id].icon));
+        if (!available.length) return false;
+        const id = available[Math.floor(Math.random() * available.length)];
+        choices.push(id);
+        usedIcons.add(FORMULAS[id].icon);
+        return true;
+      };
+      pickUniqueIcon(family.near);
+      pickUniqueIcon(family.far);
+      for (const id of Object.keys(FORMULAS)) {
+        if (choices.length >= 3) break;
+        pickUniqueIcon([id]);
+      }
+      return choices
+        .map(id => ({ id, order: Math.random() }))
+        .sort((a, b) => a.order - b.order)
+        .map(item => item.id);
+    },
+
+    selectFormula(group, formulaId) {
+      const formula = FORMULAS[formulaId];
+      if (!formula || this.sceneState !== "unfolded") return;
+      group.selectedFormula = formulaId;
+      group.selectedValue = +this.formatNumber(formula.calculate(...group.dimensions));
+      group.correct = formulaId === group.correctFormula;
+      group.members.forEach(panel => this.setAnsweredPanelColor(panel));
+      group.tray?.setColor("#168dff");
+      group.clickmeCue?.remove?.(); group.clickmeCue = null;
+      this.setGroupGuides(group, false);
+      group.status.update({
+        text: `${group.count > 1 ? `${group.count}×` : ""}${this.formatNumber(group.selectedValue)} = ${this.formatNumber(group.selectedValue * group.count)} ${this.values.unit}²\n${formula.name.replace("พื้นที่", "")}`,
+        icon: formula.icon,
+        tone: this.mode === "student-quiz" ? "info" : (group.correct ? "success" : "danger"),
+        variant: "badge", size: "medium", className: "surface-formula-result"
+      }).show();
+      this.updateAnswer("unfolded");
+      this.evaluateSelections();
+    },
+
+    answerExpression(final = false) {
+      const terms = this.panelGroups.map(group => {
+        const value = group.selectedValue === null ? "??" : this.formatNumber(group.selectedValue);
+        return group.count > 1 ? `${group.count}×${value}` : value;
+      });
+      if (final) return `${this.formatNumber(this.surfaceArea())} ${this.values.unit}²`;
+      const selected = this.panelGroups.filter(group => group.selectedFormula).length;
+      const visibleTerms = terms.slice(0, 3).join(" + ");
+      return `${selected}/${this.panelGroups.length} · ${visibleTerms}${terms.length > 3 ? " + …" : ""}`;
+    },
+
+    updateAnswer(stage) {
+      const answer = this.context.ui.guiAnswer;
+      if (stage === "assembled" || stage === "unfolding") { answer.reset(); answer.hide(); }
+      else answer.show({ text: `คำตอบ ${this.answerExpression(false)}` });
+    },
+
+    evaluateSelections() {
+      const complete = this.panelGroups.every(group => group.selectedFormula);
+      if (!complete) {
+        this.context.ui.console.feedback(`ไดโนนับให้: เลือกแล้ว ${this.panelGroups.filter(group => group.selectedFormula).length} / ${this.panelGroups.length} กลุ่ม`, { tone: "info" });
+        return;
+      }
+      const correct = this.panelGroups.every(group => group.correct);
+      if (this.mode === "student-quiz") this.context.quiz.answer(correct, {
+        answer: this.panelGroups.map(group => group.selectedFormula), expected: this.panelGroups.map(group => group.correctFormula),
+        complete: true, result: this.surfaceArea(), unit: this.values.unit
+      });
+      if (!correct) {
+        this.context.ui.guiAnswer.wrong({ text: `คำตอบ ${this.formatNumber(this.selectedSum())} ${this.values.unit}² · เลือกใหม่` });
+        if (this.mode !== "student-quiz") this.panelGroups.forEach(group => group.status.update({ tone: group.correct ? "success" : "danger" }));
+        this.context.ui.console.feedback("ไดโนมีคำใบ้: ตรวจรูปของแผ่น แล้วเลือกสูตรพื้นที่ 2 มิติให้ตรงก่อนรวม", { tone: "warning" });
+        return;
+      }
+      this.completed = true;
+      this.setPanelInteraction(false);
+      this.context.ui.guiAnswer.correct({ text: `คำตอบ ${this.answerExpression(true)}`, celebrate: true });
+      this.context.audio.play("success");
+      this.timers.push(setTimeout(() => this.foldCompletedModel(), 900));
+    },
+
+    selectedExpression() {
+      return `${this.panelGroups.map(group => `${group.count > 1 ? `${group.count} × ` : ""}${this.formatNumber(group.selectedValue || 0)}`).join(" + ")} = ${this.formatNumber(this.selectedSum())} ${this.values.unit}²`;
+    },
+
+    reassembleModel(asCompleted = false) {
+      if (this.sceneState !== "unfolded") return;
+      const transitionVersion = this.transitionVersion = (this.transitionVersion || 0) + 1;
+      this.sceneState = "transitioning";
+      this.updateToggleControl();
+      this.activeOption?.remove?.(); this.activeOption = null;
+      this.hidePanelOverlays();
+      this.setPanelInteraction(false);
+      this.modelBase?.setVisible(true);
+      this.modelBase?.setClickable(false);
+      this.modelBaseArrows?.setVisible(false);
+      if (!asCompleted) { this.context.ui.guiAnswer.reset(); this.context.ui.guiAnswer.hide(); }
+      const duration = 660, stagger = 75;
+      this.panels.forEach((panel, index) => {
+        if (panel.roll) {
+          this.animateCylinderRoll(panel, 1, 0, 1050, index * stagger);
+          return;
+        }
+        if (panel.flatHandle) {
+          panel.flatHandle.stopAnimation?.();
+          panel.flatHandle.setVisible(true);
+          panel.flatHandle.setPosition(...panel.unfoldedPosition);
+          panel.flatHandle.setRotation(...panel.flatRotation);
+          panel.flatHandle.animateTo(...(panel.shellStart || panel.assembledPosition), { duration, delay: index * stagger, arcHeight: .42 });
+          return;
+        }
+        panel.handle.stopAnimation?.();
+        panel.handle.setRotation(...(panel.shellStart ? panel.flatRotation : panel.assembledRotation));
+        panel.handle.animateTo(...(panel.shellStart || panel.assembledPosition), { duration, delay: index * stagger, arcHeight: .42 });
+      });
+      const rollIndex = this.panels.findIndex(panel => panel.roll);
+      const transitionTime = Math.max(duration + stagger * (this.panels.length - 1), rollIndex >= 0 ? 1050 + rollIndex * stagger : 0);
+      this.timers.push(setTimeout(() => {
+        if (transitionVersion !== this.transitionVersion) return;
+        this.sceneState = asCompleted ? "completed" : "assembled";
+        this.hidePanelOverlays();
+        if (this.shellHandles().length) {
+          this.panels.forEach(panel => { panel.handle.setVisible(false); panel.flatHandle?.setVisible(false); });
+          this.setModelShellVisible(true);
+          if (asCompleted) this.setModelShellColor("#1aa8d2");
+          this.setShellDetailsVisible(true);
+          if (asCompleted) this.playModelShellCommit();
+        } else if (asCompleted) this.flashPanels();
+        this.modelBase?.setClickable(true);
+        this.modelBaseArrows?.setVisible(true);
+        this.modelTapTarget?.setVisible(true);
+        this.modelTapTarget?.setClickable(true);
+        this.shapeCallout?.setVisible(!asCompleted);
+        if (asCompleted) {
+          this.finalResultGizmo?.update({ text: `${this.formatNumber(this.surfaceArea())} ${this.values.unit}²`, tone: "warning", size: "large" }).show();
+          this.updateConsole("completed");
+        } else {
+          this.finalResultGizmo?.hide?.();
+          this.clickmeCue?.restore?.();
+          this.context.ui.clickme?.restoreFor?.(this.modelTapTarget);
+          this.updateConsole("assembled");
+        }
+        this.updateToggleControl();
+      }, transitionTime + 80));
+    },
+
+    foldCompletedModel() { this.reassembleModel(true); },
+
+    flashPanels() {
+      this.panels.forEach((panel, index) => {
+        this.timers.push(setTimeout(() => { panel.handle.setColor("#ffffff"); panel.handle.playCommit?.({ spark: true }); }, index * 55));
+        this.timers.push(setTimeout(() => panel.handle.setColor(panel.selectedFormula ? panel.accentColor : panel.color), 300 + index * 55));
+      });
+    },
+
+    surfaceArea() { return this.panels.reduce((total, panel) => total + panel.area, 0); },
+    selectedSum() { return this.panelGroups.reduce((total, group) => total + (group.selectedValue || 0) * group.count, 0); },
+    formatNumber(value) { return String(Math.round(Number(value) * 100) / 100); },
+
+    updateQuestion() {
+      const a = +this.values.sideA, b = +this.values.sideB, c = +this.values.sideC, unit = this.values.unit, type = this.values.figureType;
+      const text = type === "pyramid" ? `ฐาน ${a} ${unit} · สูงเอียง ${b} ${unit} · 1 ฐาน + 4 สามเหลี่ยม`
+        : type === "triangularPrism" ? `ฐานสามเหลี่ยม ${a} ${unit} · สูงสามเหลี่ยม ${b} ${unit} · ยาวปริซึม ${c} ${unit}`
+        : type === "house" ? `กว้าง ${a} ${unit} · ยาว ${b} ${unit} · สูงรวม ${c} ${unit}`
+          : type === "cylinder" ? `รัศมี ${a} ${unit} · สูง ${b} ${unit} · 2 วงกลม + 1 สี่เหลี่ยม`
+          : type === "cube" ? `ด้านละ ${a} ${unit} · สี่เหลี่ยมจัตุรัสเท่ากัน 6 หน้า`
+          : type === "lprism" ? `ฐานตัว L ${a} × ${b} ${unit} · สูง ${c} ${unit}`
+          : `ยาว ${a} ${unit} · กว้าง ${b} ${unit} · สูง ${c} ${unit}`;
+      this.context.ui.question.show({ label: `${this.mode === "student-quiz" ? "QUIZ" : "LAB"} · จงหาพื้นที่ผิว${SHAPE_NAMES[type]}`, text, tone: "primary" });
+    },
+
+    updateConsole(stage) {
+      const count = this.panelGroups.length, faces = this.panels.length;
+      const copy = {
+        assembled: ["กดฐานใต้โมเดล", `โมเดลทึบนี้ประกอบจากแผ่นตรง ${faces} ด้าน`, "เมื่อฐานสว่างขึ้น สามารถกดเพื่อคลี่ทุกแผ่นได้"],
+        unfolding: ["กำลังคลี่โมเดล", "ผิวเดิมกำลังแยกออกอย่างเป็นระเบียบ", "ด้านที่มีขนาดเท่ากันจะวางเหลื่อมกันให้เห็นทุกชั้น"],
+        unfolded: ["เลือกสูตรให้ครบ", `${faces} ด้านถูกรวมเป็น ${count} กลุ่ม`, "คลิกกลุ่มแผ่น แล้วเลือกสูตรพื้นที่ 2 มิติ"],
+        completed: ["ถูกต้องทุกกลุ่ม", "พื้นที่ผิวคือผลรวมของทุกแผ่น", `คำตอบ ${this.formatNumber(this.surfaceArea())} ${this.values.unit}²`]
+      };
+      const value = copy[stage] || copy.assembled;
+      this.context.ui.console.set({ objective: value[0], title: `${stage === "completed" ? "เก่งมาก ไดโนสรุปได้: " : "ไดโนสอน: "}${value[1]}`, message: value[2], tone: stage === "completed" ? "success" : "info" });
+    },
+
+    ensureDecor() {
+      if (this.decorLoading) return this.decorLoading;
+      const version = this.poolVersion;
+      this.decorLoading = (async () => {
+        for (const [index, item] of DECOR.entries()) {
+          if (version !== this.poolVersion || !this.context) break;
+          await new Promise(resolve => setTimeout(resolve, 90));
+          if (version !== this.poolVersion || !this.context) break;
+          try {
+            const handle = await this.context.world.addLibraryObject({ ...item, name: `ep14-scene-decor-${index}`, spawn: false, draggable: false, clickable: false, selectionFeedback: false, debugAreaHidden: true });
+            if (version !== this.poolVersion || !this.context) handle.remove(); else this.decorPool.push(handle);
+          } catch (error) { console.warn("ep14 decorative asset unavailable", error); }
+        }
+      })();
+      return this.decorLoading;
+    },
+
+    onStep(index, step) {
+      this.currentStep = index;
+      this.updateQuestion();
+      if (this.mode === "student-quiz") { this.controls?.show?.(); return; }
+      if (index === 0) {
+        this.controls?.hide?.();
+        this.modelTapTarget?.setClickable(false);
+        this.modelBase?.setClickable(false);
+        this.updateConsole("assembled");
+      } else if (index === 1) {
+        this.controls?.hide?.();
+        this.modelTapTarget?.setClickable(true);
+        if (this.sceneState === "assembled") this.unfoldPanels();
+      } else if (index === 2) {
+        this.controls?.hide?.();
+        this.panelGroups.forEach(group => this.setGroupGuides(group, this.sceneState === "unfolded"));
+        this.context.ui.console.set({ objective: "อ่านลูกศรสองหัว", title: "ไดโนบอกใบ้: ตัวเลขคือขนาดจริงของด้าน", message: "นำค่าจากลูกศรไปแทนในสูตรพื้นที่ของแผ่น", tone: "info" });
+      } else if (index === 3) {
+        this.controls?.hide?.();
+        this.context.ui.console.set({ objective: "จับคู่ด้านที่เท่ากัน", title: "ไดโนชวนย่อแผ่นซ้ำเป็น 2× หรือ 4×", message: "คำนวณเพียงหนึ่งแผ่น แล้วคูณด้วยจำนวนแผ่นที่เท่ากัน", tone: "info" });
+      } else if (step?.type === "freestyle") {
+        this.controls?.show?.();
+        if (this.sceneState === "assembled") {
+          this.modelTapTarget?.setClickable(true);
+          this.modelBase?.setClickable(true);
+          this.clickmeCue?.restore?.();
+          this.context.ui.clickme?.restoreFor?.(this.modelTapTarget);
+        } else if (this.sceneState === "unfolded") {
+          this.setPanelInteraction(true);
+          this.syncPanelClickmes();
+        }
+        this.updateConsole(this.sceneState === "unfolded" ? "unfolded" : "assembled");
+      }
+    },
+    addWorld(handle) { if (handle) this.worldHandles.push(handle); return handle; },
+    clearTimers() { for (const timer of this.timers || []) clearTimeout(timer); this.timers = []; this.transitionVersion = (this.transitionVersion || 0) + 1; },
+    clearScene() {
+      this.clearTimers();
+      this.activeOption?.remove?.(); this.activeOption = null;
+      this.clearPanelClickmes();
+      this.context?.ui?.guiAnswer?.reset?.();
+      this.context?.ui?.guiAnswer?.hide?.();
+      for (const handle of this.uiHandles || []) handle?.remove?.();
+      for (const handle of this.worldHandles || []) handle?.remove?.();
+      this.uiHandles = []; this.worldHandles = []; this.panels = []; this.panelGroups = [];
+      this.clickmeCue?.remove?.(); this.clickmeCue = null;
+      this.modelBase = null; this.modelBaseArrows = null; this.modelTapTarget = null; this.modelShell = null; this.modelShellParts = []; this.modelShellDetails = []; this.cylinderNet = null; this.controls = null; this.finalResultGizmo = null; this.completed = false;
+      this.shapeCallout = null;
+    },
+    dispose() {
+      this.clearScene(); this.poolVersion++;
+      for (const handle of this.decorPool || []) handle?.remove?.();
+      this.decorPool = []; this.decorLoading = null; this.context = null;
+    }
+  });
+})();
+</script></body>
+</html>

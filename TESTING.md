@@ -28,6 +28,9 @@ Exit 0 หมายถึงผ่าน static checks; exit 1 มี JSON error
 | Student Lab | sequence/freestyle เปิด interaction ตามกติกา |
 | Control phase policy | ระหว่างขั้นสอนเห็นเฉพาะปุ่มข้ามการสอน; Lab ขั้นสุดท้าย/การทดลองและ Quiz จึงเห็น Control ของบทเรียน; กดย้อนกลับแล้ว Control ต้องซ่อนอีกครั้ง |
 | Student Quiz | ตอบถูก/ผิดแล้วไปต่อได้ ไม่เฉลยระหว่างทำ ส่ง→ดูผล→ปิดได้ |
+| Quiz pending answer | เปลี่ยนคำตอบก่อนกดยืนยันแล้วบันทึกเฉพาะค่าล่าสุด; ล้างคำตอบด้วย `hasAnswer: false` แล้วปุ่มไปต่อซ่อน; กดยืนยันจึงให้คะแนน |
+| Teacher preview | `lessonData.preview: true` แสดงสลับ Lab/Quiz แต่ไม่เปิด F4/F6/Debug tools; `false` คงพฤติกรรมปกติ |
+| Production compile (เจ้าของระบบ) | ใช้ output `productionChapters` ที่คอมไพล์จาก RAW source; ไม่เผยแพร่ `chapters` เป็น production และชุดอ้างอิงนี้ไม่ใช้แทนไฟล์ deploy |
 | Drag/drop ถ้ามี | วางผิดกลับตำแหน่ง ไม่ทับ slot ลากออกเพื่อแก้ได้ |
 | Reset / เปิดใหม่ | ไม่เหลือ state, timer หรือ UI จากรอบก่อน |
 | Persistent scene (ถ้าใช้) | `meta.scenePersistence: "lesson"` ไม่สร้างฉากคงที่ซ้ำ, object แบบ dynamic เปลี่ยนครบทุกข้อ และ `dispose()` ล้างทั้งหมด |

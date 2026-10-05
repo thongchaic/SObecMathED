@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-05 — 0.5.0 Current Runtime Snapshot and Quiz Production Rules
+
+- sync runtime/settings/UI snapshot และตัวอย่างบทเรียนที่เปลี่ยนตั้งแต่ 0.4.0; เพิ่มตัวอย่าง `ep12/lesson1` และ `ep14/lesson3` พร้อมดัชนี
+- เพิ่ม source อ้างอิงของ operator prefab, Quiz result/protection และ Mascot modules ที่ `main-world.js` รุ่นปัจจุบัน import; ชุดนี้ยังคงไม่รวม WASM, key, vendor หรือ asset binary และไม่ใช่เว็บพร้อม deploy
+- อธิบาย `lessonData.preview` สำหรับครู, pending answer ของ Quiz, `hasAnswer: false` และจังหวะกดยืนยัน/ให้คะแนนตาม runtime จริง
+- ระบุ workflow production: เจ้าของคอมไพล์ RAW Lesson Package ไป `productionChapters` โดยไม่เปลี่ยนข้อกำหนด read-only ของ AI ภายนอก
+- เพิ่ม Handle API `setHighlighted`, `setWash`, `setOpacity` ใน Public API และ types; ปรับ UI Catalog และ `git/CHECK` ตาม flow ใหม่; ตรวจ manifest hash หลัง sync
+
 ## 2026-09-30 — 0.4.0 Runtime 3.4.0 Guided Steps and Shared Operator Prefab
 
 - เพิ่ม Step gate ด้วย `howto[].requiresCompletion` และ `context.ui.steps.setNextEnabled()` พร้อมปิดการข้ามช่วงที่มีขั้นบังคับ

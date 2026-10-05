@@ -59,7 +59,7 @@
             { index: 0, title: "ลากหนึ่งแถว", type: "sequence", desc: "หนึ่งแถวมีบล็อกเท่ากับเลขฐาน ลากจากถาดเข้าพื้นที่คำตอบ", option: { type: "instruction", header: "ไดโนชวนนับแถวและชั้น", message: "หนึ่งแถวมีบล็อกเท่ากับเลขฐาน เติมแถวให้เต็มพื้นสำหรับกำลังสอง และซ้อนชั้นสำหรับกำลังสาม" } },
             { index: 1, title: "เติมให้เต็มชั้น", type: "sequence", desc: "เรียงแถวบนแนวราบจนกว้างและยาวเท่ากัน", option: { type: "instruction", header: "กำลังสองสร้างเป็นพื้นที่", message: "ฐาน n ต้องมี n บล็อกต่อแถวและ n แถว เมื่อเติมเต็มชั้นจะมี n × n = n² บล็อก" } },
             { index: 2, title: "ต่อขึ้นชั้นใหม่", type: "sequence", desc: "กำลังสามใช้แถวเดิม เมื่อชั้นเต็ม แถวต่อไปจะขึ้นด้านบน", option: { type: "instruction", header: "กำลังสามเพิ่มมิติความสูง", message: "นำชั้นขนาด n² มาซ้อนกันอีก n ชั้น จึงได้ n × n × n = n³ บล็อก สังเกตว่าแถวใหม่จะขึ้นชั้นเมื่อพื้นเต็ม" } },
-            { index: 3, title: "ลองสร้างเอง", type: "freestyle", desc: "เพิ่ม ลด แยกดู และส่งเมื่อพอใจ", option: { type: "instruction", header: "นับฐาน แถว และชั้น", message: "กำลังสองตรวจฐานกับจำนวนแถว ส่วนกำลังสามตรวจเพิ่มอีกว่ามีครบกี่ชั้น แยกดูได้ถ้าบล็อกด้านในถูกบัง" } }
+            { index: 3, title: "ลองสร้างเอง", type: "freestyle", desc: "เพิ่ม ลด แยกดู และกดข้อต่อไปเมื่อพอใจ", option: { type: "instruction", header: "นับฐาน แถว และชั้น", message: "กำลังสองตรวจฐานกับจำนวนแถว ส่วนกำลังสามตรวจเพิ่มอีกว่ามีครบกี่ชั้น แยกดูได้ถ้าบล็อกด้านในถูกบัง" } }
           ],
           quiz
         },
@@ -255,7 +255,6 @@
               if (event.id === "remove") this.removeRow();
               if (event.id === "explode") this.toggleExplode();
               if (event.id === "reset") this.clearRows();
-              if (event.id === "submit") this.submitQuiz();
             }
           });
         },
@@ -265,8 +264,7 @@
             { id: "add", label: "เพิ่มแถว", icon: "next.svg", disabled: this.transitioningLayer || this.selectedCount >= this.maxRows() },
             { id: "remove", label: "เอาแถวออก", icon: "previous.svg", disabled: this.transitioningLayer || this.selectedCount === 0 },
             { id: "explode", label: this.exploded ? "รวมกลับ" : "แยกดู", icon: this.exploded ? "collapse.svg" : "expand-all.svg", disabled: this.transitioningLayer || this.selectedCount === 0 },
-            { id: "reset", label: "เริ่มใหม่", icon: "reset.svg", disabled: this.transitioningLayer || this.selectedCount === 0 },
-            ...(this.mode === "student-quiz" ? [{ id: "submit", label: "ส่งรูปนี้", icon: "target.svg", disabled: this.selectedCount === 0 }] : [])
+            { id: "reset", label: "เริ่มใหม่", icon: "reset.svg", disabled: this.transitioningLayer || this.selectedCount === 0 }
           ];
         },
 
@@ -304,12 +302,13 @@
           this.selectedCount += 1;
           this.exploded = false;
           this.updateUI();
+          this.recordQuizAnswer();
           if (this.kind === "volume" && this.selectedCount % this.base === 0 && this.selectedCount < this.expectedRows()) {
             this.previewNextLayer();
             return;
           }
           if (this.mode === "student-quiz") {
-            this.context.ui.console.set({ objective: `วางแล้ว ${this.selectedCount} แถว`, title: "ยังแก้คำตอบได้", message: "เพิ่มหรือลดแถว แล้วกดส่งเมื่อพอใจ", tone: "info" });
+            this.context.ui.console.set({ objective: `วางแล้ว ${this.selectedCount} แถว`, title: "บันทึกรูปล่าสุดแล้ว", message: "เพิ่มหรือลดแถวได้ แล้วกดข้อต่อไปเมื่อพอใจ", tone: "info" });
           } else if (this.selectedCount === this.expectedRows()) {
             this.context.audio.play("success");
             this.context.ui.console.set({ objective: this.resultEquation(), title: this.kind === "area" ? "เก่งมาก ไดโนเห็นว่าเต็มพื้นที่แล้ว!" : "เก่งมาก ไดโนนับครบทุกชั้นแล้ว!", message: this.resultExplanation(), tone: "success" });
@@ -330,7 +329,8 @@
           this.arrangeRows();
           this.setAnswerComplete(false);
           this.updateUI();
-          this.context.ui.console.set({ objective: `${this.selectedCount} แถว`, title: "เอาแถวล่าสุดออกแล้ว", message: "แก้ต่อได้ก่อนส่ง", tone: "info" });
+          this.recordQuizAnswer();
+          this.context.ui.console.set({ objective: `${this.selectedCount} แถว`, title: "เอาแถวล่าสุดออกแล้ว", message: this.selectedCount ? "บันทึกรูปล่าสุดแล้ว · แก้ต่อได้ก่อนกดข้อต่อไป" : "ลากแถวใหม่ก่อนกดข้อต่อไป", tone: "info" });
         },
 
         clearRows() {
@@ -342,6 +342,7 @@
           this.exploded = false;
           this.setAnswerComplete(false);
           this.updateUI();
+          this.recordQuizAnswer();
           this.context.ui.console.set({ objective: this.powerText(), title: "พื้นที่คำตอบว่างแล้ว", message: "ลากแถวจากถาดด้านล่าง", tone: "info" });
         },
 
@@ -421,6 +422,19 @@
           this.controls?.setItems(this.controlItems());
         },
 
+        recordQuizAnswer() {
+          if (this.mode !== "student-quiz") return;
+          const hasAnswer = this.selectedCount > 0;
+          this.context.quiz.answer(hasAnswer && this.selectedCount === this.expectedRows(), {
+            hasAnswer,
+            kind: this.kind,
+            base: this.base,
+            selectedCount: this.selectedCount,
+            expectedCount: this.expectedRows(),
+            unitCount: this.selectedCount * this.base
+          });
+        },
+
         nextRowPalette() {
           const layer = this.kind === "volume" ? Math.floor(this.selectedCount / this.base) : 0;
           return layer % 2 === 0 ? [COLORS.blue, COLORS.blueTop] : [COLORS.orange, COLORS.orangeTop];
@@ -449,14 +463,8 @@
             square: ["แถวรวมเป็นแผ่น", `${this.base} แถว × ${this.base} บล็อก`, `${this.base}² = ${this.base ** 2} ตารางหน่วย`],
             stack: ["เริ่มชั้นใหม่ด้านบน", `ชั้นล่างครบ ${this.base} แถวแล้ว`, `แถวที่ ${this.base + 1} ต่อสูงขึ้น`]
           };
-          const copy = copies[teaching] || (this.mode === "student-quiz" ? ["สร้างรูปแล้วกดส่ง", "ระบบไม่บอกจำนวนแถวที่ถูก", "เพิ่มหรือลดได้จนกว่าจะพอใจ"] : ["ลากแถวด้านล่าง", "วางลงในพื้นที่คำตอบ", "ใช้ปุ่มเพิ่มแถวแทนการลากได้"]);
+          const copy = copies[teaching] || (this.mode === "student-quiz" ? ["สร้างรูปแล้วกดข้อต่อไป", "ระบบบันทึกรูปล่าสุดอัตโนมัติ", "เพิ่มหรือลดได้จนกว่าจะพอใจ"] : ["ลากแถวด้านล่าง", "วางลงในพื้นที่คำตอบ", "ใช้ปุ่มเพิ่มแถวแทนการลากได้"]);
           this.context.ui.console.set({ objective: copy[0], title: `ไดโนสอน: ${copy[1]}`, message: copy[2], tone: teaching === "square" ? "success" : "info" });
-        },
-
-        submitQuiz() {
-          if (this.mode !== "student-quiz") return;
-          this.context.quiz.answer(this.selectedCount === this.expectedRows(), { kind: this.kind, base: this.base, selectedCount: this.selectedCount, expectedCount: this.expectedRows(), unitCount: this.selectedCount * this.base });
-          this.context.ui.console.set({ objective: `ส่งรูป ${this.selectedCount} แถวแล้ว`, title: "ไดโนรับคำตอบเรียบร้อย!", message: "ไปข้อต่อไป หรือเพิ่มลดแถวแล้วส่งใหม่ได้", tone: "info" });
         },
 
         rowParts(base, color, topColor) {

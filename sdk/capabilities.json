@@ -18,6 +18,12 @@
     "optIn": "meta.scenePersistence=lesson",
     "lessonResponsibilities": ["reuse-static-objects", "clear-dynamic-objects-on-reset", "dispose-all-on-close"]
   },
+  "hostLessonData": {
+    "fullScreen": "boolean; initial default true; omitted on later opens preserves current layout",
+    "preview": "boolean; default false; teacher Lab/Quiz preview without debug tools"
+  },
+  "quizSubmission": "quiz.answer updates pending answer; hasAnswer:false clears it; commit and score on next/confirm",
+  "lessonHandleMethods": ["setHighlighted", "setWash", "setOpacity", "playCommit"],
   "objects": ["primitive", "group", "text3d", "library", "zone", "callout", "world-counter", "world-gui", "guideline", "line-render", "target-focus"],
   "primitiveShapes": [
     "box", "rounded-box", "sharp-box", "sphere", "hemisphere",
@@ -50,6 +56,9 @@
     "busy": "context.ui.busy"
   },
   "systemUi": {
+    "quizResult": "runtime-owned after final answer confirmation",
+    "sceneMode": "mainWorldSetting.sceneModes; runtime-owned standard/day/night selector",
+    "debugHud": "mainWorldSetting.debugHUD; preview keeps mode switch only",
     "topbar": "mainWorldSetting.ui.topbar",
     "modeBadge": "mainWorldSetting.ui.modeBadge",
     "quizBadge": "mainWorldSetting.ui.quizBadge",

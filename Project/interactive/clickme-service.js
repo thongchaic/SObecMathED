@@ -10,8 +10,8 @@ export function createClickmeService({ THREE, viewport, camera, setting = {}, is
   const entries = new Set();
   const box = new THREE.Box3();
   const point = new THREE.Vector3();
-  const openUrl = new URL("./assets/icon/clickme-chubby-open.png", import.meta.url).href;
-  const gripUrl = new URL("./assets/icon/clickme-chubby-fist.png", import.meta.url).href;
+  const openUrl = new URL("./assets/icon/clickme-chubby-open.webp", import.meta.url).href;
+  const gripUrl = new URL("./assets/icon/clickme-chubby-fist.webp", import.meta.url).href;
   const targetObject = target => target?.object3D || target;
   const coarsePointer = () => typeof matchMedia === "function" && matchMedia("(hover: none), (pointer: coarse)").matches;
   const configured = () => setting.ui?.clickme || {};

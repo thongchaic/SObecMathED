@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-30",
+  "generatedAt": "2026-10-05",
   "purpose": "AI reference only; not a runnable deployment",
   "source": "Owner project working tree; copied files may contain uncommitted edits",
   "excluded": [
@@ -28,42 +28,52 @@
     {
       "path": "Project/interactive/chapters/ep0/lesson1.html",
       "sourcePath": "Project/interactive/chapters/ep0/lesson1.html",
-      "sha256": "d6eaf38216943c28da26d5fb5785c388d072857d82bd163221b31e60c934a9b1"
+      "sha256": "f536b68843fe09f18d9c18a1cf29a2e8feafd72dbafaa87dfef3e21c7f338ef6"
     },
     {
       "path": "Project/interactive/chapters/ep1/lesson1.html",
       "sourcePath": "Project/interactive/chapters/ep1/lesson1.html",
-      "sha256": "a844b68fac26b47a1e30a74e2f309c8c5b3c2877920fed408c20bec7ca158414"
+      "sha256": "3752de831ea105c2ae85d9a494557667bcc497ed54ebe90823dfa1014f714adc"
     },
     {
       "path": "Project/interactive/chapters/ep1/lesson2.html",
       "sourcePath": "Project/interactive/chapters/ep1/lesson2.html",
-      "sha256": "1d6432d7b39b23a8fe862d28a7497d0030d057c84bbc2ccce4b50c5063674b09"
+      "sha256": "11476ce8a89919c1d54f318fa0a4208af276b76bd11bab51a3cd1877f089e615"
     },
     {
       "path": "Project/interactive/chapters/ep1/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep1/lesson3.html",
-      "sha256": "399779da06e8c5ace26920a227d98ffe7cec23f8aa2e182ff1bca52198f5f3a7"
+      "sha256": "65a36cfecf6b7568c4b17dd8847c1cb2eb18df57717648b1a559f3420764c16e"
     },
     {
       "path": "Project/interactive/chapters/ep10/lesson1.html",
       "sourcePath": "Project/interactive/chapters/ep10/lesson1.html",
-      "sha256": "f2ccd9684a5de5d153765eb21df34e5bacc29dd60d77371c427da77c7c2f407c"
+      "sha256": "3b5bab4a7cdf9f100870f84a53d7f5bd37e6bae823c119841fce4812dc8dd168"
     },
     {
       "path": "Project/interactive/chapters/ep10/lesson2.html",
       "sourcePath": "Project/interactive/chapters/ep10/lesson2.html",
-      "sha256": "23f7efc1f134740d61647cb1194ae706238e625d8b4215bcd2a3e363b3f430ac"
+      "sha256": "ea61cc6bcdbd0d98a297d67b9d5c224e9587ca0da81fab42560f140e6bdbcdc6"
     },
     {
       "path": "Project/interactive/chapters/ep10/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep10/lesson3.html",
-      "sha256": "64935b5c74af77f99aa0741a21a73c7b2b4d2ddb82653bf17b3ddc96102cd483"
+      "sha256": "97f228a85731541db32c7fbb47bd6f8bccd933d1e70ffaacd540e1c21823a2b7"
+    },
+    {
+      "path": "Project/interactive/chapters/ep12/lesson1.html",
+      "sourcePath": "Project/interactive/chapters/ep12/lesson1.html",
+      "sha256": "adbf52062ce05cc84e01eb144c76da508061c39e7499fbd9ac20fcb7747fabce"
+    },
+    {
+      "path": "Project/interactive/chapters/ep14/lesson3.html",
+      "sourcePath": "Project/interactive/chapters/ep14/lesson3.html",
+      "sha256": "8965cd8e437fc615d4f02ee9df561906df888d402871c7ea7222811a6252511d"
     },
     {
       "path": "Project/interactive/chapters/ep3/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep3/lesson3.html",
-      "sha256": "63cf679fe2cbe2ee627b7470bcbee71bcfac5d0aac974aa731ea9db958ea14a1"
+      "sha256": "7ccc9e8b784f22deb599413c1b938a2883b5af31ce806de7cc664239a1fce4ac"
     },
     {
       "path": "Project/interactive/chapters/leesonExternal.html",
@@ -88,17 +98,22 @@
     {
       "path": "Project/interactive/clickme-service.js",
       "sourcePath": "Project/interactive/clickme-service.js",
-      "sha256": "265bcebf0c7b7abf38cc8e313392ad9d1df160340200af06f2306545ef47dadf"
+      "sha256": "ee80d2dc53476c8e47fae5b2386fb11f76c78482c6efe3f3d17cc371484dde34"
+    },
+    {
+      "path": "Project/interactive/debug-scene-time.mjs",
+      "sourcePath": "Project/interactive/debug-scene-time.mjs",
+      "sha256": "8e1ab81cc2f9752ecfed22bb2e8896832b94248c2b468f5b6cc0577b2770a008"
     },
     {
       "path": "Project/interactive/eduSdk.js",
       "sourcePath": "Project/interactive/eduSdk.js",
-      "sha256": "740eb4729b33a6f59f2a8d49b21ea22a13d794d7efa8854e53c38f62a891de40"
+      "sha256": "8e24abc78b6e851b6c154a8352dcc90da50439ecac907ad178686eac35683b82"
     },
     {
       "path": "Project/interactive/gui-service.js",
       "sourcePath": "Project/interactive/gui-service.js",
-      "sha256": "abe96cc60636ef7d344d3c5ca067cb97701acc1b05ecede48449d47076aa694c"
+      "sha256": "29be304f1a837366225b38d7163ce62705babce91a60f082be2784965fae733d"
     },
     {
       "path": "Project/interactive/intro-service.js",
@@ -108,32 +123,82 @@
     {
       "path": "Project/interactive/main-world-setting.js",
       "sourcePath": "Project/interactive/main-world-setting.js",
-      "sha256": "1a7c5e82a752f35403d1e92d0f431e5df8a7fab572998baa000c6ce1e0691b47"
+      "sha256": "3dc4f9c1f792012e0999e24bdcd88d4c0158548fb78f390d1c335c6b79cbf531"
     },
     {
       "path": "Project/interactive/main-world.html",
       "sourcePath": "Project/interactive/main-world.html",
-      "sha256": "4681437ff81fe638c255dea68c049b24e5eed6ee03686c5a8a502f1f65f4dfae"
+      "sha256": "cf05231fc47707a3c75943a1d9122c7361c467486cc93e61364d8fbdf10a4f30"
     },
     {
       "path": "Project/interactive/main-world.js",
       "sourcePath": "Project/interactive/main-world.js",
-      "sha256": "ec8625aa0454a8dc2a068e53872b4b47c06b51c4737aa15efc2d380d1c53d470"
+      "sha256": "a2927ec0f50d88b87d2de13a7b9822c4bf6cba8d4897a3cb177400f4d4e39d8f"
+    },
+    {
+      "path": "Project/interactive/mascot-eye-blink.mjs",
+      "sourcePath": "Project/interactive/mascot-eye-blink.mjs",
+      "sha256": "701f96e5aec269c51f4413da3650f7ab27ce16d3c92f96a14d1344b43bbbf2ba"
+    },
+    {
+      "path": "Project/interactive/mascot-gestures.mjs",
+      "sourcePath": "Project/interactive/mascot-gestures.mjs",
+      "sha256": "e55b17c04dd30454bfa4e47800944ecdc05f133dacbbcc8704d6497aa98489d4"
+    },
+    {
+      "path": "Project/interactive/mascot-hybrid-renderer.mjs",
+      "sourcePath": "Project/interactive/mascot-hybrid-renderer.mjs",
+      "sha256": "b1d6f11a5d6233119dc5997a2145735af5dc7e7ee14d1fe52ae2ad07b5aeced4"
+    },
+    {
+      "path": "Project/interactive/mascot-idle-motion.mjs",
+      "sourcePath": "Project/interactive/mascot-idle-motion.mjs",
+      "sha256": "4dd8d94f1dfab6133eef712915cd8c47fba83cc8be65165ce0a32f2aa2d46d24"
+    },
+    {
+      "path": "Project/interactive/mascot-motion-controller.mjs",
+      "sourcePath": "Project/interactive/mascot-motion-controller.mjs",
+      "sha256": "3d73f1021dbbafa22b3292d319932a7b5de8b9684981e8b4125df444fd36ff0b"
+    },
+    {
+      "path": "Project/interactive/mascot-sprite-manifest.mjs",
+      "sourcePath": "Project/interactive/mascot-sprite-manifest.mjs",
+      "sha256": "f18e04e3729558ed511503b57f384784a55cd9102f00be881b0e4e730e38f0b3"
+    },
+    {
+      "path": "Project/interactive/operator-sign-master.js",
+      "sourcePath": "Project/interactive/operator-sign-master.js",
+      "sha256": "1649d9d9af39cb86de14a2da85bfca5a7fadf7436a24d94813d6da3b81ed26e3"
+    },
+    {
+      "path": "Project/interactive/quiz-protection.js",
+      "sourcePath": "Project/interactive/quiz-protection.js",
+      "sha256": "418596be26bc2e0a3aab669e7e20b2b24e83390ccdc476658b98c3cb774d4f85"
+    },
+    {
+      "path": "Project/interactive/quiz-result-mascot.mjs",
+      "sourcePath": "Project/interactive/quiz-result-mascot.mjs",
+      "sha256": "ba6fa0430aec37f4337a1f98c51d33fdca5010af80239868aeabf1d8ff4d3818"
+    },
+    {
+      "path": "Project/interactive/quiz-result-view.js",
+      "sourcePath": "Project/interactive/quiz-result-view.js",
+      "sha256": "9f19011ce88fcf7c667f3c65976f3b8576a8901b31644ec63cde77b9ee3c7a65"
     },
     {
       "path": "Project/interactive/runtime-setting-menu.js",
       "sourcePath": "Project/interactive/runtime-setting-menu.js",
-      "sha256": "8d0f806f8afedf9fe11a7ecbf8ce94ee3b5a573a25e68e19a4c652c210c3dbab"
+      "sha256": "81941b1dc384306cdad21c457ef1efd760a9562a7c7738ae047e7bede8133bdf"
     },
     {
       "path": "Project/interactive/world-gui-system.js",
       "sourcePath": "Project/interactive/world-gui-system.js",
-      "sha256": "c2d1cd4ae9790e76589bcf01cae6a1d42ef9f4b481c172e366d6a902ad5b9bc8"
+      "sha256": "0a4dc1ec245901f8c3e00c3c9d123ac208c8f58f74e6484bca476b5a29a0961d"
     },
     {
       "path": "Project/interactive/world.css",
       "sourcePath": "Project/interactive/world.css",
-      "sha256": "d3a35b38c35fa5f0ad74312d417a442260f5fd55d372dea2e97d76e5d58c2c36"
+      "sha256": "30bc848dd75cc02df20ef4ee6499ec6529b99b3020581e3cf81f9b069805ad9a"
     }
   ]
 }

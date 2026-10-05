@@ -3,10 +3,10 @@ export const mainWorldSetting = {
   // ระบบ cache สำหรับไฟล์ asset เท่านั้น (ภาพ, SVG, texture, เสียง และ BGM)
   // false ระหว่างพัฒนา: เติมเวลาปัจจุบันเพื่อบังคับโหลดไฟล์ล่าสุดทุกครั้ง
   // true ตอน deploy: ใช้ assetVersion คงที่ และเปลี่ยนเลขนี้เมื่อมีการอัปเดต asset
-  isCache: false,
-  assetVersion: "0.0.1",
+  isCache: true,
+  assetVersion: "1.0.0",
   // แสดงแถบเครื่องมือทดสอบแบบไอคอนที่กึ่งกลางขอบซ้าย (Refresh / Debug Panel / Lab-Quiz)
-  debugHUD: true,
+  debugHUD: false,
   // true = ใช้ meta.title/category/subcategory จากไฟล์ lesson เป็นชื่อแสดงผลหลักเสมอ
   // false = ใช้ lessonData จาก Platform ก่อน และ fallback ไป meta เมื่อไม่ได้ส่งมาหรือเป็นค่าว่าง
   overrideTitleName: true,
@@ -134,8 +134,8 @@ export const mainWorldSetting = {
       edgeColor: "#a9653f", // สีดินเส้นบางตรงรอยต่อระหว่างหน้าหญ้ากับสันดิน
       bottomColor: "#765538",
       rimColor: "#9ad58b",
-      topTexturePath: "./assets/image/texture/island-grass.png",
-      sideTexturePath: "./assets/image/texture/island-soil.png",
+      topTexturePath: "./assets/image/texture/island-grass.webp",
+      sideTexturePath: "./assets/image/texture/island-soil.webp",
       topTextureRepeat: [3, 3],
       sideTextureRepeat: [8, 0.28],
       textureDotColor: "#68bda3",
@@ -184,15 +184,48 @@ export const mainWorldSetting = {
       }
     }
   },
+  // รูปแบบฉากที่ผู้เรียนสลับได้ระหว่างเล่น และ Debug Panel ใช้ชุดเดียวกัน
+  // สีพื้นหลัง, Fog, แสง, Grid และ Particle ของแต่ละโหมดปรับได้จากหมวดนี้ทั้งหมด
+  sceneModes: {
+    standard: {
+      label: "Standard", minimal: true,
+      colors: ["#fffdf5", "#f8f0df", "#e8d8bd"],
+      background: "radial-gradient(circle at 50% 36%, #fffef8 0%, #faf2e2 52%, #e7d6b9 100%)",
+      fog: "#f4ead7", fogNear: 36, fogFar: 82,
+      mobileFog: { color: "#f6eddd", near: 52, far: 112 },
+      panoramaTint: "#ffffff", panoramaOpacity: 0, floorTint: "#ffffff", floorOpacity: 0,
+      gridColor: "#b9986b", ringColor: "#a17e52", gridOpacity: 0.2,
+      particles: [], particleColors: [], glows: [],
+      lighting: { sky: "#fffdf7", ground: "#e5d6bf", hemisphere: 1.75, ambient: "#fff6e7", ambientIntensity: 0.1, key: "#fffaf0", keyIntensity: 1.25, keyPosition: [-7, 18, 8], fill: "#eadbc8", fillIntensity: 0.38, rim: "#fffdf5", rimIntensity: 0.48, mint: 0.04, peach: 0.09, islandGlow: 0, islandAccent: 0 }
+    },
+    day: {
+      label: "กลางวัน", colors: ["#78ccec", "#c8f3dc", "#f6ffe8"],
+      fog: "#d8f5e8", fogNear: 31, fogFar: 70, mobileFog: { color: "#d8f5e8", near: 48, far: 104 },
+      panoramaTint: "#ffffff", panoramaOpacity: 0.94, floorTint: "#ffffff", floorOpacity: 0.58,
+      particles: ["dust", "leaves"], particleColors: ["#ffffff", "#d9ffbf", "#80d6aa", "#fff0a8"], glows: [],
+      lighting: { sky: "#eefbff", ground: "#c8d8c7", hemisphere: 2, ambient: "#dcecff", ambientIntensity: 0.08, key: "#ffffff", keyIntensity: 1.35, keyPosition: [-6, 19, 7], fill: "#c8c5ff", fillIntensity: 0.42, rim: "#fff0c7", rimIntensity: 0.55, mint: 0.14, peach: 0.12, islandGlow: 0.22, islandAccent: 0.12 }
+    },
+    night: {
+      label: "กลางคืน", colors: ["#29264f", "#789fc8"],
+      background: "linear-gradient(180deg, #29264f 0%, #393863 34%, #789fc8 100%)",
+      fog: "#5878ac", fogNear: 20, fogFar: 52, mobileFog: { color: "#6887b9", near: 34, far: 76 },
+      panoramaTint: "#788dc4", panoramaOpacity: 0.4, floorTint: "#829dc8", floorOpacity: 0.4,
+      particles: ["dust", "fireflies"], particleColors: ["#ddebff", "#c8c1ff", "#a9d6ff"],
+      fireflyColors: ["#e8f7ff", "#c9e8ff", "#d8c8ff", "#fff4b0"],
+      glows: [],
+      // ใช้ระดับความสว่างเท่ากลางวัน แต่เปลี่ยนสีไฟเป็นฟ้าและม่วงอ่อน
+      lighting: { sky: "#d8e8ff", ground: "#6875a5", hemisphere: 2, ambient: "#b8c8f2", ambientIntensity: 0.08, key: "#dcecff", keyIntensity: 1.35, keyPosition: [-6, 19, 7], fill: "#c9bfff", fillIntensity: 0.42, rim: "#b8e8ff", rimIntensity: 0.55, mint: 0.14, peach: 0.04, islandGlow: 0.22, islandAccent: 0.12 }
+    }
+  },
   backgroundPresets: {
-    // ปัจจุบันทุกบทเรียนใช้ฉาก Green เดียวกัน อนาคตค่อยเพิ่ม Day / Evening / Night
+    // ปัจจุบันทุกบทเรียนใช้ฉาก Green เดียวกัน และ sceneModes เป็นตัวปรับ Day / Night ทับชุดฉากนี้
     // โดยเปลี่ยนเฉพาะโทนสี หมอก และแสง ไม่เปลี่ยน panorama หรือชุดฉาก
     green: {
       colors: ["#78ccec", "#c8f3dc", "#f6ffe8"], fog: "#d8f5e8", fogNear: 31, fogFar: 70,
       // มือถือใช้กล้องไกลกว่า desktop จึงแยกระยะหมอกเพื่อไม่ให้รายละเอียดหายเร็วเกินไป
       mobileFog: { color: "#d8f5e8", near: 48, far: 104 },
       // สีและ opacity ของ Grid ไม่อยู่ใน background อีกต่อไป ให้แก้ที่ ground เท่านั้น
-      panorama: "./assets/image/skybox-workshop-panorama.png",
+      panorama: "./assets/image/skybox-workshop-panorama.webp",
       particleColors: ["#ffffff", "#d9ffbf", "#80d6aa", "#fff0a8"],
       windColors: ["#ffffff", "#70d6bd"],
       leafColors: ["#67c879", "#a9df75", "#70d6bd", "#e6ee92"],
@@ -204,7 +237,7 @@ export const mainWorldSetting = {
     panorama: { radius: 40, height: 36, y: 4, opacity: 0.94, rotationY: 0 },
     floor: {
       enabled: true,          // พื้นล่างแยกจาก panorama โดยสิ้นเชิง ไม่เปลี่ยนภาพ skybox เดิม
-      texturePath: "./assets/image/texture/skybox-floor-vista.png",
+      texturePath: "./assets/image/texture/skybox-floor-vista.webp",
       radius: 58,
       y: -14,                // ปรับแกน Y ของพื้นเพียงอย่างเดียว: ค่ายิ่งติดลบ พื้นยิ่งอยู่ต่ำ
       opacity: 0.58,
@@ -395,6 +428,8 @@ export const mainWorldSetting = {
     // สี particle ของบรรยากาศอ่านจาก backgroundPresets.green
     environment: {
       count: 220, size: 0.15, opacity: 0.9, windTrails: 14,
+      fireflyCount: 38, fireflySize: 0.24, fireflyOpacity: 0.95,
+      fireflyFloatSpeed: [0.00045, 0.0011], fireflyDrift: [0.7, 1.8],
       leafCount: 24, leafSize: [0.12, 0.23], leafFallSpeed: [0.0012, 0.0024],
       leafDrift: [0.002, 0.0055]
     },
@@ -402,24 +437,25 @@ export const mainWorldSetting = {
   },
   entry: {
     loadingImagePath: "./assets/image/welcome-workshop.webp", // ภาพพื้นหลังระหว่างโหลดบทเรียน
-    quizWelcomeImagePath: "./assets/image/quiz-welcome.png", // ภาพปกหน้าต้อนรับก่อนเริ่ม Quiz
-    characterImagePath: "./assets/character/dinosaur-student/celebrate.png", // ภาพสำรองของไดโนในหน้าโหลด
+    quizWelcomeImagePath: "./assets/image/quiz-welcome.webp", // ภาพปกหน้าต้อนรับก่อนเริ่ม Quiz
+    characterImagePath: "./assets/character/dinosaur-student/celebrate.webp", // ภาพสำรองของไดโนในหน้าโหลด
     minDuration: 1700,      // ให้เวลาอ่าน welcomeMessage และกันหน้ากระพริบ
+    completionHoldDuration: 1400, // ค้างที่ 100% ให้ผู้เรียนเห็นว่าโหลดเสร็จก่อนเริ่ม transition
     exitDuration: 1420
   },
   mascot: {
     enabled: true,                          // เปิด/ปิดผู้ช่วย หากปิดจะกลับไปแสดงกล่องคำแนะนำแบบเดิม
     name: "น้องไดโน",
     behavior: "stationary",
-    renderer: "image",                     // renderer เผื่อเปลี่ยนเป็น lottie ภายหลัง
+    renderer: "hybrid",                    // sprite ตัวเต็ม + ตาเฉพาะจุด; ใช้ image เพื่อย้อนกลับได้
     assets: {
-      idle: "./assets/character/dinosaur-student/idle.png",
-      speaking: "./assets/character/dinosaur-student/speaking-open-mouth.png",
-      greeting: "./assets/character/dinosaur-student/celebrate.png",
-      instruction: "./assets/character/dinosaur-student/point.png",
-      hint: "./assets/character/dinosaur-student/thinking.png",
-      celebrate: "./assets/character/dinosaur-student/celebrate.png",
-      perch: "./assets/character/dinosaur-student/small-floating-island.png"
+      idle: "./assets/character/dinosaur-student/idle.webp",
+      speaking: "./assets/character/dinosaur-student/speaking-open-mouth.webp",
+      greeting: "./assets/character/dinosaur-student/celebrate.webp",
+      instruction: "./assets/character/dinosaur-student/point.webp",
+      hint: "./assets/character/dinosaur-student/thinking.webp",
+      celebrate: "./assets/character/dinosaur-student/celebrate.webp",
+      perch: "./assets/character/dinosaur-student/small-floating-island.webp"
     },
     character: {
       // ตำแหน่งและขนาดตัวไดโน แยกจากกล่องคำพูดและบับเบิ้ล
@@ -436,8 +472,8 @@ export const mainWorldSetting = {
       typeIcons: { instruction: "info-book.svg", hint: "lightbulb.svg", optional: "lightbulb.svg" }
     },
     idle: {
-      blinkInterval: [2800, 5200],          // ช่วงสุ่มเวลากระพริบตา หน่วยมิลลิวินาที
-      blinkDuration: 150
+      blinkInterval: [5000, 8000],          // กระพริบเป็นครั้งคราว ไม่ถี่จนดูเป็นหุ่นยนต์
+      blinkDuration: 460                    // double blink ช้าพอให้มองเห็นบนจอเล็ก
     },
     speech: {
       textSpeed: 22,                        // ความเร็วพิมพ์ข้อความ ยิ่งน้อยยิ่งเร็ว
@@ -459,6 +495,7 @@ export const mainWorldSetting = {
       size: [4, 9], duration: [1800, 3200]
     },
     animation: {
+      respectReducedMotion: false,           // mascot ยังขยับได้แม้ OS ปิด motion ของ UI ทั่วไป
       flyInDuration: 560,                     // เวลา transition เข้าสู่สถานะพูด
       messageDelay: 330,                      // เวลาก่อนแสดงกล่องข้อความ
       landingDuration: 220,

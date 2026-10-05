@@ -19,6 +19,8 @@
 | [ep10/lesson1.html](Project/interactive/chapters/ep10/lesson1.html) | เลขยกกำลังผ่านการแตกตัว, state หลายรอบ, Gizmo และ Control |
 | [ep10/lesson2.html](Project/interactive/chapters/ep10/lesson2.html) | สมบัติเลขยกกำลัง, ซ้อนถาด, Gizmo เลขชี้กำลัง และข้อความบนพื้น |
 | [ep10/lesson3.html](Project/interactive/chapters/ep10/lesson3.html) | แถว → แผ่น → ก้อน, การแสดงกำลังสอง/กำลังสาม และการแยก/รวมรูป |
+| [ep12/lesson1.html](Project/interactive/chapters/ep12/lesson1.html) | แบบรูป: สังเกตกฎ เลือกคำอธิบาย และต่อพจน์ถัดไปด้วยบล็อก procedural; อ่าน Lab/Quiz และ state แยกกัน |
+| [ep14/lesson3.html](Project/interactive/chapters/ep14/lesson3.html) | พื้นที่ผิว: คลี่รูปทรง 3D เป็นแผ่น 2D, แยกกลุ่มหน้าคู่ตรงข้าม และใช้ Callout/Insight; ภาพประกอบจริงไม่รวมในชุดอ้างอิง |
 | [leesonExternal.html](Project/interactive/chapters/leesonExternal.html) | HTML อิสระอีกเส้นทางของ SDK ชื่อไฟล์สะกดตามต้นฉบับ ไม่ใช้เป็น template ของ Lesson Package |
 
 ตัวอย่างอาจมีข้อยกเว้นการสอนหรือ pattern เก่า ให้ยึด Master และ public API ปัจจุบัน หากบทใหม่จำเป็นต้องโต้ตอบระหว่าง sequence ให้ผู้มอบหมายกำหนดข้อยกเว้นชัดเจน ไม่คัดลอกข้อยกเว้นโดยอัตโนมัติ

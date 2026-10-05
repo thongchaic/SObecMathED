@@ -1,5 +1,8 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+// Reuse completed FileLoader requests across FBX, GLTF and texture loaders in
+// the same runtime instead of fetching identical library assets repeatedly.
+THREE.Cache.enabled = true;
 // Keep the runtime shell and its settings schema deployed as one compatible version.
 const { mainWorldSetting: setting } = await import(`./main-world-setting.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const runtimeSettingTools = await import(`./runtime-setting-menu.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
@@ -8,6 +11,9 @@ const worldGuiSystemTools = await import(`./world-gui-system.js?v=${encodeURICom
 const clickmeServiceTools = await import(`./clickme-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const introServiceTools = await import(`./intro-service.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const operatorSignMasterTools = await import(`./operator-sign-master.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const quizProtectionTools = await import(`./quiz-protection.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const mascotMotionTools = await import(`./mascot-motion-controller.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const {DEBUG_SCENE_TIME_PRESETS,normalizeDebugSceneTime}=await import(`./debug-scene-time.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const { OPERATOR_SIGN_MASTER, operatorSignMasterFor, operatorFullTurnEnd } = operatorSignMasterTools;
 const runtimeSettingBaseline = runtimeSettingTools.applyStoredRuntimeSetting(setting);
 // ใช้ token เดียวตลอดอายุของ runtime เพื่อไม่ให้ asset เดียวกันถูกดาวน์โหลดซ้ำในหน้าเดียว
@@ -27,14 +33,14 @@ const elements = {
   entry: $("#entry-screen"), entryTitle: $("#entry-title"), entryCategory: $("#entry-category"), entryWelcome: $("#entry-welcome"), entryStatus: $("#entry-status"), entryProgress: $("#entry-progress-bar"), entryProgressTrack: $("#entry-progress-track"), entryProgressValue: $("#entry-progress-value"),
   celebration: $("#celebration"), celebrationFireworks: $("#celebration-fireworks"), howto: $("#howto-panel"), stepCounter: $("#step-counter"), stepTitle: $("#step-title"),
   stepDescription: $("#step-description"), stepOption: $("#step-option"), quizPanel: $("#quiz-panel"),
-  mascot: $("#mascot-guide"), mascotNotice: $("#mascot-notice"), mascotParticles: $("#mascot-particles"), mascotCharacter: $("#mascot-character"), mascotPerchImage: $("#mascot-perch-image"), mascotIdleImage: $("#mascot-idle-image"), mascotSpeakingImage: $("#mascot-speaking-image"), mascotFlyImage: $("#mascot-fly-image"), mascotFlyMidImage: $("#mascot-fly-mid-image"), mascotFlyDownImage: $("#mascot-fly-down-image"),
+  mascot: $("#mascot-guide"), mascotNotice: $("#mascot-notice"), mascotParticles: $("#mascot-particles"), mascotCharacter: $("#mascot-character"), mascotPerchImage: $("#mascot-perch-image"), mascotIdleImage: $("#mascot-idle-image"), mascotSpeakingImage: $("#mascot-speaking-image"), mascotFlyImage: $("#mascot-fly-image"), mascotFlyMidImage: $("#mascot-fly-mid-image"), mascotFlyDownImage: $("#mascot-fly-down-image"), mascotSprite: $("#mascot-sprite"), mascotEyes: $("#mascot-eyes"),
   consoleState: $("#console-state-icon"), consoleStateImage: $("#console-state-image"), sceneHandCue: $("#scene-hand-cue"),
   quizDots: $("#quiz-dots"), question: $("#question-text")
 };
 
 const runtime = {
   sessionId: 0, lesson: null, meta: null, lessonData: null, lessonUrl: null, context: null,
-  mode: "student-lab", language: "th", fullScreen: true, preview: false, values: {}, stepIndex: 0, stepNextEnabled: true, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, lastOpenPayload: null
+  mode: "student-lab", language: "th", fullScreen: true, preview: false, values: {}, stepIndex: 0, stepNextEnabled: true, quiz: null, toastTimer: 0, typewriterTimers: new Set(), optionCloseTimer: 0, mascotFlightTimer: 0, mascotLandingTimer: 0, mascotSpeechTimer: 0, mascotHintTimer: 0, mascotBlinkTimer: 0, mascotBlinkReleaseTimer: 0, mascotPoseTimer: 0, pendingMascotOption: null, sceneEntered: false, lessonSceneInitialized: false, bgm: null, bgmRequested: false, completed: false, modalReturnFocus: null, resultWorldPaused: false, resultSequenceId: 0, lastOpenPayload: null
 };
 
 function syncDebugHud() {
@@ -126,7 +132,32 @@ elements.mascot.dataset.character = activeMascotKey;
 elements.mascot.dataset.behavior = mascotBehavior;
 elements.mascot.dataset.pose = "idle";
 elements.mascot.classList.toggle("is-stationary", mascotBehavior === "stationary");
-if (mascotAssets.idle) { elements.mascotPerchImage.src = runtimeAssetUrl(mascotAssets.perch); elements.mascotIdleImage.src = runtimeAssetUrl(mascotAssets.idle); elements.mascotSpeakingImage.src = runtimeAssetUrl(mascotAssets.speaking || mascotAssets.instruction || mascotAssets.idle); elements.mascotFlyImage.src = runtimeAssetUrl(mascotAssets.instruction || mascotAssets.flyUp || mascotAssets.fly || mascotAssets.idle); elements.mascotFlyMidImage.src = runtimeAssetUrl(mascotAssets.hint || mascotAssets.flyMid || mascotAssets.fly || mascotAssets.idle); elements.mascotFlyDownImage.src = runtimeAssetUrl(mascotAssets.celebrate || mascotAssets.greeting || mascotAssets.flyDown || mascotAssets.fly || mascotAssets.idle); }
+const useHybridMascot = mascotSetting.renderer === "hybrid" && mascotBehavior === "stationary";
+const mascotFallbacks = {
+  idle: [elements.mascotIdleImage, mascotAssets.idle],
+  speaking: [elements.mascotSpeakingImage, mascotAssets.speaking || mascotAssets.idle],
+  instruction: [elements.mascotFlyImage, mascotAssets.instruction || mascotAssets.flyUp || mascotAssets.fly || mascotAssets.idle],
+  hint: [elements.mascotFlyMidImage, mascotAssets.hint || mascotAssets.flyMid || mascotAssets.fly || mascotAssets.idle],
+  celebrate: [elements.mascotFlyDownImage, mascotAssets.celebrate || mascotAssets.greeting || mascotAssets.flyDown || mascotAssets.fly || mascotAssets.idle]
+};
+function loadMascotFallback(pose) {
+  const [image, path] = mascotFallbacks[pose] || mascotFallbacks.idle;
+  if (path && !image.getAttribute("src")) image.src = runtimeAssetUrl(path);
+}
+if (mascotAssets.perch) elements.mascotPerchImage.src = runtimeAssetUrl(mascotAssets.perch);
+if (!useHybridMascot) Object.keys(mascotFallbacks).forEach(loadMascotFallback);
+const mascotMotion = mascotMotionTools.createMascotMotionController({ root: elements.mascot, character: elements.mascotCharacter, forceMotion: mascotSetting.animation?.respectReducedMotion === false });
+let mascotHybrid = null;
+let resultMascotBlink = null;
+if (useHybridMascot) {
+  try {
+    const { createHybridMascotRenderer } = await import(`./mascot-hybrid-renderer.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
+    mascotHybrid = createHybridMascotRenderer({ root: elements.mascot, canvas: elements.mascotSprite, eyeCanvas: elements.mascotEyes,
+      assetUrl: runtimeAssetUrl, blinkInterval: mascotSetting.idle?.blinkInterval, blinkDuration: mascotSetting.idle?.blinkDuration,
+      onFallback: (pose, error) => { loadMascotFallback(pose); console.warn(error); } });
+    window.addEventListener("pagehide", event => { if (!event.persisted) { mascotHybrid.destroy();resultMascotBlink?.destroy(); } });
+  } catch (error) { Object.keys(mascotFallbacks).forEach(loadMascotFallback); console.warn("Mascot: using original pose images", error); }
+}
 // หน้า HTML จะยังเป็นสีขาวจน CSS และภาพที่มองเห็นใน Loading Card พร้อมวาด
 window.eduRuntimeFirstFrameReady = Promise.race([
   Promise.allSettled([preloadImageUrl(entryBackgroundUrl), ...[...elements.entry.querySelectorAll("img")].map(waitForImageElement)]),
@@ -153,10 +184,12 @@ function showToast(message, kind = "success") {
   // ผู้เรียนจึงอ่านต่อได้หลังปิด Mascot และไม่มีกล่องชั่วคราวซ้อนกลางฉาก
   elements.toast.className = "toast";
   guiService.console.feedback(message, { tone: kind });
-  if (kind === "success" && mascotBehavior === "stationary") {
-    setMascotPose("celebrate");
+  // Teaching-step feedback is a greeting, never the answer celebration.
+  if (runtime.mascotStepDepth > 0) return;
+  if (kind === "success" && mascotBehavior === "stationary" && !elements.mascot.classList.contains("is-speaking")) {
+    setMascotPose("celebrate", { replay: true });
     clearTimeout(runtime.mascotPoseTimer);
-    runtime.mascotPoseTimer = setTimeout(() => setMascotPose("idle"), 1400);
+    runtime.mascotPoseTimer = setTimeout(() => setMascotPose("idle"), mascotMotionTools.MASCOT_CELEBRATION_DURATION);
   }
 }
 function setLessonQuestion(message = "") {
@@ -246,6 +279,7 @@ document.fonts.ready.then(scheduleQuestionFit);
 document.fonts.addEventListener("loadingdone", scheduleQuestionFit);
 
 function showModal(content, { closeLabel = "ปิด", primaryLabel = "", onPrimary = null, dismissible = true } = {}) {
+  resetResultPresentation();
   runtime.modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   elements.modal.innerHTML = `<article class="modal-card">${content}<div class="modal-actions">${dismissible ? `<button data-modal-close>${escapeHtml(closeLabel)}</button>` : ""}${primaryLabel ? `<button class="primary" data-modal-primary>${escapeHtml(primaryLabel)}</button>` : ""}</div></article>`;
   elements.modal.hidden = false;
@@ -253,7 +287,23 @@ function showModal(content, { closeLabel = "ปิด", primaryLabel = "", onPri
   elements.modal.querySelector("[data-modal-primary]")?.addEventListener("click", () => onPrimary?.());
   requestAnimationFrame(() => elements.modal.querySelector("[data-modal-primary],[data-modal-close],button")?.focus({ preventScroll: true }));
 }
-function closeModal() { elements.modal.hidden = true; elements.modal.replaceChildren(); runtime.modalReturnFocus?.focus?.(); runtime.modalReturnFocus = null; }
+function setResultWorldPaused(paused) {
+  const changed = runtime.resultWorldPaused !== Boolean(paused);
+  runtime.resultWorldPaused = Boolean(paused);
+  if (changed) {
+    mascotHybrid?.pause(runtime.resultWorldPaused);
+    mascotMotion.setPaused(runtime.resultWorldPaused);
+  }
+  elements.runtime.classList.toggle("result-world-paused", runtime.resultWorldPaused);
+  if (!runtime.resultWorldPaused) markSceneActive();
+}
+function resetResultPresentation() {
+  resultMascotBlink?.destroy();resultMascotBlink=null;
+  runtime.resultSequenceId += 1;
+  elements.modal.classList.remove("is-result-sequence", "is-result-covered", "is-result-popup-visible");
+  setResultWorldPaused(false);
+}
+function closeModal() { resetResultPresentation(); elements.modal.hidden = true; elements.modal.replaceChildren(); runtime.modalReturnFocus?.focus?.(); runtime.modalReturnFocus = null; }
 elements.modal.addEventListener("click", event => {
   if (event.target === elements.modal && elements.modal.querySelector("[data-modal-close]")) closeModal();
 });
@@ -297,7 +347,10 @@ function updateEntry(progress, status, messages) {
 async function finishEntry() {
   updateEntry(100, "พร้อมแล้ว เริ่มเรียนรู้กันเลย!");
   const elapsed = performance.now() - runtime.entryStartedAt;
-  if (elapsed < setting.entry.minDuration) await new Promise(resolve => setTimeout(resolve, setting.entry.minDuration - elapsed));
+  const minimumWait = Math.max(0, setting.entry.minDuration - elapsed);
+  const completionHold = setting.entry.completionHoldDuration ?? 1400;
+  if (minimumWait > 0) await new Promise(resolve => setTimeout(resolve, minimumWait));
+  await new Promise(resolve => setTimeout(resolve, completionHold));
   audio.play("startLesson"); audio.startBgm();
   elements.entry.classList.add("is-leaving");
   await new Promise(resolve => setTimeout(resolve, setting.entry.exitDuration));
@@ -427,7 +480,13 @@ const introService = introServiceTools.createIntroService({
   playUiSound: uiSound
 });
 
-const lighting = setting.lighting || {}, hemisphereLight = new THREE.HemisphereLight(lighting.skyColor || "#e8f8ff", lighting.groundColor || "#c8d8c7", lighting.hemisphere ?? 1.15); scene.add(hemisphereLight); if ((lighting.ambient ?? 0) > 0) scene.add(new THREE.AmbientLight(lighting.ambientColor || "#dcecff", lighting.ambient)); const keyLight = new THREE.DirectionalLight(0xffffff, lighting.key ?? 1.35); keyLight.position.fromArray(shadowSetting.lightPosition || [-6, 19, 7]); keyLight.castShadow = renderer.shadowMap.enabled; const compactShadowViewport = matchMedia("(max-width: 760px)").matches, requestedShadowMapSize = compactShadowViewport ? (shadowSetting.mobileMapSize || 1024) : (shadowSetting.desktopMapSize || 2048), shadowMapSize = Math.min(requestedShadowMapSize, renderer.capabilities.maxTextureSize); keyLight.shadow.mapSize.set(shadowMapSize, shadowMapSize); keyLight.shadow.intensity = shadowSetting.intensity ?? .52; keyLight.shadow.radius = shadowSetting.radius ?? 2; keyLight.shadow.bias = shadowSetting.bias ?? -.00015; keyLight.shadow.normalBias = shadowSetting.normalBias ?? .018; Object.assign(keyLight.shadow.camera, shadowSetting.camera || { left: -12.5, right: 12.5, top: 10.5, bottom: -10.5, near: 2, far: 32 }); keyLight.shadow.camera.updateProjectionMatrix(); scene.add(keyLight); const fillLight = new THREE.DirectionalLight(lighting.fillColor || "#c8c5ff", lighting.fill ?? .42); fillLight.position.set(8, 7, -7); scene.add(fillLight); rimLight = new THREE.DirectionalLight(lighting.rimColor || "#fff0c7", lighting.rim ?? .55); scene.add(rimLight, rimLight.target); updateRimLight(); const mintLight = new THREE.PointLight(0x6de2c1, lighting.mint ?? .14, 30, 2); mintLight.position.set(7, 7, 8); scene.add(mintLight); const peachLight = new THREE.PointLight(0xffb384, lighting.peach ?? .12, 25, 2); peachLight.position.set(-8, 5, -5); scene.add(peachLight);
+const lighting = setting.lighting || {}, hemisphereLight = new THREE.HemisphereLight(lighting.skyColor || "#e8f8ff", lighting.groundColor || "#c8d8c7", lighting.hemisphere ?? 1.15); scene.add(hemisphereLight); const ambientLight=new THREE.AmbientLight(lighting.ambientColor || "#dcecff",lighting.ambient ?? 0);scene.add(ambientLight); const keyLight = new THREE.DirectionalLight(0xffffff, lighting.key ?? 1.35); keyLight.position.fromArray(shadowSetting.lightPosition || [-6, 19, 7]); keyLight.castShadow = renderer.shadowMap.enabled; const compactShadowViewport = matchMedia("(max-width: 760px)").matches, requestedShadowMapSize = compactShadowViewport ? (shadowSetting.mobileMapSize || 1024) : (shadowSetting.desktopMapSize || 2048), shadowMapSize = Math.min(requestedShadowMapSize, renderer.capabilities.maxTextureSize); keyLight.shadow.mapSize.set(shadowMapSize, shadowMapSize); keyLight.shadow.intensity = shadowSetting.intensity ?? .52; keyLight.shadow.radius = shadowSetting.radius ?? 2; keyLight.shadow.bias = shadowSetting.bias ?? -.00015; keyLight.shadow.normalBias = shadowSetting.normalBias ?? .018; Object.assign(keyLight.shadow.camera, shadowSetting.camera || { left: -12.5, right: 12.5, top: 10.5, bottom: -10.5, near: 2, far: 32 }); keyLight.shadow.camera.updateProjectionMatrix(); scene.add(keyLight); const fillLight = new THREE.DirectionalLight(lighting.fillColor || "#c8c5ff", lighting.fill ?? .42); fillLight.position.set(8, 7, -7); scene.add(fillLight); rimLight = new THREE.DirectionalLight(lighting.rimColor || "#fff0c7", lighting.rim ?? .55); scene.add(rimLight, rimLight.target); updateRimLight(); const mintLight = new THREE.PointLight(0x6de2c1, lighting.mint ?? .14, 30, 2); mintLight.position.set(7, 7, 8); scene.add(mintLight); const peachLight = new THREE.PointLight(0xffb384, lighting.peach ?? .12, 25, 2); peachLight.position.set(-8, 5, -5); scene.add(peachLight);
+// ไฟแต้มเฉพาะพื้นเกาะ ช่วยเปิดรายละเอียด texture และสร้างจุดสว่างโดยไม่ทำให้เงาหลักแบน
+const islandGlowLight = new THREE.PointLight(0x9fdcff, 0, 30, 1.55);
+islandGlowLight.position.set(-3.5, 8.5, 5.5);
+const islandAccentLight = new THREE.PointLight(0xc3a6ff, 0, 26, 1.8);
+islandAccentLight.position.set(7, 4.5, -5);
+scene.add(islandGlowLight, islandAccentLight);
 
 function makePattern(kind, repeat = [2, 2]) { const canvas = document.createElement("canvas"); canvas.width = canvas.height = 256; const c = canvas.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0, 0, 256, 256); c.fillStyle = kind === "ground" ? "rgba(65,143,151,.055)" : "rgba(255,255,255,.42)"; for (let y = 16; y < 256; y += kind === "ground" ? 32 : 54)for (let x = 16; x < 256; x += kind === "ground" ? 32 : 54) { c.beginPath(); c.arc(x, y, kind === "ground" ? 3 : 8, 0, Math.PI * 2); c.fill(); } const t = new THREE.CanvasTexture(canvas); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); t.colorSpace = THREE.SRGBColorSpace; return t; }
 const objectPattern = makePattern("object", setting.object.textureRepeat);
@@ -435,6 +494,10 @@ function material(color, map = objectPattern) { const surface = setting.object.s
 function makeIslandTexture(config) { const canvas = document.createElement("canvas"); canvas.width = canvas.height = 768; const c = canvas.getContext("2d"); c.fillStyle = config.topColor; c.fillRect(0, 0, 768, 768); c.globalAlpha = config.textureOpacity; for (let index = 0; index < 92; index++) { const x = (index * 137 + 53) % 768, y = (index * 83 + 97) % 768, r = 4 + (index % 5) * 1.7; c.fillStyle = index % 3 === 0 ? config.textureStarColor : config.textureDotColor; if (index % 7 === 0) { c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillRect(-r, -r, r * 2, r * 2); c.restore(); } else { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); } } c.globalAlpha = config.textureOpacity * .58; c.strokeStyle = config.textureDotColor; c.lineWidth = 4; for (let index = 0; index < 18; index++) { const x = (index * 211 + 80) % 768, y = (index * 149 + 44) % 768; c.beginPath(); c.arc(x, y, 16 + (index % 3) * 6, .2, Math.PI * 1.18); c.stroke(); } c.globalAlpha = 1; const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return texture; }
 function loadIslandTexture(path, repeat = [1, 1]) { if (!path) return null; const texture = new THREE.TextureLoader().load(runtimeAssetUrl(path), loaded => { loaded.colorSpace = THREE.SRGBColorSpace; loaded.wrapS = loaded.wrapT = THREE.RepeatWrapping; loaded.repeat.set(...repeat); loaded.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); loaded.needsUpdate = true; }); texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(...repeat); return texture; }
 const islandPlantMaterials = [], islandPlantObjects = [], islandClouds = [];
+// เก็บเกาะและของแต่งทั้งหมดไว้ใต้ root เดียว เพื่อให้ฉาก Standard ซ่อนได้โดยไม่แตะวัตถุบทเรียนหรือ Grid
+const islandEnvironmentGroup = new THREE.Group();
+islandEnvironmentGroup.name = "world-island-environment";
+scene.add(islandEnvironmentGroup);
 function plantRandom(index, salt = 0) { const value = Math.sin((index + 2) * 17.173 + (salt + 1) * 61.719) * 18473.927; return value - Math.floor(value); }
 function loadIslandPlantAsset(entry) {
   return new Promise(resolve => {
@@ -489,7 +552,7 @@ function createImportedIslandPlants(style, placements, modelKey) {
         amount: Math.max(0, style.swayAmount || .08)
       };
       islandPlantObjects.push(object);
-      scene.add(object);
+      islandEnvironmentGroup.add(object);
     }
     markSceneActive();
   });
@@ -537,12 +600,12 @@ function createIslandDecorations(config, surface = null) {
   for (const bucket of buckets.values()) {
     const material = new THREE.MeshStandardMaterial({ color: bucket.color, roughness: bucket.kind === "petal" ? .55 : .76, metalness: 0, flatShading: true });
     const time = { value: 0 }; material.userData.plantTime = time; material.onBeforeCompile = shader => { shader.uniforms.plantTime = time; shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nuniform float plantTime;").replace("#include <begin_vertex>", `vec3 transformed = vec3(position);\n#ifdef USE_INSTANCING\nfloat plantPhase=instanceMatrix[3].x*.71+instanceMatrix[3].z*.53;\ntransformed.x+=sin(plantTime*${Math.max(.1, (style.swaySpeed || .0018) * 1000).toFixed(4)}+plantPhase)*${Math.max(0, style.swayAmount || .08).toFixed(4)}*max(position.y,0.0);\n#endif`); }; material.customProgramCacheKey = () => "island-instanced-sway-v1"; islandPlantMaterials.push(material);
-    const mesh = new THREE.InstancedMesh(geometries[bucket.kind], material, bucket.matrices.length); bucket.matrices.forEach((value, index) => mesh.setMatrixAt(index, value)); mesh.instanceMatrix.needsUpdate = true; mesh.castShadow = Boolean(shadowSetting.decorationCast); mesh.receiveShadow = shadowSetting.decorationReceive !== false; mesh.computeBoundingSphere(); scene.add(mesh);
+    const mesh = new THREE.InstancedMesh(geometries[bucket.kind], material, bucket.matrices.length); bucket.matrices.forEach((value, index) => mesh.setMatrixAt(index, value)); mesh.instanceMatrix.needsUpdate = true; mesh.castShadow = Boolean(shadowSetting.decorationCast); mesh.receiveShadow = shadowSetting.decorationReceive !== false; mesh.computeBoundingSphere(); islandEnvironmentGroup.add(mesh);
   }
   createImportedIslandPlants(style, grassPlacements, "grassModels");
   createImportedIslandPlants(style, flowerPlacements, "flowerModels");
 }
-function createIslandCloudBase(config) { const style = config.cloudBase; if (!style?.enabled) return; const [near, far] = style.radius, [low, high] = style.y, [minScale, maxScale] = style.scale, colors = style.colors || ["#ffffff"]; for (let index = 0; index < style.count; index++) { const angle = index / style.count * Math.PI * 2 + (plantRandom(index, 12) - .5) * .34, radius = THREE.MathUtils.lerp(near, far, plantRandom(index, 13)), cloud = makeSoftCloud(colors[index % colors.length]), scale = THREE.MathUtils.lerp(minScale, maxScale, plantRandom(index, 14)); cloud.position.set(Math.cos(angle) * radius, THREE.MathUtils.lerp(low, high, plantRandom(index, 15)), Math.sin(angle) * radius); cloud.scale.setScalar(scale); cloud.rotation.y = -angle; cloud.traverse(mesh => { if (mesh.material) { mesh.material = mesh.material.clone(); mesh.material.transparent = true; mesh.material.opacity = style.opacity; mesh.material.depthWrite = false; } }); cloud.userData.islandCloud = { baseY: cloud.position.y, phase: plantRandom(index, 16) * Math.PI * 2, speed: style.floatSpeed * (.7 + plantRandom(index, 17) * .55), amount: style.floatAmount * (.7 + plantRandom(index, 18) * .5) }; islandClouds.push(cloud); scene.add(cloud); } }
+function createIslandCloudBase(config) { const style = config.cloudBase; if (!style?.enabled) return; const [near, far] = style.radius, [low, high] = style.y, [minScale, maxScale] = style.scale, colors = style.colors || ["#ffffff"]; for (let index = 0; index < style.count; index++) { const angle = index / style.count * Math.PI * 2 + (plantRandom(index, 12) - .5) * .34, radius = THREE.MathUtils.lerp(near, far, plantRandom(index, 13)), cloud = makeSoftCloud(colors[index % colors.length]), scale = THREE.MathUtils.lerp(minScale, maxScale, plantRandom(index, 14)); cloud.position.set(Math.cos(angle) * radius, THREE.MathUtils.lerp(low, high, plantRandom(index, 15)), Math.sin(angle) * radius); cloud.scale.setScalar(scale); cloud.rotation.y = -angle; cloud.traverse(mesh => { if (mesh.material) { mesh.material = mesh.material.clone(); mesh.material.transparent = true; mesh.material.opacity = style.opacity; mesh.material.depthWrite = false; } }); cloud.userData.islandCloud = { baseY: cloud.position.y, phase: plantRandom(index, 16) * Math.PI * 2, speed: style.floatSpeed * (.7 + plantRandom(index, 17) * .55), amount: style.floatAmount * (.7 + plantRandom(index, 18) * .5) }; islandClouds.push(cloud); islandEnvironmentGroup.add(cloud); } }
 // ไฟล์ FBX/GLTF จากโปรแกรม 3D อาจพก Light และ Camera มาด้วยโดยไม่ตั้งใจ
 // Main world เป็นเจ้าของไฟและกล้องทั้งหมด จึงตัด scene controls จาก asset ก่อนนำเข้าฉากเสมอ
 function stripImportedSceneControls(root) {
@@ -580,21 +643,21 @@ function createWorldIsland() {
   const island = new THREE.Mesh(geometry, side);
   island.castShadow = castGroundShadow;
   island.receiveShadow = receiveGroundShadow;
-  scene.add(island);
+  islandEnvironmentGroup.add(island);
   const edgeMaterial = new THREE.MeshPhysicalMaterial({ color: config.edgeColor || config.bottomColor, roughness: .78, metalness: 0, clearcoat: .06 });
   const edgeTop = new THREE.Mesh(new THREE.RingGeometry(grassRadius, config.radius, 128), edgeMaterial);
   edgeTop.rotation.x = -Math.PI / 2;
   edgeTop.position.y = .004;
   edgeTop.castShadow = castGroundShadow;
   edgeTop.receiveShadow = receiveGroundShadow;
-  scene.add(edgeTop);
+  islandEnvironmentGroup.add(edgeTop);
   const grassMaterial = new THREE.MeshPhysicalMaterial({ color: config.topTint || "#ffffff", map: grassTexture, bumpMap: grassTexture, bumpScale: .026, roughness: .78, metalness: 0, clearcoat: .08, clearcoatRoughness: .5 });
   const grassCap = new THREE.Mesh(new THREE.CircleGeometry(grassRadius, 128), grassMaterial);
   grassCap.rotation.x = -Math.PI / 2;
   grassCap.position.y = .008;
   grassCap.castShadow = castGroundShadow;
   grassCap.receiveShadow = receiveGroundShadow;
-  scene.add(grassCap);
+  islandEnvironmentGroup.add(grassCap);
   const quiet = config.quietZone;
   if (quiet?.enabled) {
     const quietSurface = new THREE.Mesh(new THREE.CircleGeometry(quiet.radius, 96), new THREE.MeshPhysicalMaterial({ color: quiet.color, transparent: true, opacity: quiet.opacity, roughness: .9, metalness: 0, depthWrite: false }));
@@ -602,20 +665,20 @@ function createWorldIsland() {
     quietSurface.position.y = .014;
     quietSurface.castShadow = castGroundShadow;
     quietSurface.receiveShadow = receiveGroundShadow;
-    scene.add(quietSurface);
+    islandEnvironmentGroup.add(quietSurface);
   }
   const bottomCap = new THREE.Mesh(new THREE.CircleGeometry(config.bottomRadius, 128), new THREE.MeshPhysicalMaterial({ color: config.bottomColor, roughness: .82, metalness: 0 }));
   bottomCap.rotation.x = Math.PI / 2;
   bottomCap.position.y = -height;
   bottomCap.castShadow = castGroundShadow;
   bottomCap.receiveShadow = receiveGroundShadow;
-  scene.add(bottomCap);
+  islandEnvironmentGroup.add(bottomCap);
   const rim = new THREE.Mesh(new THREE.TorusGeometry(grassRadius - .04, .03, 8, 128), new THREE.MeshPhysicalMaterial({ color: config.rimColor, roughness: .58, clearcoat: .18, clearcoatRoughness: .34 }));
   rim.rotation.x = Math.PI / 2;
   rim.position.y = .012;
   rim.castShadow = castGroundShadow;
   rim.receiveShadow = receiveGroundShadow;
-  scene.add(rim);
+  islandEnvironmentGroup.add(rim);
   createIslandDecorations(config);
   createIslandCloudBase(config);
 }
@@ -706,7 +769,7 @@ createWorldIsland = function () {
       island.position.fromArray(model.position || [0, 0, 0]);
     }
     island.updateMatrixWorld(true);
-    scene.add(island);
+    islandEnvironmentGroup.add(island);
     createIslandDecorations(config, island);
     createIslandCloudBase(config);
   }, onLoadError = error => {
@@ -845,7 +908,7 @@ function createDistantDecor() { const config = setting.distantDecor, models = co
 function createDistantClouds() { const config = setting.distantClouds, entries = (config?.models?.length ? config.models : [config?.model]).filter(entry => entry?.path); if (!config?.enabled || !entries.length) return; Promise.all(entries.map(entry => loadDistantDecorAsset(entry, config))).then(assets => { const available = assets.filter(Boolean); if (!available.length) return; const total = Math.max(0, Math.round(config.count ?? 0)), [near, far] = config.radius, [low, high] = config.height, [minScale, maxScale] = config.scale, [minOrbit, maxOrbit] = config.orbitSpeed || [.000006, .000014], colors = config.colors?.length ? config.colors : ["#ffffff"]; for (let index = 0; index < total; index++) { const asset = available[Math.floor(decorRandom(index, 31) * available.length)], angle = index / Math.max(1, total) * Math.PI * 2 + (decorRandom(index, 21) - .5) * .7, radius = THREE.MathUtils.lerp(near, far, decorRandom(index, 22)), height = THREE.MathUtils.lerp(low, high, decorRandom(index, 23)), targetSize = THREE.MathUtils.lerp(minScale, maxScale, decorRandom(index, 24)), distanceRatio = clamp((radius - near) / Math.max(far - near, .001), 0, 1), sizeRatio = clamp((targetSize - minScale) / Math.max(maxScale - minScale, .001), 0, 1), fadeStrength = sizeRatio * (1 - distanceRatio), cloudOpacity = THREE.MathUtils.lerp(1, config.largeNearOpacity ?? .84, fadeStrength), cloud = asset.object.clone(true), tint = new THREE.Color(colors[index % colors.length]), direction = decorRandom(index, 25) > .5 ? 1 : -1, orbitSpeed = THREE.MathUtils.lerp(minOrbit, maxOrbit, decorRandom(index, 26)) * direction; cloud.traverse(child => { if (!child.isMesh) return; child.material = child.material.clone(); child.material.color.multiply(tint); child.material.opacity = cloudOpacity; child.material.transparent = cloudOpacity < 1; child.material.depthWrite = cloudOpacity >= 1; child.material.needsUpdate = true; }); cloud.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius); cloud.scale.setScalar(targetSize / asset.size); cloud.lookAt(0, height, 0); cloud.userData.distantMotion = { basePosition: cloud.position.clone(), baseRotation: cloud.rotation.clone(), baseY: height, phase: decorRandom(index, 27) * Math.PI * 2, floatSpeed: config.floatSpeed * (.72 + decorRandom(index, 28) * .72), floatAmount: config.floatAmount * (.65 + decorRandom(index, 29) * .7), driftAmount: config.radialDrift * (.55 + decorRandom(index, 30) * .75), orbitAngle: angle, orbitRadius: radius, orbitSpeed, startedAt: performance.now() }; distantDecorGroup.add(cloud); } }); }
 createDistantDecor();
 createDistantClouds();
-const interactive = [], uiDisplays = [], worldCallouts = new Set(), activeGuidelines = new Set(), targetFocusEffects = new Set(), animations = new Map(), commitFlashes = new Map(); let hovered = null, hoveredDisplay = null, selected = null, atmospherePoints = null, fallingLeafSystem = null, backgroundVersion = 0, spawnSequence = 0;
+const interactive = [], uiDisplays = [], worldCallouts = new Set(), activeGuidelines = new Set(), targetFocusEffects = new Set(), animations = new Map(), commitFlashes = new Map(); let hovered = null, hoveredDisplay = null, selected = null, atmospherePoints = null, fireflySystem = null, fallingLeafSystem = null, backgroundVersion = 0, spawnSequence = 0;
 let lastSceneActivity = performance.now(), lastRenderedAt = 0, lastDistantUpdateAt = 0, lastFrameAt = performance.now();
 function markSceneActive() { lastSceneActivity = performance.now(); }
 
@@ -1059,7 +1122,7 @@ function proceduralPatternTexture(kind, colors = []) {
   }
   const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); texture.needsUpdate = true; proceduralSurfaceTextureCache.set(key, texture); return texture;
 }
-function lessonMaterial(options = {}) { const color = options.color || "#ffffff", surface = setting.object.surface, opacity = clamp(options.opacity ?? 1, 0, 1), baseParameters = { color, transparent: opacity < 1, opacity, depthWrite: options.depthWrite ?? opacity >= .98 }, parameters = { ...baseParameters, roughness: options.roughness ?? surface.roughness, metalness: options.metalness ?? .015, emissive: options.emissive || new THREE.Color(color).multiplyScalar(.12), emissiveIntensity: options.emissiveIntensity ?? surface.emissiveIntensity }; if (options.clearcoat != null) { parameters.clearcoat = options.clearcoat; parameters.clearcoatRoughness = options.clearcoatRoughness ?? .2; } const result = options.unlit ? new THREE.MeshBasicMaterial({ ...baseParameters, toneMapped: false }) : options.clearcoat != null ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters); if (options.pattern === "simple-grid" || options.pattern === "cute-base") { const pattern = proceduralPatternTexture(options.pattern, options.patternColors), repeat = Array.isArray(options.patternRepeat) ? options.patternRepeat : null; result.map = repeat ? pattern.clone() : pattern; if (repeat) { result.map.wrapS = result.map.wrapT = THREE.RepeatWrapping; result.map.repeat.set(Math.max(.01, Number(repeat[0]) || 1), Math.max(.01, Number(repeat[1]) || 1)); result.map.needsUpdate = true; } } else if (options.texture) result.map = lessonTextureRecord(options.texture).texture; return result; }
+function lessonMaterial(options = {}) { const color = options.color || "#ffffff", surface = setting.object.surface, opacity = clamp(options.opacity ?? 1, 0, 1), baseParameters = { color, transparent: opacity < 1, opacity, depthWrite: options.depthWrite ?? opacity >= .98 }, parameters = { ...baseParameters, roughness: options.roughness ?? surface.roughness, metalness: options.metalness ?? .015, emissive: options.emissive || new THREE.Color(color).multiplyScalar(.12), emissiveIntensity: options.emissiveIntensity ?? surface.emissiveIntensity }; if (options.clearcoat != null) { parameters.clearcoat = options.clearcoat; parameters.clearcoatRoughness = options.clearcoatRoughness ?? .2; } const result = options.unlit ? new THREE.MeshBasicMaterial({ ...baseParameters, toneMapped: false }) : options.clearcoat != null ? new THREE.MeshPhysicalMaterial(parameters) : new THREE.MeshStandardMaterial(parameters); if (options.pattern === "simple-grid" || options.pattern === "cute-base") { const pattern = proceduralPatternTexture(options.pattern, options.patternColors), repeat = Array.isArray(options.patternRepeat) ? options.patternRepeat : null, offset = Array.isArray(options.patternOffset) ? options.patternOffset : null; result.map = repeat || offset ? pattern.clone() : pattern; if (repeat) result.map.repeat.set(Math.max(.01, Number(repeat[0]) || 1), Math.max(.01, Number(repeat[1]) || 1)); if (offset) result.map.offset.set(Number(offset[0]) || 0, Number(offset[1]) || 0); if (repeat || offset) { result.map.wrapS = result.map.wrapT = THREE.RepeatWrapping; result.map.needsUpdate = true; } } else if (options.texture) result.map = lessonTextureRecord(options.texture).texture; return result; }
 const SUPPORTED_PRIMITIVE_SHAPES = Object.freeze([
   "box", "rounded-box", "sharp-box", "sphere", "hemisphere", "cylinder", "half-cylinder", "quarter-cylinder",
   "cone", "pyramid", "prism", "frustum", "capsule", "sector", "sector-flat", "ring-sector", "ring-sector-flat",
@@ -1201,7 +1264,7 @@ function primitiveGeometry(shape = "box", definition = {}) {
     default: throw new Error(`LESSON_PRIMITIVE_UNSUPPORTED: addPrimitive ไม่รองรับรูปทรง ${shape}`);
   }
 }
-function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "arrow-flat", "circle", "ring", "sector-flat", "ring-sector-flat", "polygon-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; if (materialDefinition.pattern && mesh.material.map) { const explicitRepeat = Array.isArray(materialDefinition.patternRepeat) ? materialDefinition.patternRepeat : null; mesh.material.map = mesh.material.map.clone(); if (explicitRepeat) mesh.material.map.repeat.set(Math.max(.01, Number(explicitRepeat[0]) || 1), Math.max(.01, Number(explicitRepeat[1]) || 1)); else { const cell = Math.max(.25, Number(materialDefinition.patternCell) || (materialDefinition.pattern === "cute-base" ? 1.2 : .8)), patternSize = materialDefinition.patternSize || [size[0], size[2] ?? size[1]], width = Math.max(cell, Math.abs(Number(patternSize[0]) || 1)), depth = Math.max(cell, Math.abs(Number(patternSize[1]) || 1)); mesh.material.map.repeat.set(width / cell, depth / cell); } mesh.material.map.needsUpdate = true; } mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
+function createPrimitivePart(definition = {}) { const shape = normalizedPrimitiveShape(definition.shape || "box"), materialDefinition = definition.material || {}, geometry = primitiveGeometry(shape, definition), mesh = new THREE.Mesh(geometry, lessonMaterial({ ...materialDefinition, color: definition.color || materialDefinition.color })), size = definition.size || [1, 1, 1], scaleValues = [size[0] ?? 1, size[1] ?? size[0] ?? 1, size[2] ?? size[0] ?? 1], rotation = definition.rotation || [0, 0, 0], opaqueSolid = !["plane", "arrow-flat", "circle", "ring", "sector-flat", "ring-sector-flat", "polygon-flat"].includes(shape) && (materialDefinition.opacity ?? 1) >= .98 && materialDefinition.depthWrite !== false; if (materialDefinition.pattern && mesh.material.map) { const explicitRepeat = Array.isArray(materialDefinition.patternRepeat) ? materialDefinition.patternRepeat : null, explicitOffset = Array.isArray(materialDefinition.patternOffset) ? materialDefinition.patternOffset : null; mesh.material.map = mesh.material.map.clone(); if (explicitRepeat) mesh.material.map.repeat.set(Math.max(.01, Number(explicitRepeat[0]) || 1), Math.max(.01, Number(explicitRepeat[1]) || 1)); else { const cell = Math.max(.25, Number(materialDefinition.patternCell) || (materialDefinition.pattern === "cute-base" ? 1.2 : .8)), patternSize = materialDefinition.patternSize || [size[0], size[2] ?? size[1]], width = Math.max(cell, Math.abs(Number(patternSize[0]) || 1)), depth = Math.max(cell, Math.abs(Number(patternSize[1]) || 1)); mesh.material.map.repeat.set(width / cell, depth / cell); } if (explicitOffset) mesh.material.map.offset.set(Number(explicitOffset[0]) || 0, Number(explicitOffset[1]) || 0); mesh.material.map.needsUpdate = true; } mesh.position.fromArray(definition.position || [0, 0, 0]); mesh.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); mesh.scale.set(...scaleValues); mesh.castShadow = Boolean(shadowSetting.lessonCast && opaqueSolid); mesh.receiveShadow = shadowSetting.lessonReceive !== false; return mesh; }
 function prepareLessonVisual(root, interactionRoot) { root.traverse(child => { if (!child.userData.isLessonDecoration) child.userData.interactionRoot = interactionRoot; }); forEachObjectMaterial(root, value => rememberHighlightSurface(value)); }
 function setInteractionHitArea(root, size = null, offset = [0, 0, 0]) { const previous = root.userData.interactionHitArea; if (previous) { root.remove(previous); previous.geometry?.dispose?.(); previous.material?.dispose?.(); root.userData.interactionHitArea = null; } if (!Array.isArray(size) || size.length < 3 || size.some(value => Number(value) <= 0)) return; const hitArea = new THREE.Mesh(new THREE.BoxGeometry(...size.map(Number)), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })); hitArea.name = `${root.name || "lesson-object"}-hit-area`; hitArea.position.fromArray(offset); Object.assign(hitArea.userData, { isLessonDecoration: true, interactionRoot: root }); root.add(hitArea); root.userData.interactionHitArea = hitArea; }
 function configureLessonObject(root, visual, options = {}) { const position = options.position || [0, 0, 0], rotation = options.rotation || [0, 0, 0], scale = options.scale ?? 1, scaleValues = Array.isArray(scale) ? scale : [scale, scale, scale]; root.name = options.name || root.name || "lesson-object"; root.position.fromArray(position); root.rotation.set(...rotation.map(THREE.MathUtils.degToRad)); visual.scale.multiply(new THREE.Vector3(...scaleValues)); Object.assign(root.userData, { visualRoot: visual, draggable: Boolean(options.draggable), clickable: Boolean(options.clickable || options.onClick), tapToClick: Boolean(options.tapToClick), tapClickTolerance: Number.isFinite(options.tapClickTolerance) ? Math.max(1, options.tapClickTolerance) : 7, selectionFeedback: options.selectionFeedback !== false, commitFeedback: options.commitFeedback !== false, dragAxis: options.dragAxis || setting.interaction.defaultDragAxis, dragLiftHeight: options.dragLiftHeight, dragFromCenter: Boolean(options.dragFromCenter), hoverMessage: options.hoverMessage || "", guideTarget: options.guideTarget || null, onHover: typeof options.onHover === "function" ? options.onHover : null, onDrag: options.onDrag || null, onDrop: options.onDrop || null, onClick: options.onClick || null, objectiveAction: options.objectiveAction, groundY: position[1], spawnFloatHeight: Math.max(0, Number(options.spawnFloatHeight) || 0), spawnScaleOvershoot: options.spawnScaleOvershoot !== false, spawnDuration: options.spawnDuration == null ? null : Math.max(1, Number(options.spawnDuration) || 1), debugTargetSize: options.targetSize, debugAreaHidden: options.debugAreaHidden === true }); prepareLessonVisual(visual, root); setInteractionHitArea(root, options.hitArea, options.hitAreaOffset); lessonGroup.add(root); queueSpawn(root, options.spawn !== false); const handle = makeHandle(root); syncInteractive(root); return handle; }
@@ -1966,7 +2029,7 @@ const world = Object.freeze({
     lessonGroup.add(group);
     return makeHandle(group);
   },
-  addCallout({ text = "", position = [0, 4, 0], compactPosition = null, anchor = [0, .2, 0], color = setting.ui.worldCallout.fontColor, lineColor = setting.ui.worldCallout.lineColor, scale = [3.05, .86], compactScale = null, insight = null, onClick = null, objectiveAction: calloutObjectiveAction = false } = {}) {
+  addCallout({ text = "", position = [0, 4, 0], compactPosition = null, anchor = [0, .2, 0], color = setting.ui.worldCallout.fontColor, lineColor = setting.ui.worldCallout.lineColor, scale = [3.05, .86], compactScale = null, insight = null, onClick = null, tapCue = false, objectiveAction: calloutObjectiveAction = false } = {}) {
     const style = setting.ui.worldCallout, compact = matchMedia("(max-width: 760px), (orientation: portrait)").matches || isPortraitViewport(), usesCompactScale = compact && Array.isArray(compactScale), calloutPosition = compact && Array.isArray(compactPosition) ? compactPosition : position, calloutScale = usesCompactScale ? compactScale : scale, actionable = Boolean(insight || onClick), group = new THREE.Group(), rawText = String(text).trim(), layout = compact ? (style.mobile || {}) : (style.desktop || {}), widthReference = usesCompactScale ? 2.45 : 3.05, heightReference = usesCompactScale ? .92 : .86, guiWidth = Math.max(72, Math.round((layout.width ?? (compact ? 138 : 136)) * calloutScale[0] / widthReference)), guiHeight = Math.max(30, Math.round((layout.height ?? 40) * calloutScale[1] / heightReference));
     const leaderEnd = new THREE.Vector3(...calloutPosition); leaderEnd.y -= calloutScale[1] * .46; const leaderMaterial = new THREE.LineBasicMaterial({ color: lineColor, transparent: true, opacity: style.lineOpacity, depthWrite: false, depthTest: true, fog: false }), leader = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...anchor), new THREE.Vector3(anchor[0], leaderEnd.y, anchor[2]), leaderEnd]), leaderMaterial), ringMaterial = new THREE.MeshBasicMaterial({ color: style.targetColor || lineColor, transparent: true, opacity: style.lineOpacity, depthWrite: false, fog: false }), ring = new THREE.Mesh(new THREE.TorusGeometry(.24, .045, 8, 28), ringMaterial); ring.rotation.x = Math.PI / 2; ring.position.set(...anchor); leader.raycast = ring.raycast = () => { };
     const dom = document.createElement(actionable ? "button" : "div"); dom.className = `world-callout-gui${actionable ? " is-actionable" : ""}`; if (actionable) dom.type = "button"; dom.title = rawText; dom.style.color = color; dom.style.background = `linear-gradient(135deg,${style.backgroundStart},${style.backgroundEnd})`; dom.style.opacity = String(style.backgroundOpacity ?? .94); dom.style.setProperty("--world-callout-width", `${guiWidth}px`); dom.style.setProperty("--world-callout-min-height", `${guiHeight}px`); dom.style.setProperty("--world-callout-font-size", `${layout.fontSize ?? (compact ? 11 : 12)}px`); dom.style.setProperty("--world-callout-hover-scale", String(style.actionHoverScale ?? 1.035)); dom.style.setProperty("--world-callout-icon-size", `${style.actionIconSize ?? 18}px`); dom.style.setProperty("--world-callout-icon-font-size", `${style.actionIconFontSize ?? 12}px`); dom.style.setProperty("--world-callout-icon-opacity", String(style.actionIconOpacity ?? .96)); dom.style.setProperty("--world-callout-icon-bg-start", style.actionIconBackgroundStart || "rgba(255,255,255,.08)"); dom.style.setProperty("--world-callout-icon-bg-end", style.actionIconBackgroundEnd || "rgba(255,255,255,.16)"); dom.style.setProperty("--world-callout-icon-border", style.actionIconBorderColor || "rgba(255,255,255,.92)"); dom.style.setProperty("--world-callout-icon-color", style.actionIconColor || "#ffffff"); dom.style.setProperty("--world-callout-icon-hover-bg-start", style.actionIconHoverBackgroundStart || "rgba(255,183,77,.16)"); dom.style.setProperty("--world-callout-icon-hover-bg-end", style.actionIconHoverBackgroundEnd || "rgba(255,139,43,.28)"); dom.style.setProperty("--world-callout-icon-hover-border", style.actionIconHoverBorderColor || "#ffbd66"); dom.style.setProperty("--world-callout-icon-hover-color", style.actionIconHoverColor || "#ff9b38"); dom.style.setProperty("--world-callout-icon-hover-scale", String(style.actionIconHoverScale ?? 1.14)); dom.style.setProperty("--world-callout-icon-bob", `${style.actionIconBobHeight ?? 1}px`); dom.style.setProperty("--world-callout-icon-duration", `${style.actionIconBobDuration ?? 2200}ms`); if (actionable) { const label = document.createElement("span"), icon = document.createElement("i"); label.textContent = rawText; icon.textContent = "i"; icon.setAttribute("aria-hidden", "true"); dom.append(label, icon); } else dom.textContent = rawText; dom.hidden = true; elements.viewport.append(dom); group.userData.domElement = dom;
@@ -1974,6 +2037,11 @@ const world = Object.freeze({
     let handle = null;
     const activate = event => { const payload = { handle, object: group, sourceEvent: event }; const definition = typeof insight === "function" ? insight(payload) : insight; if (definition) guiService.insight.show(typeof definition === "string" ? { message: definition } : definition); onClick?.(payload); };
     const callout = { group, leaderMaterial, ringMaterial, dom, actionable, hovered: false, hoverAmount: 0, phase: Math.random() * Math.PI * 2, desiredPosition: new THREE.Vector3(...calloutPosition) };
+    if (tapCue && actionable) {
+      const hand = document.createElement("img"); hand.className = "world-callout-tap"; hand.src = iconUrl("hand.svg"); hand.alt = ""; hand.setAttribute("aria-hidden", "true");
+      dom.classList.add("has-tap-cue"); dom.append(hand);
+      dom.addEventListener("click", () => { hand.remove(); dom.classList.remove("has-tap-cue"); }, { once: true });
+    }
     Object.assign(group.userData, { clickable: false, draggable: false, interactionStyle: "callout", objectiveAction: calloutObjectiveAction, worldCallout: callout, onClick: actionable ? activate : null });
     const baseHandle = makeHandle(group);
     const writeText = next => {
@@ -2047,10 +2115,67 @@ const world = Object.freeze({
 });
 
 function clearGroup(group) { for (const child of [...group.children]) { group.remove(child); if (group === skyboxGroup) child.traverse(item => { if (Array.isArray(item.material)) item.material.forEach(material => material.map?.dispose?.()); else item.material?.map?.dispose?.(); }); disposeObject(child); } }
-function loadSkyboxPanorama(path, { radius, height, y, opacity, rotationY = 0 }) { if (!path) return; const version = backgroundVersion; new THREE.TextureLoader().load(runtimeAssetUrl(path), texture => { if (version !== backgroundVersion) { texture.dispose(); return; } texture.colorSpace = THREE.SRGBColorSpace; texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.ClampToEdgeWrapping; const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 96, 1, true), new THREE.MeshBasicMaterial({ map: texture, transparent: opacity < 1, opacity, side: THREE.BackSide, depthWrite: false, fog: false })); mesh.position.y = y; mesh.rotation.y = THREE.MathUtils.degToRad(rotationY); mesh.renderOrder = -20; skyboxGroup.add(mesh); }, undefined, () => console.warn(`main-world: โหลด skybox panorama ไม่สำเร็จ ${path}`)); }
-function loadSkyboxFloor(config) { if (!config?.enabled || !config.texturePath) return; const version = backgroundVersion; new THREE.TextureLoader().load(runtimeAssetUrl(config.texturePath), texture => { if (version !== backgroundVersion) { texture.dispose(); return; } texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); const fadeStart = clamp(config.edgeFadeStart ?? .58, 0, .98), fadeEnd = clamp(config.edgeFadeEnd ?? .98, fadeStart + .01, 1), fogStrength = clamp(config.fogStrength ?? .25, 0, 1), material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: config.opacity ?? .7, depthWrite: false, fog: true, side: THREE.DoubleSide }); material.onBeforeCompile = shader => { shader.uniforms.floorFadeStart = { value: fadeStart }; shader.uniforms.floorFadeEnd = { value: fadeEnd }; shader.uniforms.floorFogStrength = { value: fogStrength }; shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>\n#ifdef USE_MAP\n  float floorRadius = length(vMapUv - vec2(0.5)) * 2.0;\n  diffuseColor.a *= 1.0 - smoothstep(floorFadeStart, floorFadeEnd, floorRadius);\n#endif`).replace("#include <fog_fragment>", `#ifdef USE_FOG\n  float floorFogFactor = smoothstep(fogNear, fogFar, vFogDepth) * floorFogStrength;\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, floorFogFactor);\n#endif`).replace("void main() {", "uniform float floorFadeStart;\nuniform float floorFadeEnd;\nuniform float floorFogStrength;\nvoid main() {"); }; material.customProgramCacheKey = () => `skybox-floor-fade-${fadeStart}-${fadeEnd}-fog-${fogStrength}`; const floor = new THREE.Mesh(new THREE.CircleGeometry(config.radius || 58, 96), material); floor.rotation.x = -Math.PI / 2; floor.rotation.z = THREE.MathUtils.degToRad(config.rotationY || 0); floor.position.y = config.y ?? -14; floor.renderOrder = -19; skyboxGroup.add(floor); }, undefined, () => console.warn(`main-world: โหลด texture พื้นล่าง skybox ไม่สำเร็จ ${config.texturePath}`)); }
-function setBackground(name = "green") { const preset = setting.backgroundPresets[name] || setting.backgroundPresets.green, colors = preset.colors, mobileFog = isPortraitViewport() ? preset.mobileFog : null, fogColor = mobileFog?.color || preset.fog, fogNear = mobileFog?.near ?? preset.fogNear ?? 30, fogFar = mobileFog?.far ?? preset.fogFar ?? 68; elements.viewport.style.background = `linear-gradient(${colors[0]} 0%,${colors[1]} 52%,${colors[2]} 100%)`; scene.fog = new THREE.Fog(fogColor, fogNear, fogFar); scene.fog.userData = { zoomBase: { near: fogNear, far: fogFar } }; updateCameraFog(); backgroundVersion += 1; clearGroup(skyboxGroup); loadSkyboxPanorama(preset.panorama, setting.skyboxLayout.panorama); loadSkyboxFloor({ ...setting.skyboxLayout.floor, ...(preset.floor || {}) }); const gridStyle = threeColor(setting.ground.gridColor), ringStyle = threeColor(setting.ground.ringColor), opacity = setting.ground.gridOpacity; gridLines.material.color.set(gridStyle.color); gridLines.material.opacity = opacity * gridStyle.alpha; gridRing.material.color.set(ringStyle.color); gridRing.material.opacity = Math.min(1, opacity + .12) * ringStyle.alpha; createAtmosphere(preset); createLeafParticles(preset); markSceneActive(); return preset; }
-function createAtmosphere(preset) { clearGroup(atmosphereGroup); atmospherePoints = null; fallingLeafSystem = null; const types = preset.particles || []; if (!setting.vfx.particles || !types.length) return; const config = setting.vfx.environment, count = config.count, palette = preset.particleColors?.length ? preset.particleColors : ["#ffffff"], windPalette = preset.windColors?.length ? preset.windColors : ["#ffffff", "#66bce9"], positions = new Float32Array(count * 3), colors = new Float32Array(count * 3); for (let index = 0; index < count; index++) { positions[index * 3] = (Math.random() - .5) * 34; positions[index * 3 + 1] = Math.random() * 13 + .35; positions[index * 3 + 2] = (Math.random() - .5) * 28; const color = new THREE.Color(palette[index % palette.length]); colors.set(color.toArray(), index * 3); } const dotCanvas = document.createElement("canvas"); dotCanvas.width = dotCanvas.height = 64; const dotContext = dotCanvas.getContext("2d"), dotGradient = dotContext.createRadialGradient(32, 32, 2, 32, 32, 30); dotGradient.addColorStop(0, "rgba(255,255,255,1)"); dotGradient.addColorStop(.55, "rgba(255,255,255,.9)"); dotGradient.addColorStop(1, "rgba(255,255,255,0)"); dotContext.fillStyle = dotGradient; dotContext.fillRect(0, 0, 64, 64); const geometry = new THREE.BufferGeometry(); geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3)); geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3)); atmospherePoints = new THREE.Points(geometry, new THREE.PointsMaterial({ size: config.size * 1.4, map: new THREE.CanvasTexture(dotCanvas), vertexColors: true, transparent: true, opacity: config.opacity, alphaTest: .03, depthWrite: false, fog: false })); atmosphereGroup.add(atmospherePoints); if (types.includes("wind")) { for (let index = 0; index < config.windTrails; index++) { const length = 1.5 + Math.random() * 2.4, curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-length, 0, 0), new THREE.Vector3(0, .3 + Math.random() * .45, .25), new THREE.Vector3(length, 0, 0)), line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(18)), new THREE.LineBasicMaterial({ color: windPalette[index % windPalette.length], transparent: true, opacity: .58 + Math.random() * .24, depthWrite: false, fog: false })); line.position.set((Math.random() - .5) * 30, 2 + Math.random() * 9, (Math.random() - .5) * 24); line.userData.windTrail = { speed: .008 + Math.random() * .012 }; atmosphereGroup.add(line); } } }
+function loadSkyboxPanorama(path,{radius,height,y,opacity,rotationY=0},tint='#ffffff'){
+  if(!path)return;
+  const version=backgroundVersion;
+  new THREE.TextureLoader().load(runtimeAssetUrl(path),texture=>{
+    if(version!==backgroundVersion){texture.dispose();return;}
+    texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.ClampToEdgeWrapping;
+    const material=new THREE.MeshBasicMaterial({map:texture,color:tint,transparent:opacity<1,opacity,side:THREE.BackSide,depthWrite:false,fog:false});
+    const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,height,96,1,true),material);
+    mesh.position.y=y;mesh.rotation.y=THREE.MathUtils.degToRad(rotationY);mesh.renderOrder=-20;skyboxGroup.add(mesh);
+  },undefined,()=>console.warn(`main-world: โหลด skybox panorama ไม่สำเร็จ ${path}`));
+}
+function loadSkyboxFloor(config,tint='#ffffff') { if (!config?.enabled || !config.texturePath) return; const version = backgroundVersion; new THREE.TextureLoader().load(runtimeAssetUrl(config.texturePath), texture => { if (version !== backgroundVersion) { texture.dispose(); return; } texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); const fadeStart = clamp(config.edgeFadeStart ?? .58, 0, .98), fadeEnd = clamp(config.edgeFadeEnd ?? .98, fadeStart + .01, 1), fogStrength = clamp(config.fogStrength ?? .25, 0, 1), material = new THREE.MeshBasicMaterial({ map: texture,color:tint, transparent: true, opacity: config.opacity ?? .7, depthWrite: false, fog: true, side: THREE.DoubleSide }); material.onBeforeCompile = shader => { shader.uniforms.floorFadeStart = { value: fadeStart }; shader.uniforms.floorFadeEnd = { value: fadeEnd }; shader.uniforms.floorFogStrength = { value: fogStrength }; shader.fragmentShader = shader.fragmentShader.replace("#include <map_fragment>", `#include <map_fragment>\n#ifdef USE_MAP\n  float floorRadius = length(vMapUv - vec2(0.5)) * 2.0;\n  diffuseColor.a *= 1.0 - smoothstep(floorFadeStart, floorFadeEnd, floorRadius);\n#endif`).replace("#include <fog_fragment>", `#ifdef USE_FOG\n  float floorFogFactor = smoothstep(fogNear, fogFar, vFogDepth) * floorFogStrength;\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, floorFogFactor);\n#endif`).replace("void main() {", "uniform float floorFadeStart;\nuniform float floorFadeEnd;\nuniform float floorFogStrength;\nvoid main() {"); }; material.customProgramCacheKey = () => `skybox-floor-fade-${fadeStart}-${fadeEnd}-fog-${fogStrength}`; const floor = new THREE.Mesh(new THREE.CircleGeometry(config.radius || 58, 96), material); floor.rotation.x = -Math.PI / 2; floor.rotation.z = THREE.MathUtils.degToRad(config.rotationY || 0); floor.position.y = config.y ?? -14; floor.renderOrder = -19; skyboxGroup.add(floor); }, undefined, () => console.warn(`main-world: โหลด texture พื้นล่าง skybox ไม่สำเร็จ ${config.texturePath}`)); }
+function skyGlowTexture(colors){const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const context=canvas.getContext('2d'),gradient=context.createRadialGradient(64,64,2,64,64,62);colors.forEach(([stop,color])=>gradient.addColorStop(stop,color));context.fillStyle=gradient;context.fillRect(0,0,128,128);const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;return texture;}
+function createDebugSkyAccents(preset){
+  for(const accent of preset.glows || []){const material=new THREE.SpriteMaterial({map:skyGlowTexture(accent.colors),transparent:true,depthTest:true,depthWrite:false,toneMapped:false});const glow=new THREE.Sprite(material);glow.position.fromArray(accent.position);glow.scale.set(accent.scale,accent.scale,1);glow.renderOrder=-18;skyboxGroup.add(glow);}
+}
+function applySceneTimeLighting(preset){const light=preset.lighting;hemisphereLight.color.set(light.sky);hemisphereLight.groundColor.set(light.ground);hemisphereLight.intensity=light.hemisphere;ambientLight.color.set(light.ambient);ambientLight.intensity=light.ambientIntensity;keyLight.color.set(light.key);keyLight.intensity=light.keyIntensity;keyLight.position.fromArray(light.keyPosition);fillLight.color.set(light.fill);fillLight.intensity=light.fillIntensity;rimLight.color.set(light.rim);rimLight.intensity=light.rimIntensity;mintLight.intensity=light.mint;peachLight.intensity=light.peach;islandGlowLight.intensity=light.islandGlow ?? 0;islandAccentLight.intensity=light.islandAccent ?? 0;updateRimLight();}
+const SCENE_MODE_STORAGE_KEY='edu-default-scene-mode';
+function storedSceneMode(){try{return normalizeDebugSceneTime(localStorage.getItem(SCENE_MODE_STORAGE_KEY));}catch{return 'day';}}
+function storeSceneMode(value){try{localStorage.setItem(SCENE_MODE_STORAGE_KEY,value);}catch{}}
+let debugSceneTime=storedSceneMode(),currentBackgroundName='green';
+function setBackground(name = "green") {
+  currentBackgroundName=name;
+  const base=setting.backgroundPresets[name] || setting.backgroundPresets.green,time=setting.sceneModes?.[debugSceneTime] || setting.sceneModes?.day || DEBUG_SCENE_TIME_PRESETS?.[debugSceneTime] || DEBUG_SCENE_TIME_PRESETS?.day,
+    colors=time.colors || base.colors,timeMobileFog=isPortraitViewport()?time.mobileFog:null,
+    fogColor=timeMobileFog?.color || timeMobileFog || time.fog || base.fog,
+    fogNear=timeMobileFog?.near ?? time.fogNear ?? base.fogNear ?? 30,
+    fogFar=timeMobileFog?.far ?? time.fogFar ?? base.fogFar ?? 68,
+    preset={...base,...time};
+  elements.viewport.style.background=time.background || `linear-gradient(${colors[0]} 0%,${colors[1]} 52%,${colors[2]} 100%)`;
+  scene.fog=new THREE.Fog(fogColor,fogNear,fogFar);scene.fog.userData={zoomBase:{near:fogNear,far:fogFar}};updateCameraFog();
+  islandEnvironmentGroup.visible=!time.minimal;distantDecorGroup.visible=!time.minimal;
+  backgroundVersion+=1;clearGroup(skyboxGroup);
+  if(!time.minimal){loadSkyboxPanorama(base.panorama,{...setting.skyboxLayout.panorama,opacity:time.panoramaOpacity},time.panoramaTint);loadSkyboxFloor({...setting.skyboxLayout.floor,...(base.floor || {}),opacity:time.floorOpacity},time.floorTint);createDebugSkyAccents(time);}
+  applySceneTimeLighting(time);
+  const gridStyle=threeColor(time.gridColor || setting.ground.gridColor),ringStyle=threeColor(time.ringColor || setting.ground.ringColor),opacity=time.gridOpacity ?? setting.ground.gridOpacity;
+  gridLines.material.color.set(gridStyle.color);gridLines.material.opacity=opacity*gridStyle.alpha;gridRing.material.color.set(ringStyle.color);gridRing.material.opacity=Math.min(1,opacity+.12)*ringStyle.alpha;
+  createAtmosphere(preset);createFireflies(preset);createLeafParticles(preset);syncSceneModeMenu();elements.viewport.dataset.sceneTime=debugSceneTime;markSceneActive();return preset;
+}
+function setDebugSceneTime(value,{persist=false}={}){debugSceneTime=normalizeDebugSceneTime(value);if(persist)storeSceneMode(debugSceneTime);setBackground(currentBackgroundName);return debugSceneTime;}
+function syncSceneModeMenu(){const toggle=$("#scene-mode-toggle"),menu=$("#scene-mode-menu");if(!toggle || !menu)return;toggle.dataset.sceneMode=debugSceneTime;toggle.title=`ฉาก ${setting.sceneModes?.[debugSceneTime]?.label || DEBUG_SCENE_TIME_PRESETS?.[debugSceneTime]?.label || debugSceneTime}`;for(const icon of toggle.querySelectorAll("[data-scene-icon]"))icon.hidden=icon.dataset.sceneIcon!==debugSceneTime;for(const button of menu.querySelectorAll("[data-play-scene-mode]")){const active=button.dataset.playSceneMode===debugSceneTime;button.classList.toggle("is-active",active);button.setAttribute("aria-checked",String(active));}}
+function closeSceneModeMenu(returnFocus=false){const toggle=$("#scene-mode-toggle"),menu=$("#scene-mode-menu");if(!toggle || !menu)return;menu.hidden=true;toggle.setAttribute("aria-expanded","false");if(returnFocus)toggle.focus();}
+function createAtmosphere(preset) {
+  clearGroup(atmosphereGroup);atmospherePoints=null;fireflySystem=null;fallingLeafSystem=null;
+  const types=preset.particles || [];if(!setting.vfx.particles || !types.length)return;
+  const config=setting.vfx.environment,palette=preset.particleColors?.length?preset.particleColors:["#ffffff"],windPalette=preset.windColors?.length?preset.windColors:["#ffffff","#66bce9"];
+  if(types.includes("dust")){
+    const count=config.count,positions=new Float32Array(count*3),colors=new Float32Array(count*3);
+    for(let index=0;index<count;index++){positions[index*3]=(Math.random()-.5)*34;positions[index*3+1]=Math.random()*13+.35;positions[index*3+2]=(Math.random()-.5)*28;const color=new THREE.Color(palette[index%palette.length]);colors.set(color.toArray(),index*3);}
+    const dotCanvas=document.createElement("canvas");dotCanvas.width=dotCanvas.height=64;const dotContext=dotCanvas.getContext("2d"),dotGradient=dotContext.createRadialGradient(32,32,2,32,32,30);dotGradient.addColorStop(0,"rgba(255,255,255,1)");dotGradient.addColorStop(.55,"rgba(255,255,255,.9)");dotGradient.addColorStop(1,"rgba(255,255,255,0)");dotContext.fillStyle=dotGradient;dotContext.fillRect(0,0,64,64);
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute("position",new THREE.BufferAttribute(positions,3));geometry.setAttribute("color",new THREE.BufferAttribute(colors,3));atmospherePoints=new THREE.Points(geometry,new THREE.PointsMaterial({size:config.size*1.4,map:new THREE.CanvasTexture(dotCanvas),vertexColors:true,transparent:true,opacity:config.opacity,alphaTest:.03,depthWrite:false,fog:false}));atmosphereGroup.add(atmospherePoints);
+  }
+  if(types.includes("wind")){for(let index=0;index<config.windTrails;index++){const length=1.5+Math.random()*2.4,curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-length,0,0),new THREE.Vector3(0,.3+Math.random()*.45,.25),new THREE.Vector3(length,0,0)),line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(18)),new THREE.LineBasicMaterial({color:windPalette[index%windPalette.length],transparent:true,opacity:.58+Math.random()*.24,depthWrite:false,fog:false}));line.position.set((Math.random()-.5)*30,2+Math.random()*9,(Math.random()-.5)*24);line.userData.windTrail={speed:.008+Math.random()*.012};atmosphereGroup.add(line);}}
+}
+function createFireflies(preset){
+  const types=preset.particles || [];if(!setting.vfx.particles || !types.includes("fireflies"))return;
+  const config=setting.vfx.environment,count=Math.max(0,Math.round((config.fireflyCount || 32)*(constrainedDevice ? .65 : 1))),palette=preset.fireflyColors?.length?preset.fireflyColors:["#e8f7ff","#d8c8ff","#fff4b0"],positions=new Float32Array(count*3),colors=new Float32Array(count*3),motions=[];
+  for(let index=0;index<count;index++){const origin=new THREE.Vector3((Math.random()-.5)*27,.8+Math.random()*7,(Math.random()-.5)*22),color=new THREE.Color(palette[index%palette.length]);positions.set(origin.toArray(),index*3);colors.set(color.toArray(),index*3);motions.push({origin,phase:Math.random()*Math.PI*2,speed:THREE.MathUtils.lerp(...(config.fireflyFloatSpeed || [.00045,.0011]),Math.random()),drift:THREE.MathUtils.lerp(...(config.fireflyDrift || [.7,1.8]),Math.random())});}
+  const glowCanvas=document.createElement("canvas");glowCanvas.width=glowCanvas.height=64;const context=glowCanvas.getContext("2d"),gradient=context.createRadialGradient(32,32,1,32,32,30);gradient.addColorStop(0,"rgba(255,255,255,1)");gradient.addColorStop(.18,"rgba(255,255,255,.98)");gradient.addColorStop(.52,"rgba(255,255,255,.38)");gradient.addColorStop(1,"rgba(255,255,255,0)");context.fillStyle=gradient;context.fillRect(0,0,64,64);
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute("position",new THREE.BufferAttribute(positions,3));geometry.setAttribute("color",new THREE.BufferAttribute(colors,3));const points=new THREE.Points(geometry,new THREE.PointsMaterial({size:config.fireflySize || .24,map:new THREE.CanvasTexture(glowCanvas),vertexColors:true,transparent:true,opacity:config.fireflyOpacity ?? .95,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));points.renderOrder=7;atmosphereGroup.add(points);fireflySystem={points,motions};
+}
 function createLeafParticles(preset) {
   const types = preset.particles || [];
   if (!setting.vfx.particles || !types.includes("leaves")) return;
@@ -2089,6 +2214,24 @@ function interactiveHit() {
   return resolved.find(hit => isActionableCallout(hit.object)) || resolved[0] || null;
 }
 function snapshot() { const points = [...pointers.values()]; return { yaw: cameraState.yaw, pitch: cameraState.pitch, distance: cameraState.distance, points, pinch: points.length === 2 ? Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) : 0 }; }
+function cancelActiveLessonInteraction() {
+  if (dragged) {
+    const object = dragged, origin = object.userData.dragOrigin;
+    if (origin?.isVector3) object.position.copy(origin);
+    if (dragPointerId != null && elements.canvas.hasPointerCapture?.(dragPointerId)) elements.canvas.releasePointerCapture(dragPointerId);
+    removeDragGuideline();
+    dragged = null;
+    dragPointerId = null;
+    elements.canvas.classList.remove("is-dragging-object");
+  }
+  pointers.clear();
+  orbit = null;
+  setSelected(null);
+  setHovered(null);
+  setDisplayHovered(null);
+  pauseDragCue();
+  markSceneActive();
+}
 elements.canvas.addEventListener("pointerdown", event => {
   if (elements.runtime.classList.contains("web-page-mode")) return;
   cancelCameraFocus();
@@ -2170,6 +2313,12 @@ window.addEventListener("blur", releasePressedButton);
 document.addEventListener("click", event => { const button = event.target.closest("button"); if (button && !button.disabled) uiSound(); }, { capture: true });
 function cameraButtonAction(callback) { cancelCameraFocus(); pauseDragCue(); callback(); resumeDragCue(180); }
 $("#reset-view").addEventListener("click", () => { uiSound(); cameraButtonAction(resetCamera); }); $("#zoom-in").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.distance = clamp(cameraState.distance - 1.5, cameraConfig.minDistance, cameraConfig.maxDistance); updateCamera(); }); }); $("#zoom-out").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.distance = clamp(cameraState.distance + 1.5, cameraConfig.minDistance, cameraConfig.maxDistance); updateCamera(); }); }); $("#rotate-left").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.yaw -= THREE.MathUtils.degToRad(15); updateCamera(); }); }); $("#rotate-right").addEventListener("click", () => { uiSound(); cameraButtonAction(() => { cameraState.yaw += THREE.MathUtils.degToRad(15); updateCamera(); }); });
+const sceneModeToggle=$("#scene-mode-toggle"),sceneModeMenu=$("#scene-mode-menu");
+sceneModeToggle?.addEventListener("click",event=>{event.stopPropagation();if(!sceneModeMenu)return;const opening=sceneModeMenu.hidden;sceneModeMenu.hidden=!opening;sceneModeToggle.setAttribute("aria-expanded",String(opening));if(opening)sceneModeMenu.querySelector(".is-active")?.focus();});
+sceneModeMenu?.addEventListener("click",event=>{const button=event.target.closest("[data-play-scene-mode]");if(!button)return;setDebugSceneTime(button.dataset.playSceneMode,{persist:true});closeSceneModeMenu(true);});
+document.addEventListener("click",event=>{if(!event.target.closest(".scene-mode-control"))closeSceneModeMenu();});
+document.addEventListener("keydown",event=>{if(event.key==="Escape" && sceneModeMenu && !sceneModeMenu.hidden){event.preventDefault();closeSceneModeMenu(true);}});
+syncSceneModeMenu();
 
 function syncConsoleDockHeight() { const panel = !elements.howto.hidden ? elements.howto : !elements.quizPanel.hidden ? elements.quizPanel : null, height = panel?.getBoundingClientRect().height || 0; document.documentElement.style.setProperty("--gui-console-current-height", `${Math.ceil(height || ((mobileRenderMedia.matches ? setting.ui.console?.mobile?.minHeight : setting.ui.console?.desktop?.minHeight) || 112))}px`); }
 function resize() { const width = Math.max(1, elements.viewport.clientWidth), height = Math.max(1, elements.viewport.clientHeight); renderer.setSize(width, height, false); camera.aspect = width / height; camera.updateProjectionMatrix(); syncConsoleDockHeight(); guiService.update(); } new ResizeObserver(resize).observe(elements.viewport); const consoleResizeObserver = new ResizeObserver(syncConsoleDockHeight); consoleResizeObserver.observe(elements.howto); consoleResizeObserver.observe(elements.quizPanel); resize(); resetCamera();
@@ -2197,6 +2346,9 @@ function updateWorldCallouts(now = performance.now()) {
 }
 renderer.setAnimationLoop(now => {
   if (document.hidden) return;
+  // Once the opaque result cover is in place, suspend every world update and
+  // GPU render. CSS keeps the lightweight result UI animated independently.
+  if (runtime.resultWorldPaused) return;
   const mobileIdleDelay = Math.max(0, setting.renderer.mobileIdleDelay ?? 12000);
   const mobileIdle = mobileRenderMedia.matches && animations.size === 0 && commitFlashes.size === 0 && !dragged && pointers.size === 0 && now - lastSceneActivity >= mobileIdleDelay;
   // Desktop ไม่ลด render rate; Mobile ลดเฉพาะเมื่อไม่มี interaction ต่อเนื่องตามเวลาที่ตั้งไว้
@@ -2226,6 +2378,7 @@ renderer.setAnimationLoop(now => {
   if (now - lastDistantUpdateAt >= distantInterval) { lastDistantUpdateAt = now; for (const object of distantDecorGroup.children) { const motion = object.userData.distantMotion; if (!motion) continue; const wave = Math.sin(now * motion.floatSpeed + motion.phase), drift = Math.cos(now * motion.floatSpeed * .63 + motion.phase); if (motion.orbitSpeed) { const elapsed = now - motion.startedAt, angle = motion.orbitAngle + elapsed * motion.orbitSpeed, radius = motion.orbitRadius + drift * motion.driftAmount; object.position.set(Math.cos(angle) * radius, motion.baseY + wave * motion.floatAmount, Math.sin(angle) * radius); object.lookAt(0, object.position.y, 0); } else { object.position.set(motion.basePosition.x + drift * motion.driftAmount, motion.basePosition.y + wave * motion.floatAmount, motion.basePosition.z + wave * motion.driftAmount * .35); if (motion.spinSpeed) { const spin = (now - motion.startedAt) * motion.spinSpeed; object.rotation.copy(motion.baseRotation); if (motion.spinAxis === "x") object.rotateX(spin); else if (motion.spinAxis === "z") object.rotateZ(spin); else object.rotateY(spin); } } } }
   if (fallingLeafSystem) for (const { mesh, motions, dummy } of fallingLeafSystem.groups) { for (let index = 0; index < motions.length; index++) { const motion = motions[index]; motion.position.y -= motion.fall * delta; motion.position.x += motion.drift * delta + Math.sin(now * .0016 + motion.phase) * .003 * delta; motion.position.z += Math.cos(now * .0011 + motion.phase) * .0015 * delta; motion.rotation.x += .0018 * delta; motion.rotation.y += .0025 * delta; motion.rotation.z += .0012 * delta; if (motion.position.y < .18) motion.position.set((Math.random() - .5) * 29, 9 + Math.random() * 4, (Math.random() - .5) * 23); dummy.position.copy(motion.position); dummy.rotation.copy(motion.rotation); dummy.scale.set(motion.size, motion.size * 1.65, motion.size); dummy.updateMatrix(); mesh.setMatrixAt(index, dummy.matrix); } mesh.instanceMatrix.needsUpdate = true; }
   if (atmospherePoints) { atmospherePoints.rotation.y += .0006 * (delta / 16.67); atmospherePoints.position.y = Math.sin(now * .0007) * .18; }
+  if(fireflySystem){const positions=fireflySystem.points.geometry.attributes.position.array;for(let index=0;index<fireflySystem.motions.length;index++){const motion=fireflySystem.motions[index],wave=now*motion.speed+motion.phase;positions[index*3]=motion.origin.x+Math.sin(wave*1.13)*motion.drift;positions[index*3+1]=motion.origin.y+Math.sin(wave*1.87)*.48+Math.cos(wave*.73)*.22;positions[index*3+2]=motion.origin.z+Math.cos(wave*.91)*motion.drift*.72;}fireflySystem.points.geometry.attributes.position.needsUpdate=true;fireflySystem.points.material.opacity=(setting.vfx.environment.fireflyOpacity ?? .95)*(.72+Math.sin(now*.0022)*.16);}
   for (const object of atmosphereGroup.children) if (object.userData.windTrail) { object.position.x += object.userData.windTrail.speed * delta * .48; if (object.position.x > 18) object.position.x = -18; }
   worldGuiSystem.update(now);
   clickme.update();
@@ -2477,18 +2630,18 @@ async function resetLessonScene(extra = {}) {
     syncLabResponsiveUi();
   }
 }
-function scheduleMascotBlink() { clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); if (elements.mascot.hidden || mascotSetting.enabled === false) return; const [minimum, maximum] = mascotSetting.idle?.blinkInterval || [2800, 5200], delay = minimum + Math.random() * Math.max(0, maximum - minimum); runtime.mascotBlinkTimer = setTimeout(() => { elements.mascotCharacter.classList.add("is-blinking"); runtime.mascotBlinkReleaseTimer = setTimeout(() => { elements.mascotCharacter.classList.remove("is-blinking"); scheduleMascotBlink(); }, mascotSetting.idle?.blinkDuration || 150); }, delay); }
+function scheduleMascotBlink() { clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); if (mascotHybrid || elements.mascot.hidden || mascotSetting.enabled === false) return; const [minimum, maximum] = mascotSetting.idle?.blinkInterval || [2800, 5200], delay = minimum + Math.random() * Math.max(0, maximum - minimum); runtime.mascotBlinkTimer = setTimeout(() => { elements.mascotCharacter.classList.add("is-blinking"); runtime.mascotBlinkReleaseTimer = setTimeout(() => { elements.mascotCharacter.classList.remove("is-blinking"); scheduleMascotBlink(); }, mascotSetting.idle?.blinkDuration || 150); }, delay); }
 function resetMascotTimers() { clearTimeout(runtime.optionCloseTimer); clearTimeout(runtime.mascotFlightTimer); clearTimeout(runtime.mascotLandingTimer); clearTimeout(runtime.mascotSpeechTimer); clearTimeout(runtime.mascotHintTimer); clearTimeout(runtime.mascotPoseTimer); }
-function setMascotPose(pose = "idle") { const nextPose = mascotBehavior === "stationary" ? pose : "idle"; if (elements.mascot.dataset.pose !== nextPose) elements.mascot.dataset.pose = nextPose; }
+function setMascotPose(pose = "idle", options) { const nextPose = mascotBehavior === "stationary" ? pose : "idle"; return mascotMotion.setPose(nextPose, options); }
 async function playQuizMascotReaction() {
   if (mascotBehavior !== "stationary" || runtime.mode !== "student-quiz") return;
-  const poses = ["celebrate", "instruction", "hint"], previous = elements.mascot.dataset.lastQuizPose || "", choices = poses.filter(pose => pose !== previous), pose = choices[Math.floor(Math.random() * choices.length)] || "celebrate";
-  elements.mascot.dataset.lastQuizPose = pose;
+  // Moving to the next question is neutral: never imply a correct answer.
   elements.mascot.classList.remove("is-quiz-reacting");
-  setMascotPose(pose);
+  setMascotPose("idle");
+  await mascotHybrid?.playStepGesture();
   void elements.mascot.offsetWidth;
   elements.mascot.classList.add("is-quiz-reacting");
-  await new Promise(resolve => setTimeout(resolve, 720));
+  await new Promise(resolve => setTimeout(resolve, 2200));
   elements.mascot.classList.remove("is-quiz-reacting");
   setMascotPose("idle");
 }
@@ -2546,6 +2699,10 @@ async function setStep(index) {
   const steps = runtime.meta.howto;
   if (!steps.length) return;
   if (index > runtime.stepIndex && (!runtime.stepNextEnabled || steps.slice(runtime.stepIndex + 1, index).some(step => step.requiresCompletion))) return;
+  const changingStep = clamp(index, 0, steps.length - 1) !== runtime.stepIndex;
+  runtime.mascotStepDepth = (runtime.mascotStepDepth || 0) + 1;
+  try {
+  clearTimeout(runtime.mascotPoseTimer);
   introService.close({ notify: false, reason: "step-change" });
   guiService.clearScope("step");
   clearTypewriters();
@@ -2565,6 +2722,7 @@ async function setStep(index) {
   queueStepOption(step.option);
   animateConsole();
   await runtime.lesson.onStep?.(activeStepIndex, step, lessonPayload());
+  if (changingStep && runtime.stepIndex === activeStepIndex) void mascotHybrid?.playStepGesture();
   if (!runtime.sceneEntered) { world.playEntrance(); runtime.sceneEntered = true; }
   if (step.intro?.url || step.intro?.src) {
     const sessionId = runtime.sessionId;
@@ -2577,6 +2735,7 @@ async function setStep(index) {
       }
     });
   }
+  } finally { runtime.mascotStepDepth -= 1; }
 }
 function showInformation() { uiSound(); const tags = Array.isArray(runtime.lessonData.tags) ? runtime.lessonData.tags : [], category = [runtime.lessonData.category, runtime.lessonData.subcategory].filter(Boolean).join(" · ") || "บทเรียนเสริมทักษะ"; showModal(`<div class="info-dialog"><header class="modal-hero">${iconMarkup("info-book.svg")}<div><span class="mode-badge">${escapeHtml(modeLabel(runtime.mode))}</span><h2>${escapeHtml(runtime.lessonData.title)}</h2></div></header><div class="info-topic">${iconMarkup("info-book.svg")}<div><h3>เรื่องที่กำลังเรียน</h3><p>${escapeHtml(runtime.meta.description)}</p></div></div><div class="info-topic">${iconMarkup("info-category.svg")}<div><h3>หมวดการเรียนรู้</h3><p>${escapeHtml(category)}</p><div class="tag-list">${tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div></div><div class="info-topic is-target">${iconMarkup("info-target.svg")}<div><h3>เป้าหมายของบทเรียน</h3><p>${escapeHtml(runtime.meta.keyResult)}</p></div></div></div>`); }
 function editorFieldVisible(field, values) { const rule = field.showWhen; if (!rule?.key) return true; const accepted = Array.isArray(rule.values) ? rule.values : [rule.value]; return accepted.some(value => String(value) === String(values[rule.key])); }
@@ -2593,57 +2752,129 @@ function showEditor() { uiSound(); const fields = runtime.meta.editSchema.map(ed
 function shuffle(items) { const copy = [...items]; for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; }
 function questionValues(question) { const values = { ...runtime.meta.defaultValue }; for (const item of question.data || []) values[item.key] = item.value; return values; }
 const quizNextButton = $("#next-question");
+function immutableQuizSnapshot(value, seen = new WeakMap()) {
+  if (value == null || typeof value !== "object") return value;
+  if (seen.has(value)) return seen.get(value);
+  const copy = Array.isArray(value) ? [] : {};
+  seen.set(value, copy);
+  if (Array.isArray(value)) for (const item of value) copy.push(immutableQuizSnapshot(item, seen));
+  else for (const [key, item] of Object.entries(value)) copy[key] = immutableQuizSnapshot(item, seen);
+  return Object.freeze(copy);
+}
+function setQuizSubmissionLock(value) {
+  const locked = Boolean(value);
+  elements.runtime.classList.toggle("quiz-submitting", locked);
+  elements.viewport.inert = locked;
+  if (locked) {
+    elements.viewport.setAttribute("aria-busy", "true");
+    cancelActiveLessonInteraction();
+  } else {
+    elements.viewport.removeAttribute("aria-busy");
+    resumeDragCue();
+  }
+}
 function hideQuizNext() { quizNextButton.hidden = runtime.mode !== "student-quiz" || !runtime.quiz || runtime.completed; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; if (runtime.quiz) runtime.quiz.objectiveActionTaken = false; }
 function revealQuizNext() { const wasDisabled = quizNextButton.disabled; quizNextButton.hidden = false; quizNextButton.classList.remove("is-waiting"); quizNextButton.disabled = false; if (wasDisabled) { quizNextButton.classList.remove("is-returning"); void quizNextButton.offsetWidth; quizNextButton.classList.add("is-returning"); } }
 function objectiveAction() { clearTimeout(runtime.mascotHintTimer); if (runtime.mode !== "student-quiz" || !runtime.quiz?.acceptingAnswers || runtime.completed) return; if (!runtime.quiz.pendingAnswer || runtime.quiz.pendingAnswer.hasAnswer === false) { hideQuizNext(); return; } runtime.quiz.objectiveActionTaken = true; revealQuizNext(); }
-async function showQuestion(index) { const quiz = runtime.quiz; if (index >= quiz.questions.length) return finishQuiz(); quiz.acceptingAnswers = false; guiService.clearScope("question"); hideQuizNext(); clearTypewriters(); quiz.index = index; quiz.pendingAnswer = null; const question = quiz.questions[index]; runtime.values = questionValues(question); typeText(elements.question, question.question); elements.quizDots.innerHTML = quiz.questions.map((_, dot) => `<i class="${dot < index ? "done" : dot === index ? "current" : ""}"></i>`).join(""); $("[data-next-label]").textContent = index === quiz.questions.length - 1 ? "ยืนยันคำตอบ" : "ข้อต่อไป"; quizNextButton.classList.toggle("is-final-question", index === quiz.questions.length - 1); quizNextButton.setAttribute("aria-label", index === quiz.questions.length - 1 ? "ยืนยันคำตอบและดูคะแนน" : "บันทึกคำตอบแล้วไปข้อต่อไป"); elements.quizDots.setAttribute("aria-label", `ข้อ ${index + 1} จาก ${quiz.questions.length}`); if (index) audio.play("nextQuest"); await resetLessonScene({ question, questionIndex: index }); world.playEntrance(); runtime.sceneEntered = true; quiz.acceptingAnswers = true; postToHost("lesson.progress", { current: index + 1, total: quiz.questions.length }); }
-function answerQuiz(correct, details = {}) { const quiz = runtime.quiz; if (!quiz?.acceptingAnswers) return false; const question = quiz.questions[quiz.index]; quiz.pendingAnswer = { questionIndex: quiz.index, question: question.question, correct: Boolean(correct), ...details }; objectiveAction(); return true; }
-function commitQuizAnswer() { const quiz = runtime.quiz, question = quiz.questions[quiz.index], answer = quiz.pendingAnswer || { questionIndex: quiz.index, question: question.question, correct: false, skipped: true }; quiz.answers.push(answer); if (answer.correct) quiz.score += 1; }
+async function showQuestion(index) { const quiz = runtime.quiz; if (index >= quiz.questions.length) return finishQuiz(); quiz.acceptingAnswers = false; setQuizSubmissionLock(true); guiService.clearScope("question"); hideQuizNext(); clearTypewriters(); quiz.index = index; quiz.pendingAnswer = null; const question = quiz.questions[index]; runtime.values = questionValues(question); typeText(elements.question, question.question); elements.quizDots.innerHTML = quiz.questions.map((_, dot) => `<i class="${dot < index ? "done" : dot === index ? "current" : ""}"></i>`).join(""); $("[data-next-label]").textContent = index === quiz.questions.length - 1 ? "ยืนยันคำตอบ" : "ข้อต่อไป"; quizNextButton.classList.toggle("is-final-question", index === quiz.questions.length - 1); quizNextButton.setAttribute("aria-label", index === quiz.questions.length - 1 ? "ยืนยันคำตอบและดูคะแนน" : "บันทึกคำตอบแล้วไปข้อต่อไป"); elements.quizDots.setAttribute("aria-label", `ข้อ ${index + 1} จาก ${quiz.questions.length}`); if (index) audio.play("nextQuest"); await resetLessonScene({ question, questionIndex: index }); world.playEntrance(); runtime.sceneEntered = true; quiz.acceptingAnswers = true; setQuizSubmissionLock(false); postToHost("lesson.progress", { current: index + 1, total: quiz.questions.length }); }
+function answerQuiz(correct, details = {}) { const quiz = runtime.quiz; if (!quiz?.acceptingAnswers) return false; const question = quiz.questions[quiz.index]; quiz.pendingAnswer = immutableQuizSnapshot({ ...details, questionIndex: quiz.index, question: question.question, correct: Boolean(correct) }); objectiveAction(); return true; }
+function commitQuizAnswer() { const quiz = runtime.quiz, question = quiz.questions[quiz.index], answer = immutableQuizSnapshot(quiz.pendingAnswer || { questionIndex: quiz.index, question: question.question, correct: false, skipped: true }); quiz.answers.push(answer); if (answer.correct) quiz.score += 1; return answer; }
 function answerSummary(answer) { if (answer?.skipped) return "ไม่ได้ตอบ"; if (typeof answer?.answerText === "string" && answer.answerText.trim()) return answer.answerText; if (answer?.leftCount != null && answer?.rightCount != null) return `${answer.leftCount} ${answer.operator} ${answer.rightCount}`; return "ยังไม่ได้วางคำตอบ"; }
-function finishQuiz() {
-  const quiz = runtime.quiz;
-  runtime.completed = true;
-  const durationMs = Date.now() - quiz.startedAt;
-  audio.play("completeLesson");
-  celebrate();
-  const minutes = Math.floor(durationMs / 60000);
-  const seconds = Math.floor(durationMs % 60000 / 1000);
-  const percent = Math.round(quiz.score / quiz.questions.length * 100);
-  const summaryAsset = name => runtimeAssetUrl(`./assets/image/${name}`);
-  const review = quiz.questions.map((question, index) => {
-    const answer = quiz.answers.find(item => item.questionIndex === index);
-    const correct = answer?.correct;
-    return `<li class="${correct ? "correct" : "wrong"}" style="--result-index:${index}"><em>${index + 1}</em><b>${iconMarkup(correct ? "result-correct.svg" : "result-wrong.svg")}</b><strong>${escapeHtml(question.question)}</strong></li>`;
-  }).join("");
-  const confetti = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((item, index) => {
-    const itemId = String(item).padStart(2, "0");
-    return `<img class="result-confetti-item result-confetti-${itemId}" src="${summaryAsset(`summary-confetti-${itemId}.png`)}" alt="" style="--confetti-index:${index}" />`;
-  }).join("");
-  showModal(`<div class="quiz-result result-polished">
-    <div class="result-confetti" aria-hidden="true">${confetti}</div>
-    <section class="result-celebration">
-      <img class="result-ribbon" src="${summaryAsset("summary-ribbon.png")}" alt="" />
-      <img class="result-label" src="${summaryAsset("summary-label.png")}" alt="" />
-      <span class="result-kicker">ภารกิจสำเร็จ</span>
-      <h2>${percent >= 80 ? "ยอดเยี่ยมมาก!" : "ทำครบแล้ว เก่งมาก!"}</h2>
-      <img class="result-dino" src="${summaryAsset("summary-dino.png")}" alt="" />
-      <img class="result-shrub" src="${summaryAsset("summary-island-small.png")}" alt="" />
-      <div class="result-metrics">
-        <div class="result-score"><strong>${quiz.score}</strong><small>/ ${quiz.questions.length}</small></div>
-        <div class="result-time"><i>◴</i><span><small>ใช้เวลา</small><strong>${minutes} นาที ${seconds} วินาที</strong></span></div>
-      </div>
-      <div class="result-score-stars" aria-label="ตอบถูก ${quiz.score} จาก ${quiz.questions.length} ข้อ">${Array.from({ length: quiz.questions.length }, (_, index) => `<i class="${index < quiz.score ? "earned" : ""}"><svg viewBox="0 0 81 77" aria-hidden="true"><path d="M34.583 3.76402C36.5985 -1.2548 43.7033 -1.25479 45.7187 3.76403L52.1957 19.8931C53.0539 22.0303 55.0598 23.4876 57.3576 23.6434L74.6988 24.8193C80.0948 25.1851 82.2903 31.9422 78.1399 35.4099L64.8017 46.554C63.0343 48.0307 62.2682 50.3888 62.8301 52.6223L67.0705 69.478C68.39 74.723 62.642 78.8991 58.0615 76.0234L43.3411 66.7818C41.3906 65.5572 38.9112 65.5572 36.9606 66.7818L22.2402 76.0234C17.6597 78.8991 11.9118 74.723 13.2313 69.478L17.4717 52.6223C18.0336 50.3887 17.2674 48.0307 15.5 46.554L2.16187 35.4099C-1.98851 31.9422 0.207016 25.1851 5.60299 24.8193L22.9441 23.6434C25.242 23.4876 27.2478 22.0303 28.1061 19.8931L34.583 3.76402Z"/></svg></i>`).join("")}</div>
-    </section>
-    <section class="result-review-panel">
-      <h3 class="review-title"><img src="${summaryAsset("summary-note.png")}" alt="" />สรุปผลคะแนน</h3>
-      <ol class="review-list">${review}</ol>
-    </section>
-    <img class="result-island" src="${summaryAsset("summary-island-big.png")}" alt="" aria-hidden="true" />
-  </div>`, { dismissible: false, primaryLabel: "ตกลง", onPrimary: () => {
+function waitForResultCover(sequenceId) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve(sequenceId === runtime.resultSequenceId);
+  return new Promise(resolve => {
+    let settled = false;
+    const backdrop = elements.modal.querySelector(".result-transition-backdrop");
+    const finish = () => { if (settled) return; settled = true; backdrop?.removeEventListener("transitionend", finish); resolve(); };
+    backdrop?.addEventListener("transitionend", finish, { once: true });
+    setTimeout(finish, 720);
+  }).then(() => sequenceId === runtime.resultSequenceId);
+}
+async function showQuizResultModal(content, { onConfirm } = {}) {
+  resetResultPresentation();
+  const sequenceId = runtime.resultSequenceId;
+  runtime.modalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  // Have the requested backdrop decoded before fading it over the live world.
+  const workshop = new Image();
+  // Resolve beside this runtime module so deployments mounted under a subpath
+  // do not accidentally request /interactive from the domain root.
+  workshop.src = runtimeAssetUrl("./assets/image/summary-workshop.webp", import.meta.url);
+  await Promise.race([
+    new Promise(resolve => {
+      if (workshop.complete) return resolve();
+      workshop.addEventListener("load", resolve, { once: true });
+      workshop.addEventListener("error", resolve, { once: true });
+    }),
+    new Promise(resolve => setTimeout(resolve, 2500))
+  ]);
+  if (sequenceId !== runtime.resultSequenceId) return;
+  elements.modal.classList.add("is-result-sequence");
+  elements.modal.innerHTML = `<div class="result-transition-backdrop" aria-hidden="true"><img class="result-transition-backdrop-image" src="${escapeHtml(workshop.src)}" alt="" /></div>`;
+  elements.modal.hidden = false;
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  if (sequenceId !== runtime.resultSequenceId) return;
+  elements.modal.classList.add("is-result-covered");
+  const covered = await waitForResultCover(sequenceId);
+  if (!covered || sequenceId !== runtime.resultSequenceId) return;
+  setResultWorldPaused(true);
+  // Decode the small cutouts behind the opaque cover, before entrance motion.
+  const resultImages = [...content.matchAll(/<img[^>]+src="([^"]+)"/g)].map(match => {
+    const img = new Image();
+    img.src = match[1].replaceAll("&amp;", "&");
+    return img.decode().catch(() => {});
+  });
+  await Promise.race([Promise.all(resultImages), new Promise(resolve => setTimeout(resolve, 2500))]);
+  if (sequenceId !== runtime.resultSequenceId) return;
+  elements.modal.insertAdjacentHTML("beforeend", `<article class="modal-card" role="dialog" aria-modal="true" aria-label="สรุปผลคะแนน">${content}<div class="modal-actions"><button class="primary" data-modal-primary>ตกลง</button></div></article>`);
+  const primary = elements.modal.querySelector("[data-modal-primary]");
+  primary?.addEventListener("click", () => onConfirm?.(), { once: true });
+  try {
+    const {mountResultMascot}=await import(`./quiz-result-mascot.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
+    if(sequenceId!==runtime.resultSequenceId)return;
+    resultMascotBlink=mountResultMascot(elements.modal.querySelector('.qr-head'),{forceMotion:mascotSetting.animation?.respectReducedMotion===false});
+  } catch(error){console.warn('Result mascot: blink unavailable',error);}
+  requestAnimationFrame(() => {
+    if (sequenceId !== runtime.resultSequenceId) return;
+    elements.modal.classList.add("is-result-popup-visible");
+    primary?.focus({ preventScroll: true });
+  });
+}
+function createDebugQuizResult() {
+  const available = Array.isArray(runtime.meta?.quiz) ? runtime.meta.quiz : [];
+  const questions = available.slice(0, Math.min(5, available.length));
+  if (!questions.length) {
+    questions.push(
+      { question: "ตัวอย่างคำถามข้อที่ 1" }, { question: "ตัวอย่างคำถามข้อที่ 2" },
+      { question: "ตัวอย่างคำถามข้อที่ 3" }, { question: "ตัวอย่างคำถามข้อที่ 4" },
+      { question: "ตัวอย่างคำถามข้อที่ 5" }
+    );
+  }
+  const score = Math.max(0, questions.length - 1);
+  return {
+    questions,
+    score,
+    answers: questions.map((question, questionIndex) => immutableQuizSnapshot({ questionIndex, question: question.question, correct: questionIndex < score }))
+  };
+}
+async function showQuizResult(quiz, { durationMs, debug = false } = {}) {
+  if (!quiz?.questions?.length) return;
+  const { quizResultMarkup } = await import(`./quiz-result-view.js?v=${encodeURIComponent(window.eduCacheVersion || "1")}`);
+  const content = quizResultMarkup(quiz, { escapeHtml, assetUrl: runtimeAssetUrl });
+  await showQuizResultModal(content, { onConfirm: () => {
+    if (debug) { closeModal(); return; }
     const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers };
     postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result });
     postToHost("lesson.closeRequested");
   } });
+}
+async function finishQuiz() {
+  const quiz = runtime.quiz;
+  runtime.completed = true;
+  audio.play("completeLesson");
+  await showQuizResult(quiz, { durationMs: Date.now() - quiz.startedAt });
+}
+function showDebugQuizResult() {
+  void showQuizResult(createDebugQuizResult(), { durationMs: 83000, debug: true });
 }
 async function beginQuiz() { closeModal(); runtime.completed = false; runtime.quiz = { questions: shuffle(runtime.meta.quiz).slice(0, Math.min(5, runtime.meta.quiz.length)), index: 0, score: 0, answers: [], pendingAnswer: null, acceptingAnswers: false, startedAt: Date.now() }; await showQuestion(0); }
 function readyQuiz() { const art = runtimeAssetUrl(setting.entry.quizWelcomeImagePath || setting.entry.loadingImagePath || setting.entry.imagePath); showModal(`<div class="quiz-welcome"><div class="quiz-welcome-art"><img src="${art}" alt="" /><span class="mode-badge">PRE-TEST</span></div><div class="quiz-welcome-copy"><div class="quiz-divider"><span>ภารกิจทดสอบก่อนเรียน</span></div><h2>พร้อมเริ่มภารกิจทดสอบหรือยัง?</h2><p>ลองตอบหรือทำโจทย์อย่างน้อยหนึ่งครั้ง แล้วจึงส่งคำตอบเพื่อไปข้อต่อไป เราจะสรุปคะแนนพร้อมกันเมื่อทำครบ</p><div class="quiz-rules"><div>${iconMarkup("quiz-rule-count.svg")}<b>${Math.min(5, runtime.meta.quiz.length)} ข้อ</b><small>สุ่มจาก ${runtime.meta.quiz.length} ข้อ</small></div><div>${iconMarkup("quiz-rule-try.svg")}<b>ลองก่อนส่ง</b><small>ตอบถูกหรือผิดก็ส่งได้</small></div><div>${iconMarkup("quiz-rule-trophy.svg")}<b>สรุปท้ายเกม</b><small>ดูคะแนนพร้อมกัน</small></div></div></div></div>`, { dismissible: false, primaryLabel: "เริ่มภารกิจ", onPrimary: beginQuiz }); }
@@ -2674,11 +2905,12 @@ const lessonUi = Object.freeze({
   setProgress(current, total) { postToHost("lesson.progress", { current, total }); }
 });
 function createContext(root, language) { return Object.freeze({ world, assets: world.assets, capabilities: world.capabilities, ui: lessonUi, audio: Object.freeze({ play: name => audio.play(name) }), root, lessonData: runtime.lessonData, mode: runtime.mode, language, resolveAsset: path => runtimeAssetUrl(path, runtime.lessonUrl), objectiveAction, quiz: Object.freeze({ answer: answerQuiz }), complete(result = {}) { clickme.clearAll(); if (!runtime.completed) { runtime.completed = true; audio.play("completeLesson"); celebrate(); } postToHost("lesson.complete", { lessonId: runtime.lessonData.Id, lessonVersion: runtime.lesson.version || "1.0.0", status: "completed", ...result }); } }); }
-async function closeLesson() { runtime.sessionId += 1; runtime.preview = false; runtimeSettingMenu?.setPreviewMode(false); syncDebugHud(); introService.close({ notify: false, reason: "lesson-close" }); try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.className = "mascot-guide"; elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
+async function closeLesson() { runtime.sessionId += 1; runtime.preview = false; runtimeSettingMenu?.setPreviewMode(false); syncDebugHud(); introService.close({ notify: false, reason: "lesson-close" }); try { await runtime.lesson?.dispose?.(); } catch (error) { console.warn(error); } audio.stopBgm(); clearTypewriters(); guiService.clearAll(); resetMascotTimers(); clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); runtime.pendingMascotOption = null; hideMascotNotice(); quizNextButton.hidden = true; quizNextButton.classList.remove("is-returning"); quizNextButton.classList.add("is-waiting"); quizNextButton.disabled = true; runtime.lesson = null; runtime.meta = null; runtime.lessonData = null; runtime.context = null; runtime.quiz = null; runtime.completed = false; clearWorld(); setLessonQuestion(""); elements.lessonUi.replaceChildren(); elements.webRoot.replaceChildren(); elements.webRoot.hidden = true; elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); elements.celebration.replaceChildren(); elements.mascot.hidden = true; elements.mascot.classList.remove("is-disabled", "is-speaking", "is-talking", "is-flying-in", "is-landing", "is-returning", "is-quiz-reacting", "has-notice"); elements.mascot.classList.toggle("is-stationary", mascotBehavior === "stationary"); mascotMotion.reset(); elements.mascotCharacter.classList.remove("is-blinking"); closeModal(); configureCamera(); elements.runtime.className = ""; elements.title.textContent = "World Runtime"; elements.taxonomy.textContent = "กำลังรอบทเรียนจาก Platform"; }
 const lessonFailureStages = {
   receive: ["การรับไฟล์บทเรียน", "ตรวจว่าไฟล์ HTML ที่เลือกอ่านได้ครบและไม่ว่าง"],
   fetch: ["การโหลดไฟล์บทเรียน", "ตรวจ path, ชื่อไฟล์, ตัวพิมพ์เล็ก–ใหญ่ และ HTTP status"],
   structure: ["การตรวจโครงสร้าง HTML", "ตรวจ script[data-lesson-app], HTML shell และจำนวน lesson definition"],
+  decrypt: ["การถอดรหัสบทเรียน", "ตรวจ quiz-key.wasm และไฟล์ที่สร้างจาก AI/Compile"],
   execute: ["การรัน JavaScript ของบทเรียน", "ตรวจ syntax, ชื่อฟังก์ชัน ตัวแปร และบรรทัดแรกใน stack trace"],
   register: ["การลงทะเบียนบทเรียน", "ตรวจ PuzzleLesson.define(...) และ lifecycle โดยเฉพาะ mount(context)"],
   metadata: ["การตรวจข้อมูลบทเรียน", "ตรวจ meta, defaultValue, editSchema, howto และ quiz"],
@@ -2742,11 +2974,18 @@ async function openLesson(payload) {
     updateEntry(36, "กำลังตรวจสอบโครงสร้างบทเรียน…");
     const doc = new DOMParser().parseFromString(html, "text/html"), script = doc.querySelector("script[data-lesson-app]");
     if (!script) throw new Error("ไม่พบ script[data-lesson-app] ภายในไฟล์บทเรียน");
+    const protectedLesson = script.dataset.lessonProtection === "v1";
+    let lessonSource = script.textContent;
+    if (protectedLesson) {
+      failureStage = "decrypt";
+      updateEntry(42, "กำลังเตรียมข้อมูลบทเรียนที่ได้รับการป้องกัน…");
+      lessonSource = await quizProtectionTools.decodeLessonScript(lessonSource.trim());
+    }
     let registered = null; const previous = window.PuzzleLesson;
     window.PuzzleLesson = Object.freeze({ define(app) { if (registered) throw new Error("หนึ่งไฟล์กำหนด lessonApp ได้เพียงหนึ่งตัว"); registered = app; } });
     failureStage = "execute";
     window.eduRuntimeLastError = null;
-    try { const executable = document.createElement("script"); executable.textContent = `${script.textContent}\n//# sourceURL=${lessonUrl.href}`; document.head.append(executable); executable.remove(); if (window.eduRuntimeLastError) throw window.eduRuntimeLastError; }
+    try { const executable = document.createElement("script"); executable.textContent = protectedLesson ? lessonSource : `${lessonSource}\n//# sourceURL=${lessonUrl.href}`; document.head.append(executable); executable.remove(); if (window.eduRuntimeLastError) throw window.eduRuntimeLastError; }
     finally { if (previous === undefined) delete window.PuzzleLesson; else window.PuzzleLesson = previous; }
     failureStage = "register";
     if (!registered?.mount) throw new Error("lessonApp ต้องมี mount(context)");
@@ -2767,8 +3006,12 @@ async function openLesson(payload) {
     failureStage = "reset";
     await resetLessonScene(); markSceneActive();
     failureStage = "finish";
+    // บทเรียนที่สร้างฉากแรกเสร็จแล้วสามารถเริ่ม step/entrance ใต้ loading screen ได้
+    // เมื่อ overlay จางออก ผู้เรียนจึงเห็นเนื้อหาพร้อมใช้งานทันทีแทนเกาะว่าง
+    const prepareInitialLab = runtime.mode !== "student-quiz" && runtime.meta.prepareFirstStepBeforeEntry === true;
+    if (prepareInitialLab) await setStep(0);
     updateEntry(92, "ตรวจสอบความพร้อมครั้งสุดท้าย…"); await finishEntry();
-    if (runtime.mode === "student-quiz") readyQuiz(); else await setStep(0);
+    if (runtime.mode === "student-quiz") readyQuiz(); else if (!prepareInitialLab) await setStep(0);
   } catch (error) {
     const failure = createLessonFailure(error, failureStage, lessonData);
     console.error(error); elements.entryTitle.textContent = "เปิดบทเรียนไม่สำเร็จ"; updateEntry(100, error.message); elements.title.textContent = "เปิดบทเรียนไม่สำเร็จ"; elements.taxonomy.textContent = error.message; window.eduShowRuntimeFailure?.(failure); postToHost("lesson.error", failure);
@@ -2807,7 +3050,7 @@ function bindLessonCloseButton(button) {
 
 bindLessonCloseButton($("#close-runtime"));
 bindLessonCloseButton($("#entry-close"));
-$("#show-information").addEventListener("click", showInformation); $("#edit-lesson").addEventListener("click", showEditor); $("#previous-step").addEventListener("click", () => setStep(runtime.stepIndex - 1)); $("#next-step").addEventListener("click", () => setStep(runtime.stepIndex + 1)); $("#reset-lesson").addEventListener("click", async () => { uiSound(); runtime.values = { ...runtime.meta.defaultValue }; if (runtime.mode === "student-quiz") readyQuiz(); else { await resetLessonScene(); await setStep(0); } }); $("#next-question").addEventListener("click", async () => { if (quizNextButton.disabled || !runtime.quiz?.acceptingAnswers) return; runtime.quiz.acceptingAnswers = false; hideQuizNext(); uiSound(); commitQuizAnswer(); await playQuizMascotReaction(); await showQuestion(runtime.quiz.index + 1); });
+$("#show-information").addEventListener("click", showInformation); $("#edit-lesson").addEventListener("click", showEditor); $("#previous-step").addEventListener("click", () => setStep(runtime.stepIndex - 1)); $("#next-step").addEventListener("click", () => setStep(runtime.stepIndex + 1)); $("#reset-lesson").addEventListener("click", async () => { uiSound(); runtime.values = { ...runtime.meta.defaultValue }; if (runtime.mode === "student-quiz") readyQuiz(); else { await resetLessonScene(); await setStep(0); } }); $("#next-question").addEventListener("click", async () => { if (quizNextButton.disabled || !runtime.quiz?.acceptingAnswers) return; runtime.quiz.acceptingAnswers = false; hideQuizNext(); uiSound(); commitQuizAnswer(); setQuizSubmissionLock(true); await playQuizMascotReaction(); await showQuestion(runtime.quiz.index + 1); });
 elements.mascotNotice.addEventListener("click", () => { uiSound(); revealPendingMascotOption(); });
 window.addEventListener("message", event => { if (event.origin !== location.origin || event.source !== window.parent || event.data?.channel !== "edu-widget") return; if (event.data.type === "host.openLesson") openLesson(event.data.payload); if (event.data.type === "host.closeLesson") closeLesson(); if (event.data.type === "host.toggleRuntimeSetting" && !runtime.preview) runtimeSettingMenu?.toggle(); });
 postToHost("runtime.ready");
@@ -2885,6 +3128,7 @@ const runtimeSettingMenu = runtimeSettingTools.setupRuntimeSettingMenu({
   baseline: runtimeSettingBaseline,
   debugEnabled: setting.debugHUD === true,
   getMode: () => runtime.mode,
+  getSceneTime:()=>debugSceneTime,
   onApply: async () => {
     if (runtime.lessonData) runtimeSettingTools.saveRuntimeLessonRestore({ lessonData: structuredClone(runtime.lessonData), language: runtime.language });
     location.reload();
@@ -2901,6 +3145,8 @@ const runtimeSettingMenu = runtimeSettingTools.setupRuntimeSettingMenu({
   },
   onRetest: ({ mode } = {}) => requestRetest(mode),
   onToggleDebugArea: force => toggleDebugArea(force),
+  onShowQuizResult: showDebugQuizResult,
+  onSceneTimeChange:setDebugSceneTime,
   onGuiLabAction: guiLabAction
 });
 let modeSwitching = false;

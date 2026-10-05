@@ -29,8 +29,11 @@ export interface LessonHandle {
   setScale(x?: number, y?: number, z?: number): void;
   animateTo(x: number, y: number, z: number, options?: { duration?: number; delay?: number; arcHeight?: number }): void;
   stopAnimation(): void;
-  playCommit(): void;
+  playCommit(options?: { spark?: boolean }): void;
+  setHighlighted(value: boolean): void;
   setColor(color: string | number): void;
+  setWash(color?: string | number, amount?: number): void;
+  setOpacity(opacity: number): void;
   setVisible(value: boolean): void;
   setDraggable(value: boolean): void;
   setClickable(value: boolean): void;
@@ -297,6 +300,11 @@ export interface IntroHandle {
 export interface QuizQuestion {
   question: string;
   data: Array<{ key: string; value: unknown }>;
+}
+
+export interface QuizAnswerDetails extends Record<string, unknown> {
+  /** false หมายถึงล้างคำตอบและซ่อนปุ่มไปข้อถัดไป */
+  hasAnswer?: boolean;
 }
 
 export interface LessonMeta {
@@ -648,7 +656,7 @@ export interface LessonContext {
   readonly mode: LessonMode;
   readonly language: string;
   objectiveAction(): void;
-  readonly quiz: { answer(correct: boolean, details?: Record<string, unknown>): boolean };
+  readonly quiz: { answer(correct: boolean, details?: QuizAnswerDetails): boolean };
   complete(result?: Record<string, unknown>): void;
 }
 

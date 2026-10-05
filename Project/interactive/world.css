@@ -386,7 +386,7 @@
 #runtime.runtime-ui-revised .result-island { position:absolute; z-index:3; left:50%; bottom:-76px; width:104%; transform:translateX(-50%); pointer-events:none; animation:result-island-in .52s ease-out .96s both; }
 #runtime.runtime-ui-revised .result-confetti { position:absolute; z-index:8; inset:-80px -90px 0; pointer-events:none; }
 #runtime.runtime-ui-revised .result-confetti img { position:absolute; width:46px; animation:result-confetti-in .5s cubic-bezier(.2,.8,.25,1.18) calc(.35s + var(--confetti-index) * .055s) both,result-confetti-float 2.5s ease-in-out calc(1s + var(--confetti-index) * .1s) infinite alternate; }
-#runtime.runtime-ui-revised .result-confetti img:nth-child(1){left:3%;top:14%}.result-confetti img:nth-child(2){right:5%;top:12%}.result-confetti img:nth-child(3){left:0;top:48%}.result-confetti img:nth-child(4){right:0;top:56%}.result-confetti img:nth-child(5){left:11%;top:68%}.result-confetti img:nth-child(6){right:12%;top:35%}.result-confetti img:nth-child(7){left:24%;top:2%}.result-confetti img:nth-child(8){right:23%;top:5%}.result-confetti img:nth-child(9){right:2%;top:30%}.result-confetti img:nth-child(10){left:5%;top:31%}.result-confetti img:nth-child(11){right:8%;top:72%}
+#runtime.runtime-ui-revised .result-confetti img:nth-child(1){left:2%;top:0}.result-confetti img:nth-child(2){right:5%;top:12%}.result-confetti img:nth-child(3){left:0;top:48%}.result-confetti img:nth-child(4){right:0;top:56%}.result-confetti img:nth-child(5){left:11%;top:68%}.result-confetti img:nth-child(6){right:12%;top:35%}.result-confetti img:nth-child(7){left:24%;top:2%}.result-confetti img:nth-child(8){right:23%;top:5%}.result-confetti img:nth-child(9){right:2%;top:30%}.result-confetti img:nth-child(10){left:5%;top:31%}.result-confetti img:nth-child(11){right:8%;top:72%}
 #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions { position:relative; z-index:7; justify-content:center; margin-top:-49px; }
 #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions .primary { min-width:270px; min-height:56px; border-radius:24px; font-size:24px; animation:result-scale-in .45s cubic-bezier(.16,.9,.25,1.22) 1.32s both; }
 
@@ -792,8 +792,8 @@ button.is-ui-pressed {
   max-width:calc(100% - 8px);
   height:auto;
   border-radius:999px;
-  background:linear-gradient(90deg,#ffe36c 0%,#ffd14a 45%,#ffb12e 100%);
-  box-shadow:inset 0 1px 2px rgb(255 255 255 / 92%),inset 0 0 10px rgb(255 250 210 / 72%),0 0 9px rgb(246 180 34 / 25%);
+  background:linear-gradient(90deg,#42d76f 0%,#27cf9c 48%,#27afe9 100%);
+  box-shadow:inset 0 1px 2px rgb(255 255 255 / 92%),inset 0 0 10px rgb(211 255 242 / 72%),0 0 11px rgb(39 175 233 / 32%);
   transition:width .38s ease;
   animation:none;
 }
@@ -856,19 +856,27 @@ button.is-ui-pressed {
 @keyframes entry-piece-pop { from { opacity:0; transform:scale(.55); } 72% { transform:scale(1.06); } to { opacity:1; transform:scale(1); } }
 @keyframes entry-book-pop { from { opacity:0; transform:scale(.22); } 68% { transform:scale(1.18); } 84% { transform:scale(.94); } to { opacity:1; transform:scale(1); } }
 @keyframes entry-book-float { from { transform:translateY(-2px); } to { transform:translateY(2px); } }
-@keyframes entry-piece-out { to { opacity:0; transform:scale(.35); } }
-@keyframes entry-book-out { to { opacity:0; transform:scale(.12); } }
-@keyframes entry-card-fade-out { to { opacity:0; } }
+@keyframes entry-ui-fade-out {
+  from { opacity:1; }
+  to { opacity:0; }
+}
 @keyframes entry-loader-pulse { from { opacity:1; } to { opacity:.5; } }
 @keyframes entry-dino-run { to { background-position:100% 0; } }
 
-#runtime .entry-screen.is-leaving .entry-loader-title { animation:entry-piece-out .22s ease-in .02s both; }
-#runtime .entry-screen.is-leaving .entry-loader-row { animation:entry-piece-out .24s ease-in .14s both; }
-#runtime .entry-screen.is-leaving .entry-glass-card h2 { animation:entry-piece-out .22s ease-in .3s both; }
-#runtime .entry-screen.is-leaving .entry-glass-card .entry-eyebrow { animation:entry-piece-out .22s ease-in .42s both; }
-#runtime .entry-screen.is-leaving .entry-book-mark img { animation:entry-book-out .24s ease-in .54s both; }
-#runtime .entry-screen.is-leaving .entry-book-mark { animation:entry-piece-out .25s ease-in .66s both; }
-#runtime .entry-screen.is-leaving .entry-card.entry-glass-card { animation:entry-card-fade-out .3s ease-in .84s both; }
+#runtime .entry-screen.is-leaving .entry-card.entry-glass-card,
+#runtime .entry-screen.is-leaving .entry-loader-panel,
+#runtime .entry-screen.is-leaving .entry-close {
+  animation:entry-ui-fade-out .45s ease both;
+}
+
+#runtime .entry-screen.is-leaving .entry-loader-title,
+#runtime .entry-screen.is-leaving .entry-loader-row,
+#runtime .entry-screen.is-leaving .entry-glass-card h2,
+#runtime .entry-screen.is-leaving .entry-glass-card .entry-eyebrow,
+#runtime .entry-screen.is-leaving .entry-book-mark,
+#runtime .entry-screen.is-leaving .entry-book-mark img {
+  animation:none;
+}
 
 @media (max-width:760px),(orientation:portrait) {
   #runtime .entry-art {
@@ -908,6 +916,41 @@ button.is-ui-pressed {
     font-size:clamp(18px,4.6vw,23px);
     transform:translateY(-50%);
   }
+}
+
+/* Quiz result hand-off ---------------------------------------------------
+   Cover the live lesson first, then suspend the WebGL world and reveal only
+   the lightweight result UI. The cover stays mounted behind the popup. */
+.modal-layer.is-result-sequence {
+  overflow:hidden;
+  padding:16px;
+  background:#17221f;
+  backdrop-filter:none;
+  isolation:isolate;
+}
+.modal-layer.is-result-sequence .result-transition-backdrop {
+  position:absolute;
+  z-index:0;
+  inset:-2%;
+  opacity:0;
+  background:
+    linear-gradient(rgb(20 30 27 / 12%),rgb(20 30 27 / 28%)),
+    var(--result-workshop-image) center/cover no-repeat;
+  transform:scale(1.035);
+  transform-origin:center center;
+  transition:opacity .52s ease,transform .72s cubic-bezier(.22,1,.36,1);
+  will-change:opacity,transform;
+}
+.modal-layer.is-result-sequence.is-result-covered .result-transition-backdrop {
+  opacity:1;
+  transform:scale(1);
+}
+#runtime.result-world-paused .world-viewport {
+  visibility:hidden;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .modal-layer.is-result-sequence .result-transition-backdrop { transition:none; }
 }
 
 @media (prefers-reduced-motion:reduce) {
@@ -1263,6 +1306,10 @@ button.is-ui-pressed {
 }
 
 .world-callout-gui[hidden] { display: none; }
+.world-callout-gui.has-tap-cue { overflow: visible; }
+.world-callout-tap { position: absolute; right: -12px; bottom: -32px; width: 42px; height: 42px; pointer-events: none; filter: drop-shadow(0 3px 5px rgba(26, 39, 70, .35)); animation: world-callout-tap 1.1s ease-in-out infinite; }
+@keyframes world-callout-tap { 0%, 100% { transform: translate(0, 0) scale(1); } 45% { transform: translate(-3px, -10px) scale(.86); } }
+@media (prefers-reduced-motion: reduce) { .world-callout-tap { animation: none; } }
 
 .world-callout-gui.is-actionable {
   appearance: none;
@@ -1584,6 +1631,7 @@ button.is-ui-pressed {
 
 .gui-choice-items {
   display: flex;
+  justify-content: safe center;
   gap: var(--gui-choice-gap, 10px);
   max-width: 100%;
   padding: 2px;
@@ -2541,8 +2589,8 @@ button.is-ui-pressed {
 .world-controls button {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 29px;
+  height: 29px;
   border: 0;
   border-radius: var(--camera-controls-button-radius, 11px);
   background: var(--camera-controls-button-bg, #edf6fb);
@@ -2551,8 +2599,8 @@ button.is-ui-pressed {
 }
 
 .world-controls img {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
   display: block;
   pointer-events: none;
 }
@@ -2561,6 +2609,31 @@ button.is-ui-pressed {
   background: var(--camera-controls-reset-bg, #7668d8);
   color: white;
 }
+
+.scene-mode-control { position: relative; display: grid; }
+.world-controls .scene-mode-toggle { color: #66579d; }
+.scene-mode-toggle svg { display: block; }
+.scene-mode-toggle svg[hidden] { display: none!important; }
+.scene-mode-control svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.scene-mode-menu {
+  position: absolute!important;
+  z-index: 5!important;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,.82);
+  border-radius: 16px;
+  background: rgba(255,253,246,.94);
+  box-shadow: 0 10px 24px rgba(53,47,92,.2);
+  backdrop-filter: blur(12px);
+  transform: translateX(-50%);
+}
+.scene-mode-menu[hidden] { display: none!important; }
+.world-controls .scene-mode-menu button { width: 36px; height: 36px; color: #6b5b91; background: #fff!important; }
+.world-controls .scene-mode-menu button.is-active { color: #fff; background: #7668d8!important; box-shadow: 0 3px 8px rgba(82,62,148,.28); }
+.scene-mode-menu::after { content:""; position:absolute; left:50%; top:100%; width:10px; height:10px; background:rgba(255,253,246,.94); transform:translate(-50%,-50%) rotate(45deg); }
 
 .world-hint {
   position: absolute;
@@ -4055,7 +4128,7 @@ button.is-ui-pressed {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition:opacity .3s ease 1.08s,visibility 0s linear 1.38s;
+  transition:opacity .5s ease .45s,visibility 0s linear .95s;
 }
 
 .runtime-failure {
@@ -6217,7 +6290,7 @@ button.is-ui-pressed {
   display: block;
   box-sizing: border-box;
   border: 34px solid transparent;
-  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.png");
+  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.webp");
   border-image-slice: 283 280 282 274 fill;
   border-image-width: var(--felt-panel-slice-width, 34px);
   border-image-outset: 0;
@@ -6302,7 +6375,7 @@ button.is-ui-pressed {
   inset: 0;
   box-sizing: border-box;
   border: 18px solid transparent;
-  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.png");
+  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.webp");
   border-image-slice: 283 280 282 274 fill;
   border-image-width: 18px;
   border-image-outset: 0;
@@ -6368,7 +6441,7 @@ button.is-ui-pressed {
   box-sizing: border-box;
   border: 22px solid transparent;
   border-radius: 0;
-  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.png");
+  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.webp");
   border-image-slice: 283 280 282 274 fill;
   border-image-width: 22px;
   border-image-outset: 0;
@@ -6448,7 +6521,7 @@ button.is-ui-pressed {
   display: block;
   box-sizing: border-box;
   border: 34px solid transparent;
-  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.png");
+  border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.webp");
   border-image-slice: 283 280 282 274 fill;
   border-image-width: var(--felt-panel-slice-width, 34px);
   border-image-outset: 0;
@@ -6687,7 +6760,7 @@ button.is-ui-pressed {
     display: block;
     box-sizing: border-box;
     border: 34px solid transparent;
-    border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.png");
+    border-image-source: url("./assets/image/texture/ui-panel-cream-9slice.webp");
     border-image-slice: 283 280 282 274 fill;
     border-image-width: 34px;
     border-image-outset: 0;
@@ -7750,7 +7823,7 @@ button.is-ui-pressed {
 #runtime.runtime-ui-revised #previous-step img { width:30px; }
 #runtime.runtime-ui-revised button:disabled { opacity:.45; }
 #runtime.runtime-ui-revised .world-controls { right:var(--lab-gap); bottom:var(--lab-gap); padding:5px!important; background:rgb(255 255 255 / 60%)!important; border:0!important; border-radius:20px; box-shadow:none; gap:5px; }
-#runtime.runtime-ui-revised .world-controls button { background:#fff!important; border:0!important; border-radius:14px; width:44px; height:44px; }
+#runtime.runtime-ui-revised .world-controls button { background:#fff!important; border:0!important; border-radius:12px; width:36px; height:36px; }
 #runtime.runtime-ui-revised .gui-control>div { background:rgb(255 255 255 / 60%)!important; border:0!important; border-radius:22px; padding:8px; }
 #runtime.runtime-ui-revised .gui-control>div::before,#runtime.runtime-ui-revised .gui-control>div::after { display:none; }
 #runtime.runtime-ui-revised .gui-control button { background:#fff!important; border:0!important; border-radius:16px; color:var(--lab-navy); box-shadow:none; }
@@ -8225,6 +8298,7 @@ button.is-ui-pressed {
   #runtime.runtime-ui-revised.student-quiz .topbar-actions { display:contents!important; }
   #runtime.runtime-ui-revised.student-quiz .topbar-actions>:not(#next-question) { display:none!important; }
   #runtime.runtime-ui-revised #next-question { position:fixed!important; top:auto; right:auto; left:calc(50% - 36px); bottom:calc(var(--gui-console-current-height,110px) + 32px + env(safe-area-inset-bottom)); transform:translateX(-50%)!important; min-height:52px; max-width:calc(100vw - 110px); width:max-content; padding:10px 16px!important; font-size:20px; outline:0; z-index:52; }
+  #runtime.runtime-ui-revised.student-quiz .gui-choice-dock { bottom:calc(var(--gui-console-current-height,110px) + 32px + 52px + 14px + env(safe-area-inset-bottom)); }
   #runtime.runtime-ui-revised .gui-control-dock { top:200px; bottom:calc(var(--gui-console-current-height,110px) + 32px); left:0; right:0; display:flex; flex-direction:column; justify-content:safe flex-end; align-items:flex-end; overflow-y:auto; overflow-x:hidden; pointer-events:none; }
   #runtime.runtime-ui-revised .gui-control button:not(:has(img)) span { display:block; font-size:10px; white-space:normal; line-height:1.2; }
   #runtime.runtime-ui-revised .gui-control-dock[hidden] { display:none; }
@@ -9372,7 +9446,7 @@ button.is-ui-pressed {
     min-height:68px;
     max-height:68px;
   }
-  #runtime.runtime-ui-revised .gui-answer { top:calc(88px + 78px + var(--gui-answer-gap,6px)); width:min(var(--gui-answer-width,500px),92vw); min-height:40px; padding:5px 12px; }
+  #runtime.runtime-ui-revised .gui-answer { top:calc(88px + 78px + var(--gui-answer-gap,6px)); width:min(500px,92vw); min-height:40px; padding:5px 12px; }
   #runtime.runtime-ui-revised .lesson-question-ui.is-multiline-question + .gui-answer { top:calc(88px + 106px + var(--gui-answer-gap,6px)); }
   .gui-answer-icon { width:28px; height:28px; }
   .gui-answer-copy p { font-size:13px; }
@@ -9520,16 +9594,15 @@ button.is-ui-pressed {
   position:absolute;
   right:auto;
   bottom:auto;
-  animation:none!important;
 }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-01 { top:292px; left:-75px; width:30px; }
-#runtime.runtime-ui-revised .result-confetti .result-confetti-02 { top:18px; right:-34px; left:auto; width:34px; }
-#runtime.runtime-ui-revised .result-confetti .result-confetti-03 { top:402px; left:-42px; width:38px; }
+#runtime.runtime-ui-revised .result-confetti .result-confetti-02 { top:-5px; right:32px; left:auto; width:34px; }
+#runtime.runtime-ui-revised .result-confetti .result-confetti-03 { top:402px; left:15px; width:24px; }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-04 { top:264px; right:-46px; left:auto; width:34px; }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-05 { top:520px; left:-32px; width:32px; }
-#runtime.runtime-ui-revised .result-confetti .result-confetti-06 { top:390px; right:-38px; left:auto; width:30px; }
-#runtime.runtime-ui-revised .result-confetti .result-confetti-07 { top:-52px; left:264px; width:25px; }
-#runtime.runtime-ui-revised .result-confetti .result-confetti-08 { top:-48px; right:72px; left:auto; width:28px; }
+#runtime.runtime-ui-revised .result-confetti .result-confetti-06 { top:390px; right:-7px; left:auto; width:33px; }
+#runtime.runtime-ui-revised .result-confetti .result-confetti-07 { top:-52px; left:197px; width:40px; }
+#runtime.runtime-ui-revised .result-confetti .result-confetti-08 { top:-54px; right:304px; left:auto; width:28px; }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-09 { top:138px; right:-49px; left:auto; width:31px; }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-10 { top:214px; left:-46px; width:29px; }
 #runtime.runtime-ui-revised .result-confetti .result-confetti-11 { right:-35px; bottom:76px; top:auto; left:auto; width:34px; }
@@ -9597,14 +9670,14 @@ button.is-ui-pressed {
 }
 #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score strong {
   margin-left:0;
-  font-size:27px;
+  font-size:29px;
 }
 #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score small {
   margin-left:5px;
   color:#4f123b;
   font-size:22px;
   font-weight:850;
-  opacity:.8;
+  opacity:.55;
 }
 #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions .primary {
   box-shadow:
@@ -9718,4 +9791,855 @@ button.is-ui-pressed {
   #runtime.runtime-ui-revised .result-score-stars { top:164px; left:62%; }
   #runtime.runtime-ui-revised .result-island { bottom:-63px; width:105%; }
   #runtime.runtime-ui-revised .result-polished::before { top:58px; right:0; bottom:48px; left:0; }
+}
+
+/* Curved summary copy follows the two illustrated sign silhouettes. The
+   praise baseline rises 60/500 viewBox units at its centre; the small label
+   rises 26/220 units. Both SVG boxes are clipped to their own sign area. */
+#runtime.runtime-ui-revised .result-label { top:-56px; }
+#runtime.runtime-ui-revised .result-kicker {
+  top:-39px;
+  width:202px;
+  height:52px;
+  overflow:hidden;
+  font-size:16px;
+}
+#runtime.runtime-ui-revised .result-kicker svg,
+#runtime.runtime-ui-revised .result-polished .result-celebration>h2 svg {
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+#runtime.runtime-ui-revised .result-kicker svg>path,
+#runtime.runtime-ui-revised .result-polished .result-celebration>h2 svg>path {
+  fill:none;
+  stroke:none;
+}
+#runtime.runtime-ui-revised .result-kicker text,
+#runtime.runtime-ui-revised .result-polished .result-celebration>h2 text {
+  text-anchor:middle;
+  font-family:inherit;
+  font-weight:inherit;
+}
+#runtime.runtime-ui-revised .result-kicker text {
+  fill:#54203f;
+  font-size:18px;
+}
+#runtime.runtime-ui-revised .result-polished .result-celebration>h2 {
+  top:12px;
+  height:76px;
+  overflow:hidden;
+  line-height:1;
+  -webkit-text-stroke:0;
+}
+#runtime.runtime-ui-revised .result-polished .result-celebration>h2 text {
+  fill:#fff6dc;
+  stroke:#54203f;
+  stroke-width:7px;
+  paint-order:stroke fill;
+  font-size:39px;
+}
+
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-label { top:3px; }
+  #runtime.runtime-ui-revised .result-kicker {
+    top:6px;
+    width:120px;
+    height:40px;
+  }
+  #runtime.runtime-ui-revised .result-kicker text { font-size:21px; }
+  #runtime.runtime-ui-revised .result-polished .result-celebration>h2 {
+    top:45px;
+    height:64px;
+  }
+  #runtime.runtime-ui-revised .result-polished .result-celebration>h2 text {
+    font-size:48px;
+    stroke-width:6px;
+  }
+}
+
+/* Bind each curved caption to its illustrated sign so both pieces share one
+   coordinate system and scale together at every responsive ratio. */
+#runtime.runtime-ui-revised .result-heading-lockup,
+#runtime.runtime-ui-revised .result-label-lockup {
+  position:absolute;
+  left:var(--summary-heading-x);
+  transform:translateX(-50%);
+}
+#runtime.runtime-ui-revised .result-heading-lockup {
+  z-index:1;
+  top:-58px;
+  width:var(--summary-heading-width);
+}
+#runtime.runtime-ui-revised .result-label-lockup {
+  z-index:3;
+  top:-56px;
+  left:var(--summary-label-x);
+  width:202px;
+}
+#runtime.runtime-ui-revised .result-heading-lockup .result-ribbon,
+#runtime.runtime-ui-revised .result-label-lockup .result-label {
+  position:relative;
+  inset:auto;
+  display:block;
+  width:100%;
+  transform:none;
+}
+#runtime.runtime-ui-revised .result-heading-lockup>h2 {
+  position:absolute;
+  z-index:4;
+  top:70px;
+  left:0;
+  width:100%;
+  height:76px;
+  margin:0;
+  overflow:hidden;
+  transform:none;
+  color:#fff6dc;
+  font-weight:950;
+  line-height:1;
+  text-align:center;
+  white-space:nowrap;
+}
+#runtime.runtime-ui-revised .result-heading-lockup>h2 svg {
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+#runtime.runtime-ui-revised .result-heading-lockup>h2 svg>path {
+  fill:none;
+  stroke:none;
+}
+#runtime.runtime-ui-revised .result-heading-lockup>h2 text {
+  fill:#fff6dc;
+  stroke:#54203f;
+  stroke-width:7px;
+  paint-order:stroke fill;
+  text-anchor:middle;
+  font-family:inherit;
+  font-size:39px;
+  font-weight:inherit;
+}
+#runtime.runtime-ui-revised .result-label-lockup .result-kicker {
+  position:absolute;
+  z-index:4;
+  top:14px;
+  left:0;
+  width:100%;
+  height:52px;
+  transform:none;
+}
+
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-heading-lockup {
+    top:-6px;
+    width:var(--summary-heading-width);
+  }
+  #runtime.runtime-ui-revised .result-heading-lockup>h2 {
+    top:39px;
+    height:64px;
+  }
+  #runtime.runtime-ui-revised .result-heading-lockup>h2 text {
+    font-size:48px;
+    stroke-width:6px;
+  }
+  #runtime.runtime-ui-revised .result-label-lockup {
+    top:-6px;
+    width:126px;
+  }
+  #runtime.runtime-ui-revised .result-label-lockup .result-kicker {
+    top:3px;
+    height:40px;
+  }
+}
+
+/* Centre the result hierarchy and frame it with a mirrored pair of the small
+   island asset. The mascot sits behind the centred result group. */
+#runtime.runtime-ui-revised .result-celebration {
+  --summary-heading-x:50%;
+  --summary-label-x:50%;
+}
+#runtime.runtime-ui-revised .result-dino {
+  z-index:0;
+  top:-205px;
+  left:50%;
+  width:286px;
+  transform:translateX(-50%);
+}
+#runtime.runtime-ui-revised .result-shrub {
+  z-index:2;
+  bottom:-39px;
+  width:118px;
+}
+#runtime.runtime-ui-revised .result-shrub-right {
+  right:-8px;
+  left:auto;
+  transform:none;
+}
+#runtime.runtime-ui-revised .result-shrub-left {
+  right:auto;
+  left:-8px;
+  transform:scaleX(-1);
+}
+#runtime.runtime-ui-revised .result-metrics {
+  left:50%;
+  right:auto;
+  width:360px;
+  transform:translateX(-50%);
+}
+#runtime.runtime-ui-revised .result-score-stars { left:50%; }
+
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-dino {
+    z-index:0;
+    top:-159px;
+    left:50%;
+    width:224px;
+    transform:translateX(-50%);
+  }
+  #runtime.runtime-ui-revised .result-shrub {
+    bottom:-11px;
+    width:87px;
+  }
+  #runtime.runtime-ui-revised .result-shrub-right { right:-6px; }
+  #runtime.runtime-ui-revised .result-shrub-left { left:-6px; }
+  #runtime.runtime-ui-revised .result-metrics {
+    left:50%;
+    right:auto;
+    width:68%;
+  }
+  #runtime.runtime-ui-revised .result-score-stars { left:50%; }
+}
+
+/* Final clock sizing by responsive mode. */
+#runtime.runtime-ui-revised .result-time>i {
+  margin-right:8px;
+  font-size:34px;
+}
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-time>i { font-size:26px; }
+}
+
+/* Long quiz prompts grow the review instead of escaping its card. Because the
+   island and action area are anchored to the result container's bottom edge,
+   they follow the extra row height automatically. */
+#runtime.runtime-ui-revised .result-polished {
+  min-height:0;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li {
+  grid-template-columns:28px minmax(0,1fr)!important;
+  gap:10px!important;
+  min-height:44px!important;
+  height:auto!important;
+  padding:7px 11px!important;
+  border-radius:22px!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li>strong {
+  overflow:visible!important;
+  overflow-wrap:anywhere;
+  text-overflow:clip!important;
+  white-space:normal!important;
+}
+
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) {
+    translate:0 48px;
+  }
+  #runtime.runtime-ui-revised .result-heading-lockup>h2 text {
+    font-size:40px;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li {
+    grid-template-columns:25px minmax(0,1fr)!important;
+    gap:8px!important;
+    min-height:43px!important;
+    padding:7px 7px!important;
+    border-radius:20px!important;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li>strong {
+    font-size:10px!important;
+    line-height:1.25;
+  }
+}
+
+/* Final responsive fit for the complete summary composition. Keep one
+   transform on the card so every illustrated layer preserves its ratio. */
+@media (min-width:1200px) and (orientation:landscape) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) {
+    transform:translateY(34px) scale(.72);
+    transform-origin:center;
+  }
+}
+@media (min-width:761px) and (max-width:1199px) and (orientation:landscape) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) {
+    transform:translateY(26px) scale(.76);
+    transform-origin:center;
+  }
+}
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) {
+    translate:0 58px;
+    scale:.82;
+    transform-origin:center;
+  }
+}
+
+/* Leave vertical breathing room for Thai combining marks on the curved path.
+   Longer praise copy uses a narrower, lighter treatment and remains centred. */
+#runtime.runtime-ui-revised .result-heading-lockup>h2,
+#runtime.runtime-ui-revised .result-heading-lockup>h2 svg { overflow:visible; }
+#runtime.runtime-ui-revised .result-heading-lockup>h2 text {
+  transform:translateY(-3px);
+  transform-box:fill-box;
+  transform-origin:center;
+}
+#runtime.runtime-ui-revised .result-heading-lockup.is-long>h2 text,
+#runtime.runtime-ui-revised .result-heading-lockup>h2[aria-label="ทำครบแล้ว เก่งมาก!"] text {
+  font-size:41px;
+  font-weight:600;
+  stroke-width:4px;
+  transform:translateY(-5px) scaleX(.9);
+  transform-box:view-box;
+  transform-origin:50% 50%;
+}
+@media (max-width:1199px) {
+  #runtime.runtime-ui-revised .result-heading-lockup>h2 text { transform:translateY(-5px); }
+  #runtime.runtime-ui-revised .result-heading-lockup.is-long>h2 text,
+  #runtime.runtime-ui-revised .result-heading-lockup>h2[aria-label="ทำครบแล้ว เก่งมาก!"] text {
+    font-size:37px;
+    font-weight:600;
+    stroke-width:3.5px;
+    transform:translateY(-6px) scaleX(.86);
+  }
+}
+
+/* Put the cream sheet on a real foreground layer, then keep the mascot and
+   decorative islands immediately behind it. Other summary UI already uses
+   layers 2-10 and therefore remains above the sheet. */
+#runtime.runtime-ui-revised .result-polished::before {
+  z-index:1;
+}
+#runtime.runtime-ui-revised .result-celebration {
+  z-index:auto;
+}
+#runtime.runtime-ui-revised .result-heading-lockup {
+  z-index:2;
+}
+#runtime.runtime-ui-revised .result-dino {
+  z-index:0;
+}
+#runtime.runtime-ui-revised .result-shrub {
+  z-index:0;
+  bottom:118px;
+  width:141px;
+}
+#runtime.runtime-ui-revised .result-shrub-right {
+  right:-16px;
+  left:auto;
+}
+#runtime.runtime-ui-revised .result-shrub-left {
+  right:auto;
+  left:-16px;
+}
+
+/* Single centred score card. The elapsed-time card is intentionally removed
+   from the summary markup in both the runtime and standalone preview. */
+#runtime.runtime-ui-revised .result-metrics {
+  top:92px;
+  left:50%;
+  right:auto;
+  width:45%;
+  grid-template-columns:minmax(0,1fr);
+  transform:translateX(-50%);
+}
+#runtime.runtime-ui-revised .result-score strong,
+#runtime.runtime-ui-revised .result-score small {
+  -webkit-text-stroke:1.5px #fff;
+  paint-order:stroke fill;
+  text-shadow:
+    0 2px 0 rgb(112 55 82 / 28%),
+    0 4px 7px rgb(72 37 55 / 34%);
+}
+
+/* Stronger single-outline stars. The former light zero-offset drop shadow
+   looked like a second yellow star, so use one darker soft shadow instead. */
+#runtime.runtime-ui-revised .result-score-stars i {
+  filter:drop-shadow(0 4px 6px rgb(69 43 31 / 36%));
+}
+#runtime.runtime-ui-revised .result-score-stars i path {
+  stroke-width:5;
+}
+#runtime.runtime-ui-revised .result-score-stars i.earned {
+  filter:drop-shadow(0 5px 7px rgb(126 71 16 / 45%));
+}
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-score-stars {
+    top:154px;
+  }
+}
+
+/* Backward compatibility for cached/older runtime markup that still emits
+   the elapsed-time card. Keep only the centred score card. */
+#runtime.runtime-ui-revised .result-time {
+  display:none!important;
+}
+#runtime.runtime-ui-revised .result-score-stars {
+  top:162px;
+}
+#runtime.runtime-ui-revised .result-score-stars i path {
+  stroke-width:6.5;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score strong {
+  font-size:42px;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score small {
+  font-size:26px;
+}
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .result-score-stars {
+    top:146px;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score strong {
+    font-size:38px;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics .result-score small {
+    font-size:24px;
+  }
+}
+
+/* Desktop and tablet use a wider one-line review layout with more readable
+   prompts and breathing room after the result icon. */
+@media (min-width:761px) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) {
+    width:min(760px,calc(100vw - 48px));
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li {
+    grid-template-columns:32px minmax(0,1fr)!important;
+    gap:18px!important;
+    min-height:48px!important;
+    padding:7px 16px!important;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li>strong {
+    min-width:0;
+    overflow:hidden!important;
+    overflow-wrap:normal;
+    font-size:15px!important;
+    line-height:1.25;
+    text-overflow:clip!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media (max-width:760px) {
+  #runtime.runtime-ui-revised .result-score-stars {
+    top:155px;
+  }
+}
+
+/* Keep the long praise caption centred and fully inside its ribbon on tablet
+   and phone widths. The extra horizontal compression also accommodates old
+   cached markup that still carries an SVG textLength value. */
+@media (max-width:1199px) {
+  #runtime.runtime-ui-revised .result-heading-lockup>h2,
+  #runtime.runtime-ui-revised .result-heading-lockup>h2 svg {
+    width:100%;
+    overflow:visible;
+  }
+  #runtime.runtime-ui-revised .result-heading-lockup.is-long>h2 text,
+  #runtime.runtime-ui-revised .result-heading-lockup>h2[aria-label="ทำครบแล้ว เก่งมาก!"] text {
+    font-size:37px;
+    font-weight:600;
+    letter-spacing:-.6px;
+    text-anchor:middle;
+    transform:translateY(-5px) scaleX(.84);
+    transform-box:view-box;
+    transform-origin:50% 50%;
+  }
+}
+@media (max-width:760px) {
+  #runtime.runtime-ui-revised .result-heading-lockup.is-long>h2 text,
+  #runtime.runtime-ui-revised .result-heading-lockup>h2[aria-label="ทำครบแล้ว เก่งมาก!"] text {
+    font-size:35px;
+    letter-spacing:-.8px;
+    transform:translateY(-5px) scaleX(.8);
+  }
+}
+
+/* Older cached summary markup used textLength=420. Compress only that legacy
+   variant so its last Thai glyph and exclamation mark cannot be clipped. */
+@media (max-width:1199px) {
+  #runtime.runtime-ui-revised .result-heading-lockup>h2:has(textPath[textLength]) text {
+    transform:translateY(-5px) scaleX(.7);
+  }
+}
+
+/* Keep the original Summary action styling, with a slightly stronger edge. */
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions .primary {
+  border-width:2px!important;
+}
+
+/* Give the Summary confirmation action more visual weight and a little more
+   breathing room below the floating island on every viewport. */
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions {
+  margin-top:-54px!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions .primary {
+  min-width:280px;
+  min-height:58px;
+  border-radius:25px;
+  font-size:24px;
+}
+
+/* Desktop review copy and compact title-tab proportions. */
+@media (min-width:1200px) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-list li>strong {
+    font-size:16px!important;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-title {
+    top:-32px;
+    left:18px;
+    width:max-content;
+    min-width:0;
+    min-height:42px;
+    padding:5px 17px 5px 9px;
+    border-radius:18px;
+  }
+}
+
+@media (max-width:760px),(orientation:portrait) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-title {
+    top:-23px;
+    left:9px;
+    min-height:34px;
+    padding:3px 13px 3px 7px;
+    gap:6px;
+    border-radius:15px;
+    font-size:11px;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished .review-title img {
+    width:27px;
+    height:27px;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions {
+    margin-top:-48px!important;
+  }
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions .primary {
+    min-width:220px;
+    min-height:52px;
+    border-radius:23px;
+    font-size:21px;
+  }
+}
+
+/* Summary reveal sequence -------------------------------------------------
+   1. sheet + islands + mascot, 2. heading signs, 3. score + star wave,
+   4. review content + action. Decorative pieces burst with the score. */
+@keyframes summary-bouncy-reveal {
+  0% { opacity:0; scale:.68; }
+  62% { opacity:1; scale:1.055; }
+  82% { scale:.975; }
+  100% { opacity:1; scale:1; }
+}
+@keyframes summary-sheet-reveal {
+  0% { opacity:0; scale:.78 .7; }
+  64% { opacity:1; scale:1.025 1.035; }
+  84% { scale:.99 .985; }
+  100% { opacity:1; scale:1; }
+}
+@keyframes summary-row-reveal {
+  0% { opacity:0; translate:0 10px; scale:.94; }
+  68% { opacity:1; translate:0 -2px; scale:1.018; }
+  100% { opacity:1; translate:0 0; scale:1; }
+}
+@keyframes summary-dino-idle {
+  0%,100% { translate:0 0; scale:1; }
+  50% { translate:0 -4px; scale:1.025; }
+}
+@keyframes summary-earned-star-idle {
+  0%,18%,100% { transform:scale(1); }
+  8% { transform:scale(1.1); }
+  13% { transform:scale(.98); }
+}
+@keyframes summary-confetti-scatter {
+  0% {
+    opacity:0;
+    transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(.08);
+  }
+  7% {
+    opacity:1;
+    transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(.78);
+  }
+  58% {
+    opacity:1;
+    transform:translate(-50%,-50%) translate(var(--scatter-mid-x),var(--scatter-mid-y)) rotate(var(--scatter-mid-spin)) scale(1.05);
+  }
+  100% {
+    opacity:0;
+    transform:translate(-50%,-50%) translate(var(--scatter-x),var(--scatter-y)) rotate(var(--scatter-spin)) scale(.48);
+  }
+}
+
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished::before {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-sheet-reveal .58s cubic-bezier(.2,.82,.24,1.22) .02s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-island,
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-shrub {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .58s cubic-bezier(.18,.86,.24,1.24) .04s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-dino {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:
+    summary-bouncy-reveal .6s cubic-bezier(.18,.86,.24,1.24) .05s both,
+    summary-dino-idle 3.2s ease-in-out .9s infinite!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-heading-lockup {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .5s cubic-bezier(.16,.9,.24,1.3) .52s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-label-lockup {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .44s cubic-bezier(.16,.9,.24,1.3) .66s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-metrics {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .44s cubic-bezier(.16,.9,.24,1.3) .82s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .34s cubic-bezier(.14,.9,.22,1.36) both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i:nth-child(1) { animation-delay:.96s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i:nth-child(2) { animation-delay:1.04s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i:nth-child(3) { animation-delay:1.12s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i:nth-child(4) { animation-delay:1.2s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i:nth-child(5) { animation-delay:1.28s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i.earned svg {
+  transform-origin:center;
+  animation:summary-earned-star-idle 2s ease-in-out 2.15s infinite!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i.earned:nth-child(2) svg { animation-delay:2.25s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i.earned:nth-child(3) svg { animation-delay:2.35s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i.earned:nth-child(4) svg { animation-delay:2.45s!important; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-score-stars i.earned:nth-child(5) svg { animation-delay:2.55s!important; }
+
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-review-panel {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .5s cubic-bezier(.18,.86,.24,1.24) 1.38s both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .review-list li {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-row-reveal .34s cubic-bezier(.18,.82,.24,1.18) calc(1.5s + var(--result-index) * .065s) both!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions {
+  transform-origin:center center!important;
+  transform-box:border-box;
+  animation:summary-bouncy-reveal .42s cubic-bezier(.16,.9,.24,1.28) 1.86s both!important;
+}
+
+/* Decorative assets keep their approved composition positions and only drift
+   gently in place. Alternating paths keep the group from moving in lockstep. */
+@keyframes summary-confetti-hover-a {
+  from { opacity:1; transform:translateY(-3px) rotate(-2deg); }
+  to { opacity:1; transform:translateY(5px) rotate(2deg); }
+}
+@keyframes summary-confetti-hover-b {
+  from { opacity:1; transform:translateY(4px) rotate(2deg); }
+  to { opacity:1; transform:translateY(-4px) rotate(-2deg); }
+}
+@keyframes summary-confetti-pop {
+  0% { opacity:0; scale:.18; }
+  62% { opacity:1; scale:1.16; }
+  82% { opacity:1; scale:.94; }
+  100% { opacity:1; scale:1; }
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti {
+  z-index:9;
+  overflow:visible;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item {
+  --pop-delay:.08s;
+  opacity:0;
+  scale:.18;
+  transform-origin:center center;
+  pointer-events:none;
+  will-change:transform,scale,opacity;
+  animation:
+    summary-confetti-pop .48s cubic-bezier(.16,.86,.24,1.28) var(--pop-delay) both,
+    summary-confetti-hover-a 3.2s ease-in-out calc(var(--pop-delay) + .48s) infinite alternate!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(even) {
+  animation-name:summary-confetti-pop,summary-confetti-hover-b!important;
+  animation-duration:.48s,3.7s!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(3n) {
+  animation-duration:.48s,4.1s!important;
+}
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(1) { --pop-delay:.18s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(2) { --pop-delay:.05s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(3) { --pop-delay:.31s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(4) { --pop-delay:.12s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(5) { --pop-delay:.38s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(6) { --pop-delay:.22s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(7) { --pop-delay:.08s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(8) { --pop-delay:.28s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(9) { --pop-delay:.15s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(10) { --pop-delay:.34s; }
+#runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-confetti-item:nth-child(11) { --pop-delay:.25s; }
+
+@media (prefers-reduced-motion:reduce) {
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished::before,
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .result-polished *,
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions,
+  #runtime.runtime-ui-revised .modal-card:has(.result-polished) .modal-actions * {
+    animation:none!important;
+    opacity:1;
+    scale:1;
+    translate:0 0;
+  }
+}
+.runtime-scene-time { display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; padding:8px 10px; border:1px solid #d8c9a4; border-radius:14px; background:#fff9e9; }
+.runtime-scene-time>span { margin-right:auto; color:#513547; font-weight:800; }
+.runtime-scene-time>span small { display:block; color:#9a7359; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.runtime-scene-time button { min-height:36px; padding:6px 12px; border:1px solid #ccb983; border-radius:10px; color:#56344a; background:#fffdf6; font-weight:800; cursor:pointer; }
+.runtime-scene-time button.is-active { color:#fff; border-color:#69415f; background:#69415f; box-shadow:0 0 0 2px #ecd49d; }
+
+/* Final result-motion overrides: keep these after all legacy summary locks. */
+#runtime.runtime-ui-revised .modal-layer.is-result-sequence .modal-card:has(.result-polished) {
+  z-index:1;
+  opacity:0;
+  transform:translate3d(0,0,0) scale(.82);
+  transform-origin:center center!important;
+  animation:none!important;
+  will-change:transform,opacity;
+}
+#runtime.runtime-ui-revised .modal-layer.is-result-sequence.is-result-popup-visible .modal-card:has(.result-polished) {
+  animation:summary-popup-center-reveal .64s cubic-bezier(.16,1,.3,1) both!important;
+}
+@keyframes summary-popup-center-reveal {
+  0% { opacity:0; transform:translate3d(0,0,0) scale(.82); }
+  72% { opacity:1; transform:translate3d(0,0,0) scale(1.018); }
+  100% { opacity:1; transform:translate3d(0,0,0) scale(1); }
+}
+@keyframes summary-bouncy-reveal {
+  0% { opacity:0; scale:.78; }
+  72% { opacity:1; scale:1.018; }
+  100% { opacity:1; scale:1; }
+}
+@keyframes summary-sheet-reveal {
+  0% { opacity:0; scale:.86 .82; }
+  72% { opacity:1; scale:1.012 1.018; }
+  100% { opacity:1; scale:1; }
+}
+@keyframes summary-row-reveal {
+  0% { opacity:0; translate:0 8px; scale:.97; }
+  72% { opacity:1; translate:0 -1px; scale:1.008; }
+  100% { opacity:1; translate:0 0; scale:1; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #runtime.runtime-ui-revised .modal-layer.is-result-sequence.is-result-popup-visible .modal-card:has(.result-polished) {
+    opacity:1;
+    transform:none;
+    animation:none!important;
+  }
+}
+
+/* Image mascot motion layer. State changes stay renderer-agnostic so a Rive
+   artboard can replace these poses later without changing lesson behavior. */
+.mascot-guide[data-motion-renderer="image"].is-stationary .mascot-character {
+  contain:layout paint style;
+  transform-origin:50% 94%;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary .mascot-pose {
+  transform:translate3d(0,5px,0) scale(.975);
+  transform-origin:50% 88%;
+  transition:opacity 150ms ease-out,transform 300ms cubic-bezier(.16,.82,.28,1),filter 300ms ease-out!important;
+  filter:saturate(.94);
+  backface-visibility:hidden;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="idle"] .mascot-pose-idle,
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="speaking"] .mascot-pose-speaking,
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="instruction"] .mascot-pose-fly-up,
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="hint"] .mascot-pose-fly-mid,
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="celebrate"] .mascot-pose-fly-down {
+  transform:translate3d(0,0,0) scale(1);
+  filter:saturate(1);
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="idle"] .mascot-character {
+  animation:mascot-idle-living 4.8s cubic-bezier(.42,0,.24,1) infinite;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="speaking"] .mascot-character {
+  animation:mascot-speaking-living 1.15s ease-in-out infinite;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="instruction"] .mascot-character {
+  animation:mascot-pointing-living 2.4s cubic-bezier(.42,0,.3,1) infinite;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="hint"] .mascot-character {
+  animation:mascot-thinking-living 3.6s ease-in-out infinite;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary[data-pose="celebrate"] .mascot-character {
+  animation:mascot-celebrate-living 1.35s cubic-bezier(.35,0,.25,1) infinite;
+}
+.mascot-guide[data-motion-renderer="image"].is-stationary .mascot-character.is-pose-entering {
+  animation:mascot-pose-enter 360ms cubic-bezier(.16,.86,.2,1.16) both;
+  will-change:transform;
+}
+.mascot-guide.is-animation-paused .mascot-character,
+.mascot-guide.is-animation-paused .mascot-pose,
+.mascot-guide.is-animation-paused .mascot-particles>* {
+  animation-play-state:paused!important;
+}
+@keyframes mascot-pose-enter {
+  0% { transform:translate3d(0,7px,0) scale(.965,1.025); }
+  62% { transform:translate3d(0,-3px,0) scale(1.012,.992); }
+  100% { transform:translate3d(0,0,0) scale(1); }
+}
+@keyframes mascot-idle-living {
+  0%,100% { transform:translate3d(0,0,0) rotate(0) scale(1); }
+  18% { transform:translate3d(0,-1px,0) rotate(-.25deg) scale(1.004,.998); }
+  48% { transform:translate3d(0,-3px,0) rotate(.3deg) scale(1.012,.99); }
+  72% { transform:translate3d(0,-1px,0) rotate(.08deg) scale(1.004,.997); }
+}
+@keyframes mascot-speaking-living {
+  0%,100% { transform:translate3d(0,0,0) rotate(-.45deg) scale(1); }
+  24% { transform:translate3d(-1px,-6px,0) rotate(1.1deg) scale(1.014,.986); }
+  50% { transform:translate3d(1px,-2px,0) rotate(-.55deg) scale(.994,1.012); }
+  76% { transform:translate3d(0,-5px,0) rotate(.75deg) scale(1.01,.99); }
+}
+@keyframes mascot-pointing-living {
+  0%,100% { transform:translate3d(0,0,0) rotate(0) scale(1); }
+  14% { transform:translate3d(-2px,3px,0) rotate(-1.2deg) scale(.99,1.014); }
+  32% { transform:translate3d(2px,-8px,0) rotate(2deg) scale(1.018,.982); }
+  54% { transform:translate3d(0,-2px,0) rotate(.45deg) scale(1.004); }
+}
+@keyframes mascot-thinking-living {
+  0%,100% { transform:translate3d(-1px,1px,0) rotate(-.9deg) scale(1); }
+  36% { transform:translate3d(2px,-6px,0) rotate(1.25deg) scale(1.01,.99); }
+  62% { transform:translate3d(1px,-4px,0) rotate(.65deg) scale(1.006); }
+}
+@keyframes mascot-celebrate-living {
+  0%,100% { transform:translate3d(0,0,0) rotate(0) scale(1); }
+  14% { transform:translate3d(0,5px,0) rotate(-1.5deg) scale(1.035,.95); }
+  36% { transform:translate3d(0,-16px,0) rotate(2.2deg) scale(.975,1.04); }
+  60% { transform:translate3d(0,-6px,0) rotate(-.8deg) scale(1.014,.988); }
+  78% { transform:translate3d(0,2px,0) rotate(.4deg) scale(1.012,.976); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .mascot-guide[data-motion-renderer="image"].is-stationary .mascot-character,
+  .mascot-guide[data-motion-renderer="image"].is-stationary .mascot-pose {
+    animation:none!important;
+    transition:opacity 1ms linear!important;
+    transform:none!important;
+  }
 }

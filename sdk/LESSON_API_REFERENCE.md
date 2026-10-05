@@ -249,8 +249,8 @@ meta: {
 - `context.mode` — `teacher-lab`, `student-lab` หรือ `student-quiz`
 - `context.language` — ภาษาจากเว็บหลัก
 - `context.lessonData` — ข้อมูลบทเรียนที่ Runtime resolve แล้ว: โดยปกติใช้ `title`/`name`, `category`, `subcategory` ที่เว็บหลักส่งมาเมื่อไม่ว่าง แล้ว fallback จาก lesson meta; หาก `mainWorldSetting.overrideTitleName` เป็น `true` จะใช้ `meta.title`, `meta.category`, `meta.subcategory` ก่อนเสมอ
-- `context.objectiveAction()` — แจ้ง attempt ที่ตั้งใจให้ผู้เรียนไปต่อได้ แต่ยังไม่เปลี่ยน state คำตอบ เช่น invalid drop หรือการกดข้าม; ไม่ต้องเรียกซ้ำหลัง `quiz.answer`
-- `context.quiz.answer(correct, details)` — อัปเดตคำตอบ Quiz ล่าสุดและเปิดปุ่มไปต่ออัตโนมัติหลังข้อพร้อมใช้งาน; ห้ามเรียกจาก `reset()` และคำสั่งระหว่างเตรียมข้อจะถูก Runtime ปฏิเสธ
+- `context.objectiveAction()` — แจ้งการลงมือประกอบ แต่ไม่สร้างคำตอบและไม่เปิดปุ่มไปต่อเมื่อยังไม่มี pending answer; ไม่ต้องเรียกซ้ำหลัง `quiz.answer`
+- `context.quiz.answer(correct, details)` — อัปเดต pending answer ล่าสุดและเปิดปุ่มไปต่อหลังข้อพร้อมใช้งาน; `details.hasAnswer === false` ใช้ล้างคำตอบและซ่อนปุ่มไปต่อ ห้ามเรียกจาก `reset()` และคำสั่งระหว่างเตรียมข้อจะถูก Runtime ปฏิเสธ
 - `context.complete(result)` — จบบทเรียนและส่ง result กลับ host
 - `context.root` — root ที่ runtime จัดให้; World lesson ไม่ควรสร้าง UI กลางลงไป
 
@@ -485,8 +485,11 @@ Handle ที่ `add...` คืนมามี:
 - `setScale(x, y?, z?)`
 - `animateTo(x, y, z, { duration, delay, arcHeight })`
 - `stopAnimation()`
-- `playCommit()`
+- `playCommit({ spark? })`
+- `setHighlighted(value)` — เปิด/ปิด highlight ผ่าน handle
 - `setColor(color)`
+- `setWash(color, amount)` — แต้มสีทับวัสดุโดยไม่แก้ mesh ภายใน
+- `setOpacity(opacity)` — ตั้งความโปร่งใสของวัตถุ
 - `setVisible(value)`
 - `setDraggable(value)`
 - `setClickable(value)`
@@ -635,7 +638,7 @@ context.complete({ score: 1, total: 1 });
 
 `details` ต้องเป็นข้อมูล plain object ที่ serialize ได้ และควรเพียงพอให้ host แสดงเฉลยภายหลัง
 
-ทุกการเรียก `context.quiz.answer(...)` ที่ Runtime รับได้ถือว่าเป็นการตอบแล้ว ปุ่มของระบบต้องเปลี่ยนเป็น “ต่อไป” และในข้อสุดท้ายเป็น “ส่งคำตอบ” โดยไม่ขึ้นกับค่า `correct` บทเรียนห้ามสร้างปุ่มเหล่านี้เองหรือบังคับให้ตอบถูกก่อน
+การเรียก `context.quiz.answer(...)` ที่ Runtime รับได้จะเก็บเป็น pending answer; ปุ่มของระบบเปิดให้ไปต่อเมื่อ `hasAnswer !== false` โดยไม่ขึ้นกับค่า `correct` และบันทึก/ให้คะแนนเมื่อกดยืนยันหรือไปข้อถัดไปเท่านั้น ถ้าผู้เรียนล้างคำตอบให้เรียก `context.quiz.answer(false, { hasAnswer: false })` เพื่อซ่อนปุ่ม ห้ามสร้างปุ่มไปต่อเองหรือบังคับให้ตอบถูกก่อน
 
 
 

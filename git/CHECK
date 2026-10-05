@@ -13,7 +13,7 @@
 2. `PuzzleLesson.define(...)`, id, version, meta และ lifecycle
 3. ทุก `this.method()` และ Public API ต้องมีอยู่จริง
 4. Teacher Tools, default values และค่าที่ส่งเข้า `reset()` ต้องตรงกัน
-5. Lab/Quiz, drag-drop, reset, retry และคำตอบทุกกรณี
+5. Lab/Quiz, drag-drop, reset, retry และคำตอบทุกกรณี; Quiz ต้องเก็บ pending answer หลังผู้เรียนลงมือ ล้างด้วย `hasAnswer: false` ได้ และไม่เฉลยก่อนยืนยัน
 6. timer, animation, listener และ object ต้อง cleanup ได้
 7. GUI Service, World GUI, Callout และ Asset ID ต้องอ้างของที่มีจริง
 8. mobile, hit area, contrast, ข้อความล้น และ accessibility
