@@ -88,6 +88,10 @@ meta: {
   description: "คำอธิบายสั้น",
   keyResult: "ผลลัพธ์การเรียนรู้",
   background: "green",
+  presentation: {
+    mascot: { enabled: true },
+    environment: { preset: "day" }
+  },
   camera: { /* camera preset */ },
   welcomeMessage: ["ข้อความสั้น"],
   tooltip: "คำแนะนำการควบคุม",
@@ -102,6 +106,9 @@ meta: {
 - `meta.title`, `meta.category` และ `meta.subcategory` ต้องเป็นข้อความที่ไม่ว่าง เพื่อเป็นค่าแสดงผลสำรองของบทเรียน
 - `worldType` สำหรับบทเรียนนี้ต้องเป็น `3d-world-space`
 - `background` ใช้ค่า `"green"` เท่านั้น ฉากเป็นระบบกลางและบทเรียนไม่กำหนดสี Grid เอง
+- `presentation` ไม่บังคับ: `mascot.enabled` ต้องเป็น boolean และ `environment.preset` ต้องเป็น `standard`, `day` หรือ `night`
+- `mascot.enabled: false` ซ่อนตัว Mascot และ Mascot หน้าสรุป แต่ไม่ตัดข้อความสอนจาก `howto[].option`; Runtime แสดงข้อความนั้นเป็นกล่องคำแนะนำแทน
+- `environment.preset: "standard"` เลือกฉากเรียบเป็นค่าเริ่มต้น ผู้เรียนยังเปลี่ยนฉากจากเมนูกล้องได้ ถ้าไม่กำหนด Runtime ใช้ค่าฉากที่ผู้ใช้บันทึกไว้
 - key ใน `defaultValue`, `editSchema`, quiz `data` และ logic ใน reset ต้องตรงกัน
 - Teacher Tools ทุก field ต้องถูกใช้จริง ห้ามมี control ที่แก้แล้วไม่เกิดผล
 - `camera.target` ใช้จัด pivot/framing ของบทเรียน และต้องทดสอบบนจอแนวตั้ง

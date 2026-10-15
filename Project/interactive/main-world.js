@@ -14,6 +14,7 @@ const operatorSignMasterTools = await import(`./operator-sign-master.js?v=${enco
 const quizProtectionTools = await import(`./quiz-protection.js?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const mascotMotionTools = await import(`./mascot-motion-controller.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const {DEBUG_SCENE_TIME_PRESETS,normalizeDebugSceneTime}=await import(`./debug-scene-time.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
+const {normalizeLessonPresentation}=await import(`./lesson-presentation.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
 const { OPERATOR_SIGN_MASTER, operatorSignMasterFor, operatorFullTurnEnd } = operatorSignMasterTools;
 const runtimeSettingBaseline = runtimeSettingTools.applyStoredRuntimeSetting(setting);
 // ใช้ token เดียวตลอดอายุของ runtime เพื่อไม่ให้ asset เดียวกันถูกดาวน์โหลดซ้ำในหน้าเดียว
@@ -291,8 +292,8 @@ function setResultWorldPaused(paused) {
   const changed = runtime.resultWorldPaused !== Boolean(paused);
   runtime.resultWorldPaused = Boolean(paused);
   if (changed) {
-    mascotHybrid?.pause(runtime.resultWorldPaused);
-    mascotMotion.setPaused(runtime.resultWorldPaused);
+    mascotHybrid?.pause(runtime.resultWorldPaused || !isLessonMascotEnabled());
+    mascotMotion.setPaused(runtime.resultWorldPaused || !isLessonMascotEnabled());
   }
   elements.runtime.classList.toggle("result-world-paused", runtime.resultWorldPaused);
   if (!runtime.resultWorldPaused) markSceneActive();
@@ -2387,7 +2388,7 @@ renderer.setAnimationLoop(now => {
 
 // ---------- Lesson schema, UI and lifecycle ----------
 const displayText = value => typeof value === "string" ? value.trim() : "";
-function normalizeMeta(raw, lessonData) { const meta = { ...raw }; meta.worldType = meta.worldType || "3d-world-space"; meta.lessonId = meta.lessonId || lessonData.Id; meta.title = displayText(meta.title); meta.category = displayText(meta.category); meta.subcategory = displayText(meta.subcategory); meta.background = "green"; meta.description = meta.description || lessonData.description || lessonData.desc || ""; meta.keyResult = meta.keyResult || ""; meta.welcomeMessage = Array.isArray(meta.welcomeMessage) ? meta.welcomeMessage : []; meta.howto = Array.isArray(meta.howto) ? [...meta.howto].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)) : []; meta.defaultValue = { ...(meta.defaultValue || {}) }; meta.editSchema = Array.isArray(meta.editSchema) ? meta.editSchema : []; meta.quiz = Array.isArray(meta.quiz) ? meta.quiz : []; if (!["3d-world-space", "webPage"].includes(meta.worldType)) throw new Error(`lesson_meta.worldType ไม่รองรับค่า ${meta.worldType}`); if (!meta.lessonId) throw new Error("lesson_meta.lessonId จำเป็นต้องมีค่า"); return meta; }
+function normalizeMeta(raw, lessonData) { const meta = { ...raw }; meta.worldType = meta.worldType || "3d-world-space"; meta.lessonId = meta.lessonId || lessonData.Id; meta.title = displayText(meta.title); meta.category = displayText(meta.category); meta.subcategory = displayText(meta.subcategory); meta.background = "green"; meta.presentation = normalizeLessonPresentation(meta.presentation); meta.description = meta.description || lessonData.description || lessonData.desc || ""; meta.keyResult = meta.keyResult || ""; meta.welcomeMessage = Array.isArray(meta.welcomeMessage) ? meta.welcomeMessage : []; meta.howto = Array.isArray(meta.howto) ? [...meta.howto].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)) : []; meta.defaultValue = { ...(meta.defaultValue || {}) }; meta.editSchema = Array.isArray(meta.editSchema) ? meta.editSchema : []; meta.quiz = Array.isArray(meta.quiz) ? meta.quiz : []; if (!["3d-world-space", "webPage"].includes(meta.worldType)) throw new Error(`lesson_meta.worldType ไม่รองรับค่า ${meta.worldType}`); if (!meta.lessonId) throw new Error("lesson_meta.lessonId จำเป็นต้องมีค่า"); return meta; }
 function resolveLessonDisplayData(lessonData, meta) {
   const preferMeta = setting.overrideTitleName === true;
   const pick = (platformValue, lessonValue) => preferMeta
@@ -2583,6 +2584,7 @@ labToolsToggle.addEventListener("click", () => {
 });
 labCompactMedia.addEventListener("change", syncLabResponsiveUi);
 new MutationObserver(syncLabResponsiveUi).observe(elements.controlDock, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+function isLessonMascotEnabled() { return mascotSetting.enabled !== false && runtime.meta?.presentation?.mascot?.enabled !== false; }
 function applyRuntimeUi() {
   elements.runtime.className = `${runtime.mode} ${runtime.meta.worldType === "webPage" ? "web-page-mode" : ""}`;
   elements.runtime.classList.toggle("runtime-ui-revised", runtime.meta.worldType !== "webPage");
@@ -2600,10 +2602,13 @@ function applyRuntimeUi() {
   elements.howto.hidden = runtime.mode === "student-quiz" || !runtime.meta.howto.length;
   elements.quizPanel.hidden = runtime.mode !== "student-quiz";
   elements.mascot.hidden = runtime.meta.worldType === "webPage";
-  elements.mascot.classList.toggle("is-disabled", mascotSetting.enabled === false);
+  elements.mascot.classList.toggle("is-disabled", !isLessonMascotEnabled());
+  elements.mascotParticles.hidden = !isLessonMascotEnabled();
   elements.mascot.classList.toggle("is-stationary", mascotBehavior === "stationary");
   elements.mascot.dataset.character = activeMascotKey;
   elements.mascot.dataset.behavior = mascotBehavior;
+  mascotHybrid?.pause(!isLessonMascotEnabled());
+  mascotMotion.setPaused(!isLessonMascotEnabled());
   setMascotPose("idle");
   scheduleMascotBlink();
   requestAnimationFrame(syncConsoleDockHeight);
@@ -2630,11 +2635,11 @@ async function resetLessonScene(extra = {}) {
     syncLabResponsiveUi();
   }
 }
-function scheduleMascotBlink() { clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); if (mascotHybrid || elements.mascot.hidden || mascotSetting.enabled === false) return; const [minimum, maximum] = mascotSetting.idle?.blinkInterval || [2800, 5200], delay = minimum + Math.random() * Math.max(0, maximum - minimum); runtime.mascotBlinkTimer = setTimeout(() => { elements.mascotCharacter.classList.add("is-blinking"); runtime.mascotBlinkReleaseTimer = setTimeout(() => { elements.mascotCharacter.classList.remove("is-blinking"); scheduleMascotBlink(); }, mascotSetting.idle?.blinkDuration || 150); }, delay); }
+function scheduleMascotBlink() { clearTimeout(runtime.mascotBlinkTimer); clearTimeout(runtime.mascotBlinkReleaseTimer); if (mascotHybrid || elements.mascot.hidden || !isLessonMascotEnabled()) return; const [minimum, maximum] = mascotSetting.idle?.blinkInterval || [2800, 5200], delay = minimum + Math.random() * Math.max(0, maximum - minimum); runtime.mascotBlinkTimer = setTimeout(() => { elements.mascotCharacter.classList.add("is-blinking"); runtime.mascotBlinkReleaseTimer = setTimeout(() => { elements.mascotCharacter.classList.remove("is-blinking"); scheduleMascotBlink(); }, mascotSetting.idle?.blinkDuration || 150); }, delay); }
 function resetMascotTimers() { clearTimeout(runtime.optionCloseTimer); clearTimeout(runtime.mascotFlightTimer); clearTimeout(runtime.mascotLandingTimer); clearTimeout(runtime.mascotSpeechTimer); clearTimeout(runtime.mascotHintTimer); clearTimeout(runtime.mascotPoseTimer); }
 function setMascotPose(pose = "idle", options) { const nextPose = mascotBehavior === "stationary" ? pose : "idle"; return mascotMotion.setPose(nextPose, options); }
 async function playQuizMascotReaction() {
-  if (mascotBehavior !== "stationary" || runtime.mode !== "student-quiz") return;
+  if (!isLessonMascotEnabled() || mascotBehavior !== "stationary" || runtime.mode !== "student-quiz") return;
   // Moving to the next question is neutral: never imply a correct answer.
   elements.mascot.classList.remove("is-quiz-reacting");
   setMascotPose("idle");
@@ -2647,10 +2652,10 @@ async function playQuizMascotReaction() {
 }
 function hideMascotNotice() { elements.mascotNotice.hidden = true; elements.mascot.classList.remove("has-notice"); }
 function revealPendingMascotOption() { const option = runtime.pendingMascotOption; if (!option) return; runtime.pendingMascotOption = null; hideMascotNotice(); showStepOption(option); }
-function queueStepOption(option) { clearTimeout(runtime.mascotHintTimer); runtime.pendingMascotOption = null; hideMascotNotice(); if (!option) { showStepOption(null); return; } const messaging = mascotSetting.messaging || {}, type = option.type || (runtime.stepIndex === 0 ? messaging.firstMessageType || "instruction" : messaging.defaultType || "hint"), typedOption = { ...option, type }, compact = matchMedia("(max-width: 760px), (orientation: portrait)").matches; if (type === "feedback") { showStepOption(null); showToast(option.message || option.header || "ทำได้ดีมาก", "success"); return; } if (type === "instruction" || compact) { showStepOption(typedOption); return; } showStepOption(null); runtime.pendingMascotOption = typedOption; setMascotPose("hint"); elements.mascotNotice.setAttribute("aria-label", messaging.noticeLabel || "เปิดคำแนะนำใหม่"); elements.mascotNotice.hidden = false; elements.mascot.classList.add("has-notice"); if (type === "hint" && (messaging.hintAutoRevealAfter ?? 10000) > 0) runtime.mascotHintTimer = setTimeout(revealPendingMascotOption, messaging.hintAutoRevealAfter ?? 10000); }
+function queueStepOption(option) { clearTimeout(runtime.mascotHintTimer); runtime.pendingMascotOption = null; hideMascotNotice(); if (!option) { showStepOption(null); return; } const messaging = mascotSetting.messaging || {}, type = option.type || (runtime.stepIndex === 0 ? messaging.firstMessageType || "instruction" : messaging.defaultType || "hint"), typedOption = { ...option, type }, compact = matchMedia("(max-width: 760px), (orientation: portrait)").matches; if (type === "feedback") { showStepOption(null); showToast(option.message || option.header || "ทำได้ดีมาก", "success"); return; } if (!isLessonMascotEnabled() || type === "instruction" || compact) { showStepOption(typedOption); return; } showStepOption(null); runtime.pendingMascotOption = typedOption; setMascotPose("hint"); elements.mascotNotice.setAttribute("aria-label", messaging.noticeLabel || "เปิดคำแนะนำใหม่"); elements.mascotNotice.hidden = false; elements.mascot.classList.add("has-notice"); if (type === "hint" && (messaging.hintAutoRevealAfter ?? 10000) > 0) runtime.mascotHintTimer = setTimeout(revealPendingMascotOption, messaging.hintAutoRevealAfter ?? 10000); }
 function showStepOption(option) {
   resetMascotTimers(); hideMascotNotice(); elements.stepOption.classList.remove("is-opening", "is-closing");
-  const enabled = mascotSetting.enabled !== false, wasSpeaking = elements.mascot.classList.contains("is-speaking"), flyInDuration = mascotSetting.animation?.flyInDuration || 560, messageDelay = Math.min(flyInDuration, mascotSetting.animation?.messageDelay ?? Math.round(flyInDuration * .6)), landingDuration = mascotSetting.animation?.landingDuration || 220;
+  const enabled = isLessonMascotEnabled(), wasSpeaking = elements.mascot.classList.contains("is-speaking"), flyInDuration = mascotSetting.animation?.flyInDuration || 560, messageDelay = Math.min(flyInDuration, mascotSetting.animation?.messageDelay ?? Math.round(flyInDuration * .6)), landingDuration = mascotSetting.animation?.landingDuration || 220;
   if (!option) {
     if (elements.stepOption.hidden && !wasSpeaking) { setMascotPose("idle"); return; }
     elements.stepOption.classList.add("is-closing"); runtime.optionCloseTimer = setTimeout(() => { elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); }, setting.ui.animation.optionDuration * .65);
@@ -2661,7 +2666,7 @@ function showStepOption(option) {
     }
     return;
   }
-  const iconName = mascotSetting.messaging?.typeIcons?.[option.type] || "lightbulb.svg", renderSpeech = () => { elements.stepOption.hidden = false; elements.stepOption.innerHTML = `<button class="mascot-collapse" type="button" aria-label="พับคำแนะนำ" title="พับคำแนะนำ">${iconMarkup("collapse.svg")}</button><div class="option-heading">${iconMarkup(iconName)}<div><small>${escapeHtml(mascotProfile.name || mascotSetting.name || "ผู้ช่วยประจำบทเรียน")}</small><h3>${escapeHtml(option.header || "คำแนะนำ")}</h3></div></div><p></p>`; elements.stepOption.querySelector(".mascot-collapse")?.addEventListener("click", () => { uiSound(); showStepOption(null); }); void elements.stepOption.offsetWidth; elements.stepOption.classList.add("is-opening"); typeText(elements.stepOption.querySelector("p"), option.message, mascotSetting.speech?.textSpeed || setting.ui.animation.typewriterSpeed); };
+  const iconName = mascotSetting.messaging?.typeIcons?.[option.type] || "lightbulb.svg", speakerLabel = enabled ? mascotProfile.name || mascotSetting.name || "ผู้ช่วยประจำบทเรียน" : "คำแนะนำ", renderSpeech = () => { elements.stepOption.hidden = false; elements.stepOption.innerHTML = `<button class="mascot-collapse" type="button" aria-label="พับคำแนะนำ" title="พับคำแนะนำ">${iconMarkup("collapse.svg")}</button><div class="option-heading">${iconMarkup(iconName)}<div><small>${escapeHtml(speakerLabel)}</small><h3>${escapeHtml(option.header || "คำแนะนำ")}</h3></div></div><p></p>`; elements.stepOption.querySelector(".mascot-collapse")?.addEventListener("click", () => { uiSound(); showStepOption(null); }); void elements.stepOption.offsetWidth; elements.stepOption.classList.add("is-opening"); typeText(elements.stepOption.querySelector("p"), option.message, mascotSetting.speech?.textSpeed || setting.ui.animation.typewriterSpeed); };
   if (!enabled) { renderSpeech(); return; }
   setMascotPose("speaking");
   elements.mascot.classList.remove("is-returning", "is-landing"); elements.mascot.classList.add("is-speaking");
@@ -2828,11 +2833,13 @@ async function showQuizResultModal(content, { onConfirm } = {}) {
   elements.modal.insertAdjacentHTML("beforeend", `<article class="modal-card" role="dialog" aria-modal="true" aria-label="สรุปผลคะแนน">${content}<div class="modal-actions"><button class="primary" data-modal-primary>ตกลง</button></div></article>`);
   const primary = elements.modal.querySelector("[data-modal-primary]");
   primary?.addEventListener("click", () => onConfirm?.(), { once: true });
-  try {
-    const {mountResultMascot}=await import(`./quiz-result-mascot.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
-    if(sequenceId!==runtime.resultSequenceId)return;
-    resultMascotBlink=mountResultMascot(elements.modal.querySelector('.qr-head'),{forceMotion:mascotSetting.animation?.respectReducedMotion===false});
-  } catch(error){console.warn('Result mascot: blink unavailable',error);}
+  if (isLessonMascotEnabled()) {
+    try {
+      const {mountResultMascot}=await import(`./quiz-result-mascot.mjs?v=${encodeURIComponent(window.eduCacheVersion)}`);
+      if(sequenceId!==runtime.resultSequenceId)return;
+      resultMascotBlink=mountResultMascot(elements.modal.querySelector('.qr-head'),{forceMotion:mascotSetting.animation?.respectReducedMotion===false});
+    } catch(error){console.warn('Result mascot: blink unavailable',error);}
+  }
   requestAnimationFrame(() => {
     if (sequenceId !== runtime.resultSequenceId) return;
     elements.modal.classList.add("is-result-popup-visible");
@@ -2859,7 +2866,7 @@ function createDebugQuizResult() {
 async function showQuizResult(quiz, { durationMs, debug = false } = {}) {
   if (!quiz?.questions?.length) return;
   const { quizResultMarkup } = await import(`./quiz-result-view.js?v=${encodeURIComponent(window.eduCacheVersion || "1")}`);
-  const content = quizResultMarkup(quiz, { escapeHtml, assetUrl: runtimeAssetUrl });
+  const content = quizResultMarkup(quiz, { escapeHtml, assetUrl: runtimeAssetUrl, mascotEnabled: isLessonMascotEnabled() });
   await showQuizResultModal(content, { onConfirm: () => {
     if (debug) { closeModal(); return; }
     const result = { score: quiz.score, maxScore: quiz.questions.length, durationMs, answers: quiz.answers };
@@ -2990,7 +2997,7 @@ async function openLesson(payload) {
     failureStage = "register";
     if (!registered?.mount) throw new Error("lessonApp ต้องมี mount(context)");
     failureStage = "metadata";
-    runtime.lesson = registered; runtime.lessonUrl = lessonUrl; runtime.mode = lessonData.mode; syncDebugHud(); runtime.meta = normalizeMeta(registered.meta, lessonData); runtime.lessonData = resolveLessonDisplayData(lessonData, runtime.meta); runtime.values = { ...runtime.meta.defaultValue }; runtime.stepIndex = 0; guiService.control.setLessonPhase(runtime.mode === "student-quiz" ? "quiz" : runtime.meta.howto.length ? "teaching" : "lab"); configureCamera(runtime.meta.camera || {}); elements.entryTitle.textContent = runtime.lessonData.title; setEntryCategory(entryUnitTitle(runtime.lessonData));
+    runtime.lesson = registered; runtime.lessonUrl = lessonUrl; runtime.mode = lessonData.mode; syncDebugHud(); runtime.meta = normalizeMeta(registered.meta, lessonData); runtime.lessonData = resolveLessonDisplayData(lessonData, runtime.meta); runtime.values = { ...runtime.meta.defaultValue }; runtime.stepIndex = 0; debugSceneTime = runtime.meta.presentation.environment.preset || storedSceneMode(); guiService.control.setLessonPhase(runtime.mode === "student-quiz" ? "quiz" : runtime.meta.howto.length ? "teaching" : "lab"); configureCamera(runtime.meta.camera || {}); elements.entryTitle.textContent = runtime.lessonData.title; setEntryCategory(entryUnitTitle(runtime.lessonData));
     updateEntry(55, "กำลังเตรียมสื่อและคำแนะนำ…", runtime.meta.welcomeMessage);
     if (runtime.mode === "student-quiz" && !runtime.meta.quiz.length) throw new Error("บทเรียน Quiz ต้องมีคำถามอย่างน้อย 1 ข้อ");
     failureStage = "assets";

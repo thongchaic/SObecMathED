@@ -147,6 +147,7 @@ Topbar, Mode Badge, Quiz Badge, System Popup, Camera Controls, World Hint, Loadi
 - `description`
 - `keyResult`
 - `background`
+- `presentation` (ไม่บังคับ)
 - `camera`
 - `welcomeMessage`
 - `tooltip`
@@ -158,6 +159,19 @@ Topbar, Mode Badge, Quiz Badge, System Popup, Camera Controls, World Hint, Loadi
 Step ใน `howto` เพิ่ม `intro: { url, title?, label? }` ได้ หากต้องบังคับเปิดเนื้อหาเสริมอัตโนมัติ เมื่อผู้เรียนปิด Intro Runtime จะเลื่อนไป Step ถัดไป
 
 อย่าคัดลอกค่า Lesson 0 โดยไม่สัมพันธ์กับบทเรียนใหม่ ทุกค่าใน meta ต้องมีผลจริงต่อเนื้อหาหรือ UX ของบทนั้น
+
+### การนำเสนอเริ่มต้นของแต่ละบทเรียน
+
+```js
+presentation: {
+  mascot: { enabled: false },
+  environment: { preset: "standard" }
+}
+```
+
+- `mascot.enabled` เป็น boolean ค่าเริ่มต้น `true`; เมื่อปิด ตัว Mascot และ Mascot ในหน้าสรุปจะไม่แสดง แต่ `howto[].option` ยังเป็นกล่องคำแนะนำปกติ
+- `environment.preset` รองรับ `standard`, `day`, `night`; `standard` คือฉากเรียบ ไม่มี panorama/ของตกแต่ง และเป็นเพียงค่าเริ่มต้น ผู้เรียนยังเปลี่ยนฉากได้
+- ถ้าไม่กำหนด `presentation` ให้ใช้พฤติกรรมเดิม ห้ามซ่อน Mascot หรือเปลี่ยนฉากด้วย DOM/CSS ของบทเรียน
 
 ## กฎ Teacher Tools
 

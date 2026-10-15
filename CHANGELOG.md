@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-14 — Unreleased Lesson Presentation Defaults
+
+- เพิ่ม `meta.presentation.mascot.enabled` สำหรับซ่อน Mascot เฉพาะบทเรียน โดยยังคงข้อความสอนเป็นกล่องคำแนะนำ และซ่อน Mascot ในหน้าสรุป Quiz ด้วย
+- เพิ่ม `meta.presentation.environment.preset` สำหรับเลือกฉากเริ่มต้น `standard`, `day` หรือ `night`; ฉาก `standard` เป็นฉากเรียบ และผู้เรียนยังเปลี่ยนฉากระหว่างเรียนได้
+- sync runtime snapshot, contract/schema, template, Public API reference, types, capabilities และ source manifest สำหรับ AI ภายนอก
+
 ## 2026-10-05 — 0.5.0 Current Runtime Snapshot and Quiz Production Rules
 
 - sync runtime/settings/UI snapshot และตัวอย่างบทเรียนที่เปลี่ยนตั้งแต่ 0.4.0; เพิ่มตัวอย่าง `ep12/lesson1` และ `ep14/lesson3` พร้อมดัชนี

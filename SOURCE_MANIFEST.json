@@ -121,6 +121,11 @@
       "sha256": "9092b834d48f382c1a295b2fb186c5b0a9f4881a874334b4194a4060a9ea70cb"
     },
     {
+      "path": "Project/interactive/lesson-presentation.mjs",
+      "sourcePath": "Project/interactive/lesson-presentation.mjs",
+      "sha256": "89b6f963d61e98a0fcb7eb0a7b9b686d3ae821908be3612bf550b00a9528e117"
+    },
+    {
       "path": "Project/interactive/main-world-setting.js",
       "sourcePath": "Project/interactive/main-world-setting.js",
       "sha256": "3dc4f9c1f792012e0999e24bdcd88d4c0158548fb78f390d1c335c6b79cbf531"
@@ -133,7 +138,7 @@
     {
       "path": "Project/interactive/main-world.js",
       "sourcePath": "Project/interactive/main-world.js",
-      "sha256": "a2927ec0f50d88b87d2de13a7b9822c4bf6cba8d4897a3cb177400f4d4e39d8f"
+      "sha256": "58902962e3aaaafb080f1245d39f738ff26e74ad2574869464342174fa2efffc"
     },
     {
       "path": "Project/interactive/mascot-eye-blink.mjs",
@@ -183,7 +188,7 @@
     {
       "path": "Project/interactive/quiz-result-view.js",
       "sourcePath": "Project/interactive/quiz-result-view.js",
-      "sha256": "9f19011ce88fcf7c667f3c65976f3b8576a8901b31644ec63cde77b9ee3c7a65"
+      "sha256": "ea6ee7b62ce8871cc09e2ad1ae37555bd02616cd000f326e99ac19b3f139b6fb"
     },
     {
       "path": "Project/interactive/runtime-setting-menu.js",

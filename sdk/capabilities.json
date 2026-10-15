@@ -18,6 +18,12 @@
     "optIn": "meta.scenePersistence=lesson",
     "lessonResponsibilities": ["reuse-static-objects", "clear-dynamic-objects-on-reset", "dispose-all-on-close"]
   },
+  "lessonPresentation": {
+    "path": "meta.presentation",
+    "mascotEnabled": "boolean; default true; false hides lesson and result mascot but preserves step guidance",
+    "environmentPreset": ["standard", "day", "night"],
+    "environmentBehavior": "initial scene only; learner can change it from the camera menu"
+  },
   "hostLessonData": {
     "fullScreen": "boolean; initial default true; omitted on later opens preserves current layout",
     "preview": "boolean; default false; teacher Lab/Quiz preview without debug tools"

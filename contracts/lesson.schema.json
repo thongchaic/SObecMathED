@@ -21,6 +21,26 @@
         "description": { "type": "string" },
         "keyResult": { "type": "string" },
         "background": { "type": "string" },
+        "presentation": {
+          "type": "object",
+          "properties": {
+            "mascot": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" }
+              },
+              "additionalProperties": false
+            },
+            "environment": {
+              "type": "object",
+              "properties": {
+                "preset": { "enum": ["standard", "day", "night"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
         "camera": {
           "type": "object",
           "properties": {

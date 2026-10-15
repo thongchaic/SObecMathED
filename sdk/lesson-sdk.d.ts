@@ -317,6 +317,16 @@ export interface LessonMeta {
   description: string;
   keyResult: string;
   background?: string;
+  presentation?: {
+    mascot?: {
+      /** false ซ่อนตัว Mascot แต่ยังคงข้อความ howto[].option เป็นกล่องคำแนะนำ */
+      enabled?: boolean;
+    };
+    environment?: {
+      /** ฉากเริ่มต้นของบทเรียน; standard คือฉากเรียบ */
+      preset?: "standard" | "day" | "night";
+    };
+  };
   camera?: CameraOptions;
   welcomeMessage?: string[];
   tooltip?: string;

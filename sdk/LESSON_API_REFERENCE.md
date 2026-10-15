@@ -6,6 +6,21 @@
 
 ดู type signatures เพิ่มเติมที่ [`lesson-sdk.d.ts`](lesson-sdk.d.ts)
 
+## Lesson presentation
+
+ตั้งค่าการนำเสนอเริ่มต้นเฉพาะบทเรียนใน `meta.presentation`:
+
+```js
+presentation: {
+  mascot: { enabled: false },
+  environment: { preset: "standard" }
+}
+```
+
+`mascot.enabled` รับ boolean และมีค่าเริ่มต้น `true` เมื่อปิด Runtime จะซ่อนตัว Mascot รวมถึง Mascot ในหน้าสรุป แต่ยังแสดงข้อความ `howto[].option` เป็นกล่องคำแนะนำเพื่อไม่ให้เนื้อหาการสอนหายไป
+
+`environment.preset` รับ `standard`, `day` หรือ `night` โดย `standard` คือฉากเรียบที่ไม่มี panorama และของตกแต่ง ค่านี้กำหนดฉากตอนเปิดบทเรียนเท่านั้น ผู้เรียนยังเปลี่ยนฉากจากเมนูกล้องได้ ถ้าไม่กำหนดจะใช้ค่าฉากที่ผู้ใช้เลือกไว้ก่อนหน้า
+
 ## Universal Scene API (Runtime 3.4.0)
 
 บทเรียนใหม่ไม่ควรคัดลอกฉากซ้าย/ขวา กล่อง หรือเครื่องหมายจาก Lesson 0 โดยอัตโนมัติ ให้เลือกวัตถุและการจัดฉากตามเนื้อหาของครูผ่าน API กลางต่อไปนี้ ส่วน API เดิมยังรองรับเพื่อให้บทเรียนเก่าทำงานต่อได้
