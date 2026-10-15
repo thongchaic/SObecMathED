@@ -1522,6 +1522,10 @@ button.is-ui-pressed {
   --gui-gizmo-bg: rgba(91, 70, 190, .94);
 }
 
+.gui-gizmo[data-tone="info"] {
+  --gui-gizmo-bg: rgba(38, 108, 196, .94);
+}
+
 .gui-gizmo.is-clamped {
   box-shadow: 0 0 0 3px rgba(255, 224, 121, .32), 0 8px 20px rgba(24, 39, 66, .24);
 }

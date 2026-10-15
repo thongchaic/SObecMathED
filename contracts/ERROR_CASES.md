@@ -26,6 +26,9 @@
 | `LESSON_ASSET_ORIGIN_ERROR` | asset | asset ของ DEV_WORKSPACE อยู่นอก origin | ทีม Dev นำ asset เข้า Platform origin และอัปเดต catalog/contract หากจะเปิดให้อาจารย์ใช้ |
 | `LESSON_OPERATOR_UNSUPPORTED` | runtime | ส่งอักขระที่ prefab ไม่รองรับ | ใช้ addOperatorSign เฉพาะ `= ≠ < > ≤ ≥ + - × ÷`; ข้อความทั่วไปใช้ addText3D |
 | `LESSON_PRIMITIVE_UNSUPPORTED` | runtime | ส่งชื่อรูปทรง procedural ที่ระบบไม่รองรับ | เลือก shape จาก `context.world.capabilities.primitiveShapes` หรือ `sdk/LESSON_API_REFERENCE.md`; ห้ามสมมติชื่อใหม่ |
+| `LESSON_PRESENTATION_INVALID` | validator | `meta.presentation` ไม่ใช่ object | ใช้ object ที่มี `mascot` และ/หรือ `environment` หรือเอา `presentation` ออกเพื่อใช้ค่าเดิม |
+| `LESSON_PRESENTATION_MASCOT_ENABLED_INVALID` | validator | `mascot.enabled` ไม่ใช่ boolean | ใช้ `true` หรือ `false` โดยไม่ใส่เครื่องหมายคำพูด |
+| `LESSON_PRESENTATION_PRESET_INVALID` | validator | ชื่อฉากเริ่มต้นไม่รองรับ | ใช้ `standard`, `day` หรือ `night` เท่านั้น |
 | `LESSON_LOAD_TIMEOUT` | load | lifecycle หรือ asset รอนานเกินกำหนด | เอา network/dependency ออกและตรวจ Promise |
 | `SDK_VERSION_MISMATCH` | validate | lesson ต้องการ API คนละเวอร์ชัน | ปรับ lesson ให้ตรง Github contract ปัจจุบัน |
 | `LESSON_RUNTIME_ERROR` | runtime | exception อื่นใน lesson | ใช้ stack/message หา lifecycle และบรรทัดที่ผิด |

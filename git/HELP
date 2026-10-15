@@ -1,0 +1,102 @@
+# Help — แผนที่เครื่องมือสำหรับทีมสร้างบทเรียน
+
+ใช้ `help`, `--HELP` หรือ `ช่วยเหลือ` เพื่อค้นหาเครื่องมือที่มีอยู่ก่อนเริ่มเขียน Prompt หรือสร้างบทเรียน คำสั่งนี้ต้องอ่าน `sdk/capabilities.json` และเอกสารที่อ้างถึงจริง ห้ามตอบจากความจำ
+
+## หลักการตอบ Help
+
+1. แสดงเครื่องมือทุกกลุ่มด้านล่าง พร้อมหน้าที่, เหมาะใช้เมื่อไร และตัวอย่างคำสั่งที่ copy ได้
+2. แนะนำเครื่องมือที่ตรงกับบริบทของผู้ใช้เป็นอันดับแรก แม้ผู้ใช้ไม่ได้เอ่ยชื่อเครื่องมือ
+3. ถ้ามี Lesson HTML ล่าสุด ให้ยกตัวอย่างโดยใช้ path/ชื่อบทเรียนนั้น แต่ห้ามแก้ HTML ในรอบ Help
+4. ปิดท้ายด้วยเมนูย่อและรอคำสั่งถัดไป
+
+## คำสั่ง Workflow
+
+| คำสั่ง | ใช้ทำอะไร | Use case | ตัวอย่าง Prompt |
+|---|---|---|---|
+| `--CREATE` | สร้าง Lesson Package HTML ฉบับเต็มจาก Brief | มีหัวข้อและกิจกรรมพร้อมเริ่มสร้าง | `--CREATE [ Lesson ] : ep5/lesson2 สร้างบทเรียนเศษส่วนด้วยชิ้นเค้ก` |
+| `--TEMPLATE` | แสดงแบบฟอร์ม Brief ที่ copy ไปกรอกได้ | ยังไม่แน่ใจว่าต้องให้ข้อมูลอะไรแก่ AI | `--TEMPLATE` |
+| `--TOOLS` | สำรวจ Public API, GUI Service, Asset, Presentation และ Validator | ต้องการรู้ว่าระบบกลางทำอะไรได้ก่อนออกแบบ | `--TOOLS แนะนำเครื่องมือสำหรับบทเรียนลากวางบนมือถือ` |
+| `--DEFINE` | ตั้งชื่อพื้นที่ วัตถุ UI และ logic จาก Lesson ล่าสุด | ต้องแก้หลายรอบและอยากอ้างจุดเดิมให้ชัด | `--DEFINE` แล้วสั่ง `ขยาย [Answer Drop Zone]` |
+| `--CHECK` | ตรวจ HTML และรายงาน Passed/Warning/Error โดยไม่แก้ | ก่อนนำบทเรียนไปใช้จริง | `--CHECK ep5/lesson2` |
+| `--FEEDBACK` | วิเคราะห์คุณภาพและจัดลำดับสิ่งที่ควรปรับ | บทเรียนใช้งานได้แล้วแต่ต้องการพัฒนารอบต่อไป | `--FEEDBACK ep5/lesson2` |
+| `--IDEA <หัวข้อ>` | เสนอแนวคิด Interactive 5 แบบก่อนเขียน | มีหัวข้อแต่ยังไม่มีรูปแบบกิจกรรม | `--IDEA การเปรียบเทียบเศษส่วน` |
+
+## เครื่องมือใน Lesson ที่ควรแนะนำเชิงรุก
+
+### Presentation ต่อบทเรียน — `meta.presentation`
+
+ใช้ตั้งค่าหน้าตาเริ่มต้นเฉพาะบท โดยไม่แก้ Runtime กลาง:
+
+```js
+presentation: {
+  mascot: { enabled: false },
+  environment: { preset: "standard" }
+}
+```
+
+- `mascot.enabled: false` — ปิดตัวละคร ฐานยืน การเคลื่อนไหว บับเบิล ป้ายแจ้งเตือน ข้อความ `howto[].option` และ Mascot หน้าสรุปทั้งหมด
+- `environment.preset` — เลือก `standard`, `day` หรือ `night`; `standard` เหมาะกับบทที่ต้องการฉากเรียบและลดสิ่งรบกวน
+- หากไม่ใส่ `presentation` จะรักษาพฤติกรรมเดิม: Mascot เปิดและใช้ฉากที่ผู้เรียนบันทึกไว้
+
+ตัวอย่าง Prompt:
+
+```text
+สร้างบทเรียนนี้แบบไม่มี Mascot และไม่มีข้อความจาก howto.option ใช้ฉากเริ่มต้น standard
+```
+
+### GUI Service — `context.ui.*`
+
+- `question` สำหรับโจทย์หลัก
+- `guiAnswer` สำหรับคำตอบหรือสถานะคำตอบ
+- `choice` สำหรับตัวเลือกคำตอบ
+- `control` สำหรับเครื่องมือของกิจกรรม
+- `worldOption` สำหรับคำสั่งที่ผูกกับวัตถุ 3D
+- `worldGuiSystem` สำหรับป้ายข้อมูลที่เกาะวัตถุหรือพิกัด
+- `clickme` สำหรับมือชี้/มือกำบนวัตถุที่กดหรือลากได้
+- `feedback`, `dialog`, `insight`, `intro`, `topMessage`, `hint`, `busy` ใช้ตามหน้าที่ใน `sdk/GUI_SERVICE_REFERENCE.md`
+
+ตัวอย่าง Prompt:
+
+```text
+ใช้ context.ui.choice ทำตัวเลือกคำตอบ และใช้ context.ui.clickme ชี้วัตถุที่ต้องลากครั้งแรก
+```
+
+### World/Public API และ Procedural Geometry
+
+ใช้ `context.world` สร้าง primitive, group, zone, callout, connector, counter, world GUI, guideline, line render และ target focus โดยตรวจชื่อจริงจาก `sdk/LESSON_API_REFERENCE.md` และ `sdk/capabilities.json` ก่อนเสมอ
+
+ตัวอย่าง Prompt:
+
+```text
+สร้างชิ้นเค้ก 1/8 ด้วย procedural sector และใช้ target focus เน้นชิ้นที่กำลังอธิบาย
+```
+
+### Standard Asset Library
+
+ใช้ Asset ID ที่มีจริงจาก `Project/interactive/assets/library/catalog.json` ห้ามเดาชื่อไฟล์หรือ path เหมาะเมื่อฉากต้องใช้วัตถุซ้ำที่ทีมเตรียมไว้แล้ว
+
+ตัวอย่าง Prompt:
+
+```text
+ค้น Asset ID หมวดห้องเรียนที่มีจริง แล้วเลือกเฉพาะชิ้นที่ไม่บังพื้นที่คำตอบ
+```
+
+### Teacher Tools และ Quiz
+
+- `defaultValue` + `editSchema` ใช้ให้ครูปรับโจทย์
+- `howto` ใช้ลำดับ Teaching → Freestyle
+- `context.quiz.answer(...)` ใช้บันทึกคำตอบล่าสุดโดยไม่เฉลยก่อนยืนยัน
+
+ตัวอย่าง Prompt:
+
+```text
+เพิ่ม Teacher Tool ปรับจำนวนวัตถุ 2–8 ชิ้น และสร้าง Quiz อย่างน้อย 10 ข้อที่ใช้ key เดียวกับ defaultValue
+```
+
+### Validator และการส่งมอบ
+
+ใช้ `node validator/validate-lesson.mjs <lesson.html>` หรือ `--CHECK` ก่อนส่งเสมอ Validator ตรวจ lifecycle, helper/API, Asset ID, procedural shape, security และ `meta.presentation`
+
+## เมนูย่อ
+
+`--CREATE` · `--TEMPLATE` · `--TOOLS` · `--HELP` · `--DEFINE` · `--CHECK` · `--FEEDBACK` · `--IDEA`

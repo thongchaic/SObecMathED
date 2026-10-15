@@ -350,7 +350,8 @@ export function createGuiService({ setting, elements, camera, iconUrl, resolveAs
 
   function controlAllowed(entry) {
     const isTeachingSkip = entry.options.systemRole === "skip-teaching";
-    return lessonControlPhase === "teaching" ? isTeachingSkip : !isTeachingSkip;
+    // Lab steps before the final one (freestyle practice) keep skip beside the lesson controls; Quiz never shows it.
+    return lessonControlPhase === "teaching" ? isTeachingSkip : lessonControlPhase === "lab" || !isTeachingSkip;
   }
   function syncControlVisibility(entry, animate = false) {
     if (!entry || entry.removed) return;

@@ -24,6 +24,8 @@ Define Map ใช้เป็นศัพท์ร่วมของ session แ
 
 คำสั่งวิเคราะห์เพิ่มเติมต้องอ่านไฟล์กำกับก่อนทำงานและห้ามแก้ HTML ในคำตอบเดียวกัน:
 
+- `help` / `--HELP` / `ช่วยเหลือ` → `git/HELP` แสดงเครื่องมือ หน้าที่ Use case และ
+  ตัวอย่าง Prompt; AI ต้องแนะนำ capability ที่ตรงกับโจทย์เชิงรุก
 - `--CHECK` → `git/CHECK` ตรวจความพร้อมและแยก Passed/Warning/Error/Fix/Verdict
 - `--FEEDBACK` → `git/FEEDBACK` วิเคราะห์คุณภาพและจัดลำดับข้อเสนอพัฒนา
 - `--IDEA <หัวข้อ>` → `git/IDEA` เสนอแนวคิด Interactive ที่ต่างกัน 5 แบบ
@@ -169,7 +171,7 @@ presentation: {
 }
 ```
 
-- `mascot.enabled` เป็น boolean ค่าเริ่มต้น `true`; เมื่อปิด ตัว Mascot และ Mascot ในหน้าสรุปจะไม่แสดง แต่ `howto[].option` ยังเป็นกล่องคำแนะนำปกติ
+- `mascot.enabled` เป็น boolean ค่าเริ่มต้น `true`; เมื่อปิด Runtime จะซ่อนตัวละคร ฐานยืน การเคลื่อนไหว บับเบิล ป้ายแจ้งเตือน ข้อความ `howto[].option` และ Mascot ในหน้าสรุปทั้งหมด แม้ lesson จะกำหนดข้อความไว้
 - `environment.preset` รองรับ `standard`, `day`, `night`; `standard` คือฉากเรียบ ไม่มี panorama/ของตกแต่ง และเป็นเพียงค่าเริ่มต้น ผู้เรียนยังเปลี่ยนฉากได้
 - ถ้าไม่กำหนด `presentation` ให้ใช้พฤติกรรมเดิม ห้ามซ่อน Mascot หรือเปลี่ยนฉากด้วย DOM/CSS ของบทเรียน
 

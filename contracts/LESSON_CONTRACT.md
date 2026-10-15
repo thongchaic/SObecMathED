@@ -88,10 +88,6 @@ meta: {
   description: "คำอธิบายสั้น",
   keyResult: "ผลลัพธ์การเรียนรู้",
   background: "green",
-  presentation: {
-    mascot: { enabled: true },
-    environment: { preset: "day" }
-  },
   camera: { /* camera preset */ },
   welcomeMessage: ["ข้อความสั้น"],
   tooltip: "คำแนะนำการควบคุม",
@@ -107,7 +103,8 @@ meta: {
 - `worldType` สำหรับบทเรียนนี้ต้องเป็น `3d-world-space`
 - `background` ใช้ค่า `"green"` เท่านั้น ฉากเป็นระบบกลางและบทเรียนไม่กำหนดสี Grid เอง
 - `presentation` ไม่บังคับ: `mascot.enabled` ต้องเป็น boolean และ `environment.preset` ต้องเป็น `standard`, `day` หรือ `night`
-- `mascot.enabled: false` ซ่อนตัว Mascot และ Mascot หน้าสรุป แต่ไม่ตัดข้อความสอนจาก `howto[].option`; Runtime แสดงข้อความนั้นเป็นกล่องคำแนะนำแทน
+- อย่าใส่ `presentation` เป็นค่า boilerplate ทุกบท ให้เพิ่มเฉพาะเมื่อ Brief ต้องการปิด Mascot หรือกำหนดฉากเริ่มต้นจริง
+- `mascot.enabled: false` ปิดระบบ Mascot ทั้งหมด ได้แก่ ตัวละคร ฐานยืน การเคลื่อนไหว บับเบิล ป้ายแจ้งเตือน ข้อความจาก `howto[].option` และ Mascot หน้าสรุป แม้ lesson จะกำหนดข้อความไว้ก็ตาม
 - `environment.preset: "standard"` เลือกฉากเรียบเป็นค่าเริ่มต้น ผู้เรียนยังเปลี่ยนฉากจากเมนูกล้องได้ ถ้าไม่กำหนด Runtime ใช้ค่าฉากที่ผู้ใช้บันทึกไว้
 - key ใน `defaultValue`, `editSchema`, quiz `data` และ logic ใน reset ต้องตรงกัน
 - Teacher Tools ทุก field ต้องถูกใช้จริง ห้ามมี control ที่แก้แล้วไม่เกิดผล

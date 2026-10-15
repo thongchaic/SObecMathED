@@ -2585,6 +2585,16 @@ labToolsToggle.addEventListener("click", () => {
 labCompactMedia.addEventListener("change", syncLabResponsiveUi);
 new MutationObserver(syncLabResponsiveUi).observe(elements.controlDock, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
 function isLessonMascotEnabled() { return mascotSetting.enabled !== false && runtime.meta?.presentation?.mascot?.enabled !== false; }
+function hideLessonMascotUi() {
+  resetMascotTimers();
+  runtime.pendingMascotOption = null;
+  hideMascotNotice();
+  elements.stepOption.hidden = true;
+  elements.stepOption.replaceChildren();
+  elements.stepOption.classList.remove("is-opening", "is-closing");
+  elements.mascot.classList.remove("is-speaking", "is-talking", "is-flying-in", "is-landing", "is-returning", "is-quiz-reacting", "has-notice");
+  elements.mascotParticles.hidden = true;
+}
 function applyRuntimeUi() {
   elements.runtime.className = `${runtime.mode} ${runtime.meta.worldType === "webPage" ? "web-page-mode" : ""}`;
   elements.runtime.classList.toggle("runtime-ui-revised", runtime.meta.worldType !== "webPage");
@@ -2601,14 +2611,16 @@ function applyRuntimeUi() {
   elements.webRoot.hidden = runtime.meta.worldType !== "webPage";
   elements.howto.hidden = runtime.mode === "student-quiz" || !runtime.meta.howto.length;
   elements.quizPanel.hidden = runtime.mode !== "student-quiz";
-  elements.mascot.hidden = runtime.meta.worldType === "webPage";
-  elements.mascot.classList.toggle("is-disabled", !isLessonMascotEnabled());
-  elements.mascotParticles.hidden = !isLessonMascotEnabled();
+  const mascotEnabled = isLessonMascotEnabled();
+  elements.mascot.hidden = runtime.meta.worldType === "webPage" || !mascotEnabled;
+  elements.mascot.classList.toggle("is-disabled", !mascotEnabled);
+  elements.mascotParticles.hidden = !mascotEnabled;
   elements.mascot.classList.toggle("is-stationary", mascotBehavior === "stationary");
   elements.mascot.dataset.character = activeMascotKey;
   elements.mascot.dataset.behavior = mascotBehavior;
-  mascotHybrid?.pause(!isLessonMascotEnabled());
-  mascotMotion.setPaused(!isLessonMascotEnabled());
+  mascotHybrid?.pause(!mascotEnabled);
+  mascotMotion.setPaused(!mascotEnabled);
+  if (!mascotEnabled) hideLessonMascotUi();
   setMascotPose("idle");
   scheduleMascotBlink();
   requestAnimationFrame(syncConsoleDockHeight);
@@ -2651,23 +2663,23 @@ async function playQuizMascotReaction() {
   setMascotPose("idle");
 }
 function hideMascotNotice() { elements.mascotNotice.hidden = true; elements.mascot.classList.remove("has-notice"); }
-function revealPendingMascotOption() { const option = runtime.pendingMascotOption; if (!option) return; runtime.pendingMascotOption = null; hideMascotNotice(); showStepOption(option); }
-function queueStepOption(option) { clearTimeout(runtime.mascotHintTimer); runtime.pendingMascotOption = null; hideMascotNotice(); if (!option) { showStepOption(null); return; } const messaging = mascotSetting.messaging || {}, type = option.type || (runtime.stepIndex === 0 ? messaging.firstMessageType || "instruction" : messaging.defaultType || "hint"), typedOption = { ...option, type }, compact = matchMedia("(max-width: 760px), (orientation: portrait)").matches; if (type === "feedback") { showStepOption(null); showToast(option.message || option.header || "ทำได้ดีมาก", "success"); return; } if (!isLessonMascotEnabled() || type === "instruction" || compact) { showStepOption(typedOption); return; } showStepOption(null); runtime.pendingMascotOption = typedOption; setMascotPose("hint"); elements.mascotNotice.setAttribute("aria-label", messaging.noticeLabel || "เปิดคำแนะนำใหม่"); elements.mascotNotice.hidden = false; elements.mascot.classList.add("has-notice"); if (type === "hint" && (messaging.hintAutoRevealAfter ?? 10000) > 0) runtime.mascotHintTimer = setTimeout(revealPendingMascotOption, messaging.hintAutoRevealAfter ?? 10000); }
+function revealPendingMascotOption() { if (!isLessonMascotEnabled()) { hideLessonMascotUi(); return; } const option = runtime.pendingMascotOption; if (!option) return; runtime.pendingMascotOption = null; hideMascotNotice(); showStepOption(option); }
+function queueStepOption(option) { clearTimeout(runtime.mascotHintTimer); runtime.pendingMascotOption = null; hideMascotNotice(); if (!isLessonMascotEnabled()) { hideLessonMascotUi(); return; } if (!option) { showStepOption(null); return; } const messaging = mascotSetting.messaging || {}, type = option.type || (runtime.stepIndex === 0 ? messaging.firstMessageType || "instruction" : messaging.defaultType || "hint"), typedOption = { ...option, type }, compact = matchMedia("(max-width: 760px), (orientation: portrait)").matches; if (type === "feedback") { showStepOption(null); showToast(option.message || option.header || "ทำได้ดีมาก", "success"); return; } if (type === "instruction" || compact) { showStepOption(typedOption); return; } showStepOption(null); runtime.pendingMascotOption = typedOption; setMascotPose("hint"); elements.mascotNotice.setAttribute("aria-label", messaging.noticeLabel || "เปิดคำแนะนำใหม่"); elements.mascotNotice.hidden = false; elements.mascot.classList.add("has-notice"); if (type === "hint" && (messaging.hintAutoRevealAfter ?? 10000) > 0) runtime.mascotHintTimer = setTimeout(revealPendingMascotOption, messaging.hintAutoRevealAfter ?? 10000); }
 function showStepOption(option) {
+  if (!isLessonMascotEnabled()) { hideLessonMascotUi(); return; }
   resetMascotTimers(); hideMascotNotice(); elements.stepOption.classList.remove("is-opening", "is-closing");
-  const enabled = isLessonMascotEnabled(), wasSpeaking = elements.mascot.classList.contains("is-speaking"), flyInDuration = mascotSetting.animation?.flyInDuration || 560, messageDelay = Math.min(flyInDuration, mascotSetting.animation?.messageDelay ?? Math.round(flyInDuration * .6)), landingDuration = mascotSetting.animation?.landingDuration || 220;
+  const wasSpeaking = elements.mascot.classList.contains("is-speaking"), flyInDuration = mascotSetting.animation?.flyInDuration || 560, messageDelay = Math.min(flyInDuration, mascotSetting.animation?.messageDelay ?? Math.round(flyInDuration * .6)), landingDuration = mascotSetting.animation?.landingDuration || 220;
   if (!option) {
     if (elements.stepOption.hidden && !wasSpeaking) { setMascotPose("idle"); return; }
     elements.stepOption.classList.add("is-closing"); runtime.optionCloseTimer = setTimeout(() => { elements.stepOption.hidden = true; elements.stepOption.replaceChildren(); }, setting.ui.animation.optionDuration * .65);
-    if (enabled && wasSpeaking) {
+    if (wasSpeaking) {
       elements.mascot.classList.remove("is-talking", "is-landing", "is-flying-in");
       if (mascotBehavior === "stationary") { elements.mascot.classList.remove("is-speaking", "is-returning"); setMascotPose("idle"); }
       else { elements.mascot.classList.add("is-returning"); runtime.mascotFlightTimer = setTimeout(() => elements.mascot.classList.remove("is-speaking", "is-returning"), mascotSetting.animation?.flyOutDuration || 520); }
     }
     return;
   }
-  const iconName = mascotSetting.messaging?.typeIcons?.[option.type] || "lightbulb.svg", speakerLabel = enabled ? mascotProfile.name || mascotSetting.name || "ผู้ช่วยประจำบทเรียน" : "คำแนะนำ", renderSpeech = () => { elements.stepOption.hidden = false; elements.stepOption.innerHTML = `<button class="mascot-collapse" type="button" aria-label="พับคำแนะนำ" title="พับคำแนะนำ">${iconMarkup("collapse.svg")}</button><div class="option-heading">${iconMarkup(iconName)}<div><small>${escapeHtml(speakerLabel)}</small><h3>${escapeHtml(option.header || "คำแนะนำ")}</h3></div></div><p></p>`; elements.stepOption.querySelector(".mascot-collapse")?.addEventListener("click", () => { uiSound(); showStepOption(null); }); void elements.stepOption.offsetWidth; elements.stepOption.classList.add("is-opening"); typeText(elements.stepOption.querySelector("p"), option.message, mascotSetting.speech?.textSpeed || setting.ui.animation.typewriterSpeed); };
-  if (!enabled) { renderSpeech(); return; }
+  const iconName = mascotSetting.messaging?.typeIcons?.[option.type] || "lightbulb.svg", speakerLabel = mascotProfile.name || mascotSetting.name || "ผู้ช่วยประจำบทเรียน", renderSpeech = () => { elements.stepOption.hidden = false; elements.stepOption.innerHTML = `<button class="mascot-collapse" type="button" aria-label="พับคำแนะนำ" title="พับคำแนะนำ">${iconMarkup("collapse.svg")}</button><div class="option-heading">${iconMarkup(iconName)}<div><small>${escapeHtml(speakerLabel)}</small><h3>${escapeHtml(option.header || "คำแนะนำ")}</h3></div></div><p></p>`; elements.stepOption.querySelector(".mascot-collapse")?.addEventListener("click", () => { uiSound(); showStepOption(null); }); void elements.stepOption.offsetWidth; elements.stepOption.classList.add("is-opening"); typeText(elements.stepOption.querySelector("p"), option.message, mascotSetting.speech?.textSpeed || setting.ui.animation.typewriterSpeed); };
   setMascotPose("speaking");
   elements.mascot.classList.remove("is-returning", "is-landing"); elements.mascot.classList.add("is-speaking");
   if (mascotBehavior === "stationary") { elements.mascot.classList.remove("is-flying-in"); elements.mascot.classList.add("is-talking"); renderSpeech(); return; }
@@ -2679,7 +2691,7 @@ function animateConsole() {
 }
 function syncLabSkipControl() {
   const id = "runtime-skip-teaching", steps = runtime.meta?.howto || [];
-  const shouldShow = runtime.mode !== "student-quiz" && steps.length > 1 && runtime.stepIndex < steps.length - 1 && !steps.slice(runtime.stepIndex).some(step => step.requiresCompletion);
+  const shouldShow = runtime.mode !== "student-quiz" && steps.length > 1 && runtime.stepIndex < steps.length - 1;
   const existing = guiService.control.get(id);
   if (!shouldShow) { existing?.hide(); return; }
   if (existing) { if (existing.element.hidden || existing.element.classList.contains("is-leaving")) existing.show(); return; }
@@ -2691,7 +2703,7 @@ function syncLabSkipControl() {
     onAction: event => {
       if (event.id !== "skip") return;
       const currentSteps = runtime.meta?.howto || [];
-      if (currentSteps.length) setStep(currentSteps.length - 1);
+      if (currentSteps.length) setStep(currentSteps.length - 1, { force: true });
     }
   });
 }
@@ -2700,10 +2712,10 @@ function setLabNextEnabled(enabled) {
   runtime.stepNextEnabled = Boolean(enabled);
   $("#next-step").disabled = !runtime.stepNextEnabled || runtime.stepIndex >= (runtime.meta?.howto.length || 0) - 1;
 }
-async function setStep(index) {
+async function setStep(index, { force = false } = {}) {
   const steps = runtime.meta.howto;
   if (!steps.length) return;
-  if (index > runtime.stepIndex && (!runtime.stepNextEnabled || steps.slice(runtime.stepIndex + 1, index).some(step => step.requiresCompletion))) return;
+  if (!force && index > runtime.stepIndex && (!runtime.stepNextEnabled || steps.slice(runtime.stepIndex + 1, index).some(step => step.requiresCompletion))) return;
   const changingStep = clamp(index, 0, steps.length - 1) !== runtime.stepIndex;
   runtime.mascotStepDepth = (runtime.mascotStepDepth || 0) + 1;
   try {

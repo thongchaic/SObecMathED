@@ -20,9 +20,25 @@
   },
   "lessonPresentation": {
     "path": "meta.presentation",
-    "mascotEnabled": "boolean; default true; false hides lesson and result mascot but preserves step guidance",
+    "purpose": "optional per-lesson presentation defaults; use only when the lesson needs to override legacy presentation",
+    "mascotEnabled": "boolean; default true; false hides the character, perch, motion, bubbles, notices, howto.option guidance, and result mascot",
     "environmentPreset": ["standard", "day", "night"],
-    "environmentBehavior": "initial scene only; learner can change it from the camera menu"
+    "environmentBehavior": "initial scene only; omitted uses the learner's stored scene and the learner can still change it from the camera menu",
+    "useCases": [
+      "quiet lesson without mascot: meta.presentation.mascot.enabled=false",
+      "clean teaching stage: meta.presentation.environment.preset=standard",
+      "night observation activity: meta.presentation.environment.preset=night"
+    ]
+  },
+  "authoringTools": {
+    "help": { "commands": ["help", "--HELP"], "purpose": "discover every authoring command and reusable platform capability with examples", "guide": "git/HELP" },
+    "create": { "command": "--CREATE", "purpose": "create a complete lesson package from a brief" },
+    "template": { "command": "--TEMPLATE", "purpose": "return a copyable lesson brief form" },
+    "tools": { "command": "--TOOLS", "purpose": "inspect Public API, GUI Service, assets, presentation settings and validator before prompting" },
+    "define": { "command": "--DEFINE", "purpose": "name scene, object, UI and logic areas for precise follow-up edits" },
+    "check": { "command": "--CHECK", "purpose": "validate and review lesson HTML without editing it" },
+    "feedback": { "command": "--FEEDBACK", "purpose": "prioritize learning, interaction, visual and reliability improvements" },
+    "idea": { "command": "--IDEA <topic>", "purpose": "generate five platform-grounded interactive concepts before coding" }
   },
   "hostLessonData": {
     "fullScreen": "boolean; initial default true; omitted on later opens preserves current layout",

@@ -4,6 +4,9 @@ DEVGEN — Introduction สำหรับทีม Dev / AI ภายนอก
 Repository นี้เป็นข้อมูลอ้างอิงแบบ READ-ONLY สำหรับ AI Chat ห้ามพยายามเขียนไฟล์
 กลับ GitHub, สร้าง branch, commit, pull request หรือ push ผลงาน
 
+ชุดสาธารณะไม่มี key/WASM และ AI ภายนอกห้าม compile หรือสร้าง production package;
+ให้ส่ง RAW Lesson HTML ฉบับเต็ม แล้วเจ้าของระบบ compile ภายใน workspace เท่านั้น
+
 
 ===============================================================================
 คำสั่งเริ่มต้นที่รองรับ
@@ -34,6 +37,7 @@ Repository นี้เป็นข้อมูลอ้างอิงแบบ
    - `sdk/GUI_SERVICE_REFERENCE.md`
    - `sdk/lesson-sdk.d.ts`
    - `sdk/capabilities.json`
+   - `git/HELP`
    - `LESSON_OUTPUT_TEMPLATE.html`
    - `TESTING.md`
 4. อ่าน source เพื่อพิสูจน์ implementation:
@@ -61,7 +65,7 @@ DEVGEN MENU
 --CREATE   เริ่มสร้างบทเรียนตามคำอธิบาย
 --TEMPLATE แสดงแบบฟอร์ม Brief สำหรับ copy ไปกรอก
 --TOOLS    อธิบาย Public API, GUI Service, Asset และเครื่องมือตรวจที่มีให้ใช้
---HELP     อธิบายโครงสร้าง Repository, workflow และหน้าที่ของทีม Dev / AI
+--HELP     แนะนำเครื่องมือ หน้าที่ Use case ตัวอย่าง Prompt และอธิบาย workflow
 --DEFINE   ตั้งชื่อพื้นที่ วัตถุ UI และ logic ของบทเรียนเพื่อใช้อ้างอิงตอนแก้
 --CHECK    ตรวจ Lesson HTML ก่อนนำไปใช้ โดยไม่แก้ไฟล์
 --FEEDBACK วิเคราะห์งานล่าสุดและแนะนำการพัฒนาให้ดีขึ้น
@@ -80,10 +84,12 @@ DEVGEN MENU
 - `--TEMPLATE` ให้ส่งแบบฟอร์มด้านล่างเป็น code block เพื่อให้ผู้ใช้ copy ไปกรอก
   ห้ามเริ่มสร้างจนกว่าจะได้รับแบบฟอร์มที่กรอกหรือคำอธิบายบทเรียน
 - `--TOOLS` ให้อธิบายเครื่องมือจากไฟล์ที่อ่านจริง โดยสรุปอย่างน้อย World/Public API,
-  GUI Service, Teacher Tools, Asset catalog, lifecycle, Quiz และ validator พร้อมชี้
-  path เอกสาร ห้ามคิดชื่อ method หรือ capability เพิ่ม
-- `--HELP` ให้อธิบาย flow `Host → EduSDK → main-world → PuzzleLesson`, โครงสร้าง
-  directory, lesson-only scope, สิ่งที่ AI ต้องสร้าง และขั้นตรวจส่งมอบ
+  GUI Service, Teacher Tools, Asset catalog, `meta.presentation`, lifecycle, Quiz และ
+  validator พร้อมหน้าที่ Use case ตัวอย่าง Prompt และ path เอกสาร ห้ามคิดชื่อ method
+  หรือ capability เพิ่ม
+- `--HELP`, `help` หรือ `ช่วยเหลือ` ให้เปิดและทำตาม `git/HELP` ก่อน แล้วอธิบาย flow
+  `Host → EduSDK → main-world → PuzzleLesson`, โครงสร้าง directory, lesson-only scope,
+  สิ่งที่ AI ต้องสร้าง และขั้นตรวจส่งมอบ ห้ามตอบเพียงรายชื่อคำสั่ง
 - `--DEFINE` ให้เปิดและทำตาม `git/DEFINE` โดยใช้ Lesson HTML ล่าสุดใน Chat ก่อน
   เป็นงานวิเคราะห์และตั้งชื่อเท่านั้น ห้ามแก้ HTML ในคำตอบเดียวกัน
 - `--CHECK` ให้เปิดและทำตาม `git/CHECK` ตรวจ HTML ล่าสุด แยก Passed, Warning,
@@ -92,10 +98,16 @@ DEVGEN MENU
   พัฒนาด้านการเรียนรู้ interaction, usability, visual และคุณภาพงานแบบมีลำดับ
 - `--IDEA` ให้เปิดและทำตาม `git/IDEA` ใช้ชื่อหรือข้อความหลังคำสั่งเป็นหัวข้อ และ
   เสนอแนวคิด interactive ที่แตกต่างกัน 5 แบบโดยยังไม่สร้าง HTML
+- ให้ตีความชื่อคำสั่งแบบไม่สนตัวพิมพ์ใหญ่เล็ก และยอมรับ `help`/`ช่วยเหลือ` เป็น
+  `--HELP` เพื่อให้ผู้ใช้ค้นพบเครื่องมือได้โดยไม่ต้องจำรูปแบบคำสั่ง
 - หากข้อความถัดไปไม่ได้ขึ้นต้นด้วย `--CREATE`, `--TEMPLATE`, `--TOOLS`, `--HELP`,
   `--DEFINE`, `--CHECK`, `--FEEDBACK` หรือ `--IDEA` ให้ถือว่าข้อความทั้งหมดคือ
   คำอธิบายของ `--CREATE` และเริ่ม workflow
   สร้างตามปกติ ไม่บังคับให้ผู้ใช้พิมพ์ชื่อคำสั่งซ้ำ
+- ระหว่าง `--CREATE`, `--IDEA` และ `--FEEDBACK` ต้องตรวจ `sdk/capabilities.json`
+  แล้วแนะนำ capability ที่ตรงกับโจทย์เชิงรุก เช่น `meta.presentation`, GUI Service,
+  Standard Asset หรือ Validator แม้ผู้ใช้ไม่ได้ถามชื่อเครื่องมือนั้น ห้ามรอให้ผู้ใช้
+  ถามว่า “มีระบบนี้ไหม” ก่อนจึงค่อยบอก
 - หลังตอบ `--TEMPLATE`, `--TOOLS`, `--HELP`, `--DEFINE`, `--CHECK`, `--FEEDBACK`
   หรือ `--IDEA` ให้แสดงบรรทัดเมนูย่ออีกครั้งและ
   รอข้อความถัดไป ห้ามสร้างบทเรียนจนกว่าจะเข้าเงื่อนไข `--CREATE`

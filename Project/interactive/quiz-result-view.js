@@ -1,5 +1,5 @@
 // Layout and text stay in DOM/CSS; small WebP cutouts are decoration only.
-export function quizResultMarkup(quiz, { escapeHtml, assetUrl, mascotEnabled = true }) {
+export function quizResultMarkup(quiz, { escapeHtml, assetUrl, mascotEnabled = true, showMascot = mascotEnabled }) {
   const star = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 2 4.3 8.7 9.6 1.4-7 6.8 1.7 9.6-8.6-4.5-8.6 4.5 1.7-9.6-7-6.8 9.6-1.4Z"/></svg>';
   const praise = quiz.score / quiz.questions.length >= .8 ? "ยอดเยี่ยมมาก!" : "ทำครบแล้ว เก่งมาก!";
   const rows = quiz.questions.map((question, index) => {
@@ -40,7 +40,7 @@ export function quizResultMarkup(quiz, { escapeHtml, assetUrl, mascotEnabled = t
     <div class="qr-fireworks" aria-hidden="true">${fireworks}</div>
     <div class="qr-streamers" aria-hidden="true">${streamers}</div>
     <div class="qr-confetti" aria-hidden="true">${confetti}</div>
-    ${mascotEnabled ? `<div class="qr-mascot-window" aria-hidden="true"><div class="qr-head">${art("head", "qr-head-image")}<canvas class="qr-head-eyes" width="320" height="315" aria-hidden="true"></canvas></div></div>` : ""}
+    ${showMascot ? `<div class="qr-mascot-window" aria-hidden="true"><div class="qr-head">${art("head", "qr-head-image")}<canvas class="qr-head-eyes" width="320" height="315" aria-hidden="true"></canvas></div></div>` : ""}
     <img class="qr-island" src="${escapeHtml(assetUrl('./assets/image/summary-island-big.png'))}" alt="" aria-hidden="true" decoding="async"/>
     <section class="qr-board" aria-label="สรุปผลคะแนน">
       <header class="qr-banner">
@@ -54,7 +54,6 @@ export function quizResultMarkup(quiz, { escapeHtml, assetUrl, mascotEnabled = t
     </section>
     ${art("vine", "qr-vine qr-vine-left")}
     ${art("vine", "qr-vine qr-vine-right")}
-    ${art("hand-left", "qr-hand qr-hand-left")}
-    ${art("hand-right", "qr-hand qr-hand-right")}
+    ${showMascot ? `${art("hand-left", "qr-hand qr-hand-left")}${art("hand-right", "qr-hand qr-hand-right")}` : ""}
   </div>`;
 }

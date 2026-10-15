@@ -9,3 +9,6 @@ Repository นี้ใช้สำหรับอ่านเท่านั้
 
 [ Repo ] : https://github.com/ritichaionemoby/srru-3d-interactive.git
 [ Introduction ] : git/DEVGEN
+
+หลังเชื่อมต่อ ผู้ใช้พิมพ์ `help`, `--HELP` หรือ `ช่วยเหลือ` เพื่อดูเครื่องมือ หน้าที่
+Use case และตัวอย่าง Prompt จาก `git/HELP` ได้ทันที

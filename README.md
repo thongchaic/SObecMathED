@@ -16,6 +16,12 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
 ถ้าข้อความถัดไปไม่ขึ้นต้นด้วยคำสั่งเหล่านี้ DEVGEN จะใช้ข้อความนั้นเป็นคำอธิบาย
 สำหรับ `--CREATE` โดยอัตโนมัติ
 
+พิมพ์ `help`, `--HELP` หรือ `ช่วยเหลือ` ได้โดยไม่ต้องจำรูปแบบคำสั่ง ระบบต้องเปิด
+[HELP](git/HELP) แล้วแสดงเครื่องมือแต่ละตัวพร้อมหน้าที่ Use case และตัวอย่าง Prompt
+ที่ copy ไปใช้ต่อได้ ระหว่างสร้างหรือเสนอไอเดีย AI ต้องตรวจ
+[capabilities](sdk/capabilities.json) และแนะนำเครื่องมือที่เกี่ยวข้องเชิงรุก ไม่รอให้
+ผู้ใช้ถามชื่อ capability ก่อน
+
 1. อ่าน [MASTER_README.md](MASTER_README.md) ทั้งไฟล์ — กฎหลัก, lifecycle, Lab, Quiz และขอบเขตงาน
 2. อ่าน [contract](contracts/LESSON_CONTRACT.md) และ [template](LESSON_OUTPUT_TEMPLATE.html) — รูปแบบ HTML หนึ่งไฟล์
 3. อ่าน [Public API](sdk/LESSON_API_REFERENCE.md), [UI Catalog](sdk/UI_CATALOG.md), [ตัวอย่าง GUI Service ครบทุกกลุ่ม](sdk/GUI_SERVICE_REFERENCE.md) และตรวจ signature ใน [types](sdk/lesson-sdk.d.ts)
@@ -35,6 +41,7 @@ Repository นี้รวมคู่มือ, Public API, ตัวอย่�
 ├── README.md
 ├── DEVGEN                   ← entrypoint สำรอง; ชี้ไปที่ git/DEVGEN
 ├── git/DEVGEN               ← Introduction สำหรับคำสั่งสั้นของทีมภายนอก
+├── HELP / git/HELP          ← เมนูเครื่องมือ หน้าที่ Use case และ Prompt ตัวอย่าง
 ├── DEFINE                   ← entrypoint สำรอง; ชี้ไปที่ git/DEFINE
 ├── git/DEFINE               ← สร้าง Define Map สำหรับอ้างชื่อส่วนต่างๆ ของบทเรียน
 ├── CHECK / git/CHECK        ← ตรวจ HTML ก่อนนำไปใช้โดยไม่แก้ไฟล์
@@ -96,7 +103,7 @@ Host เรียก EduSDK → ตรวจ `script[data-lesson-app]` → เ�
 - `lessonData.preview: true` ใช้สำหรับคุณครูทดลอง Lab/Quiz โดยซ่อนเครื่องมือ Debug และคงปุ่มสลับโหมดไว้; ค่าเริ่มต้นคือ `false` และต้องเป็น boolean ค่านี้เป็นตัวเลือกของ Host ไม่ใช่ `meta` หรือ API ที่ Lesson HTML เรียกเอง
 - ใน Quiz บทเรียนเรียก `context.quiz.answer(correct, details)` เมื่อผู้เรียนสร้างหรือเปลี่ยนคำตอบจริง Runtime เก็บคำตอบล่าสุดไว้ชั่วคราวและบันทึกเมื่อกดปุ่มยืนยันหรือไปข้อถัดไป; ห้ามเรียกใน `reset()` ห้ามเฉลย ถูก/ผิด หรือทำสีสำเร็จระหว่างข้อสอบ
 - `context.objectiveAction()` อย่างเดียวไม่สร้างคำตอบและไม่เปิดปุ่มไปต่อเมื่อยังไม่มี pending answer ถ้าล้างคำตอบให้เรียก `context.quiz.answer(false, { hasAnswer: false })` เพื่อซ่อนปุ่มไปต่อ จากนั้นส่งคำตอบใหม่เมื่อผู้เรียนลงมืออีกครั้ง
-- Source สำหรับผู้พัฒนายังเป็น Lesson Package ที่มี `meta.quiz` อ่านได้ตามปกติ เจ้าของระบบใช้ `AI/Compile` ใน workspace หลักเพื่อสร้าง `productionChapters` ก่อนเผยแพร่; ห้ามเผยแพร่ RAW `chapters` เป็น production ชุด GitHub นี้ไม่มี compiler, WASM หรือ key และไม่ใช่ deploy artifact
+- Source สำหรับผู้พัฒนายังเป็น Lesson Package ที่มี `meta.quiz` อ่านได้ตามปกติ เจ้าของระบบเป็นผู้ compile ด้วย `AI/Compile` ใน workspace หลักเพื่อสร้าง `productionChapters` ก่อนเผยแพร่; ห้ามเผยแพร่ RAW `chapters` เป็น production ชุด GitHub นี้ไม่มี compiler, WASM หรือ key และไม่ใช่ deploy artifact
 - `world.addOperatorSign()` เป็น prefab กลางสำหรับ `= ≠ < > ≤ ≥ + - × ÷` ต้องย่อหรือขยายผ่าน `scale` ที่ Public API เท่านั้น ไม่แก้ child mesh หรือ `userData` ภายใน
 
 ### เปิดบทเรียนเต็มจอหรือภายใน Preview Panel

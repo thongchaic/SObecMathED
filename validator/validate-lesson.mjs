@@ -52,6 +52,44 @@ function methodBody(source, methodName) {
   return "";
 }
 
+function objectProperty(source, propertyName) {
+  const searchable = maskCommentsAndStrings(source);
+  const match = new RegExp(`\\b${propertyName}\\s*:`).exec(searchable);
+  if (!match) return { found: false, isObject: false, body: "", value: "" };
+  let opening = match.index + match[0].length;
+  while (/\s/.test(source[opening] || "")) opening += 1;
+  if (source[opening] !== "{") {
+    const end = source.slice(opening).search(/[,}\n]/);
+    return { found: true, isObject: false, body: "", value: source.slice(opening, end < 0 ? source.length : opening + end).trim() };
+  }
+  let depth = 1, quote = "", lineComment = false, blockComment = false, escaped = false;
+  for (let index = opening + 1; index < source.length; index += 1) {
+    const char = source[index], next = source[index + 1];
+    if (lineComment) { if (char === "\n") lineComment = false; continue; }
+    if (blockComment) { if (char === "*" && next === "/") { blockComment = false; index += 1; } continue; }
+    if (quote) {
+      if (escaped) { escaped = false; continue; }
+      if (char === "\\") { escaped = true; continue; }
+      if (char === quote) quote = "";
+      continue;
+    }
+    if (char === "/" && next === "/") { lineComment = true; index += 1; continue; }
+    if (char === "/" && next === "*") { blockComment = true; index += 1; continue; }
+    if (char === "\"" || char === "'" || char === "`") { quote = char; continue; }
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return { found: true, isObject: true, body: source.slice(opening + 1, index), value: "" };
+    }
+  }
+  return { found: true, isObject: false, body: "", value: "unterminated object" };
+}
+
+function scalarProperty(source, propertyName) {
+  const match = new RegExp(`\\b${propertyName}\\s*:\\s*([^,}\\n]+)`).exec(source);
+  return match ? match[1].trim() : null;
+}
+
 function callBodies(source, methodNames) {
   const accepted = new Set(methodNames);
   const bodies = [];
@@ -245,6 +283,24 @@ if (html) {
     if (pattern.test(html)) add("LESSON_API_NOT_SUPPORTED", "validate", `ห้ามใช้ ${label}`);
   }
 
+  const sitSecurityForbidden = [
+    [/\bdocument\s*\.\s*querySelectorAll\s*\(/, "document.querySelectorAll"],
+    [/\bdocument\s*\.\s*createElement\s*\(/, "document.createElement"],
+    [/\.\s*innerHTML\s*=/, "innerHTML"],
+    [/\bWeakMap\s*\(/, "WeakMap"],
+    [/\bencodeURIComponent\s*\(/, "encodeURIComponent"]
+  ];
+  for (const [pattern, api] of sitSecurityForbidden) {
+    if (pattern.test(html)) {
+      add(
+        "LESSON_SIT_SECURITY_FORBIDDEN",
+        "validate",
+        `SIT security ไม่อนุญาต ${api}`,
+        "ใช้ API ทดแทนที่อยู่ใน contract และ Public API เท่านั้น"
+      );
+    }
+  }
+
   const publicWorldMethods = new Set([
     "clear", "addObject", "addPrimitive", "addGroup", "addConnector", "addText3D", "addWorldCounter", "addWorldGui",
     "addLibraryObject", "addModel", "addBox", "addZone", "addCallout", "addLabel", "addOperatorSign", "addGuideline",
@@ -332,6 +388,32 @@ if (html) {
 
   if (scripts.length === 1) {
     const lessonSource = scripts[0][1], resetBody = methodBody(lessonSource, "reset");
+    const definition = callBodies(lessonSource, ["define"])[0] || "";
+    const meta = objectProperty(definition, "meta");
+    const presentation = meta.isObject ? objectProperty(meta.body, "presentation") : { found: false };
+    if (presentation.found && !presentation.isObject) {
+      add("LESSON_PRESENTATION_INVALID", "validate", "meta.presentation ต้องเป็น object");
+    } else if (presentation.isObject) {
+      const mascot = objectProperty(presentation.body, "mascot");
+      const environment = objectProperty(presentation.body, "environment");
+      if (mascot.found && !mascot.isObject) {
+        add("LESSON_PRESENTATION_MASCOT_INVALID", "validate", "meta.presentation.mascot ต้องเป็น object");
+      } else if (mascot.isObject) {
+        const enabled = scalarProperty(mascot.body, "enabled");
+        if (enabled !== null && enabled !== "true" && enabled !== "false") {
+          add("LESSON_PRESENTATION_MASCOT_ENABLED_INVALID", "validate", "meta.presentation.mascot.enabled ต้องเป็น boolean true หรือ false");
+        }
+      }
+      if (environment.found && !environment.isObject) {
+        add("LESSON_PRESENTATION_ENVIRONMENT_INVALID", "validate", "meta.presentation.environment ต้องเป็น object");
+      } else if (environment.isObject) {
+        const preset = scalarProperty(environment.body, "preset");
+        const presetMatch = preset?.match(/^["']([^"']+)["']$/);
+        if (preset !== null && preset !== "null" && (!presetMatch || !["standard", "day", "night"].includes(presetMatch[1]))) {
+          add("LESSON_PRESENTATION_PRESET_INVALID", "validate", "meta.presentation.environment.preset ต้องเป็น standard, day หรือ night");
+        }
+      }
+    }
     for (const name of findMissingLessonHelpers(lessonSource)) {
       add(
         "LESSON_HELPER_MISSING",

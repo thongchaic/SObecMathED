@@ -389,6 +389,7 @@
       new URL("./main-world.js", runtimeUrl),
       new URL("./main-world-setting.js", runtimeUrl),
       new URL("./debug-scene-time.mjs", runtimeUrl),
+      new URL("./lesson-presentation.mjs", runtimeUrl),
       new URL("./runtime-setting-menu.js", runtimeUrl),
       new URL("./world.css", runtimeUrl),
       new URL("../plugins/vendor/three/0.180.0/three.module.min.js", runtimeUrl),

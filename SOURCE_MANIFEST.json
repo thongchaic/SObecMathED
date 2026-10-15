@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-05",
+  "generatedAt": "2026-10-15",
   "purpose": "AI reference only; not a runnable deployment",
   "source": "Owner project working tree; copied files may contain uncommitted edits",
   "excluded": [
@@ -58,22 +58,22 @@
     {
       "path": "Project/interactive/chapters/ep10/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep10/lesson3.html",
-      "sha256": "97f228a85731541db32c7fbb47bd6f8bccd933d1e70ffaacd540e1c21823a2b7"
+      "sha256": "74d3b0e82ce8824949ab944bdda84ddc47606a979ff100d8d5c1eda17bcd71e3"
     },
     {
       "path": "Project/interactive/chapters/ep12/lesson1.html",
       "sourcePath": "Project/interactive/chapters/ep12/lesson1.html",
-      "sha256": "adbf52062ce05cc84e01eb144c76da508061c39e7499fbd9ac20fcb7747fabce"
+      "sha256": "82d04b391f747e500a527f553f7dc9785257958f59f4f14923c2b482d86f8515"
     },
     {
       "path": "Project/interactive/chapters/ep14/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep14/lesson3.html",
-      "sha256": "8965cd8e437fc615d4f02ee9df561906df888d402871c7ea7222811a6252511d"
+      "sha256": "946b7390ff3e090373c68610e914f3c90050a287efdefc5c0e6d397d92e53b33"
     },
     {
       "path": "Project/interactive/chapters/ep3/lesson3.html",
       "sourcePath": "Project/interactive/chapters/ep3/lesson3.html",
-      "sha256": "7ccc9e8b784f22deb599413c1b938a2883b5af31ce806de7cc664239a1fce4ac"
+      "sha256": "67ae72982e03fec92717a9a934ff7515c121b95c02771db16e36bb8933f00c0f"
     },
     {
       "path": "Project/interactive/chapters/leesonExternal.html",
@@ -108,12 +108,12 @@
     {
       "path": "Project/interactive/eduSdk.js",
       "sourcePath": "Project/interactive/eduSdk.js",
-      "sha256": "8e24abc78b6e851b6c154a8352dcc90da50439ecac907ad178686eac35683b82"
+      "sha256": "b13aaa7bcb9eadf23567c06d09c18e8e9477244f82f400929860d123d1ca3e5c"
     },
     {
       "path": "Project/interactive/gui-service.js",
       "sourcePath": "Project/interactive/gui-service.js",
-      "sha256": "29be304f1a837366225b38d7163ce62705babce91a60f082be2784965fae733d"
+      "sha256": "c948e3099bc9e12e2feb4f6c939c3c268ea0062fe8f3582737b22735850048a4"
     },
     {
       "path": "Project/interactive/intro-service.js",
@@ -138,7 +138,7 @@
     {
       "path": "Project/interactive/main-world.js",
       "sourcePath": "Project/interactive/main-world.js",
-      "sha256": "58902962e3aaaafb080f1245d39f738ff26e74ad2574869464342174fa2efffc"
+      "sha256": "00d53a5231c784b0a09724a0a8dc7d4fee1f45b1becd0765e163638611e4ecbc"
     },
     {
       "path": "Project/interactive/mascot-eye-blink.mjs",
@@ -188,7 +188,7 @@
     {
       "path": "Project/interactive/quiz-result-view.js",
       "sourcePath": "Project/interactive/quiz-result-view.js",
-      "sha256": "ea6ee7b62ce8871cc09e2ad1ae37555bd02616cd000f326e99ac19b3f139b6fb"
+      "sha256": "2fa22faa5c221888756a454e364391e4038eb495058a0065888471ccc97d624e"
     },
     {
       "path": "Project/interactive/runtime-setting-menu.js",
@@ -203,7 +203,7 @@
     {
       "path": "Project/interactive/world.css",
       "sourcePath": "Project/interactive/world.css",
-      "sha256": "30bc848dd75cc02df20ef4ee6499ec6529b99b3020581e3cf81f9b069805ad9a"
+      "sha256": "63a64e4f90c6ddf174e82980090af659bf7322b4d13db0bcd8353c916496ca31"
     }
   ]
 }

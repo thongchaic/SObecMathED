@@ -1,8 +1,12 @@
 # Changelog
 
-## 2026-10-14 — Unreleased Lesson Presentation Defaults
+## 2026-10-15 — 0.6.0 Lesson Presentation and Tool Discovery
 
-- เพิ่ม `meta.presentation.mascot.enabled` สำหรับซ่อน Mascot เฉพาะบทเรียน โดยยังคงข้อความสอนเป็นกล่องคำแนะนำ และซ่อน Mascot ในหน้าสรุป Quiz ด้วย
+- เพิ่ม `git/HELP` และ root `HELP` ให้ `help`/`--HELP`/`ช่วยเหลือ` แสดงเครื่องมือ หน้าที่ Use case และ Prompt ตัวอย่าง พร้อมกำหนดให้ DEVGEN แนะนำ capability ที่เกี่ยวข้องเชิงรุก
+- ลงทะเบียน `meta.presentation` ใน machine-readable capabilities และ Validator พร้อม error code สำหรับชนิด `mascot.enabled` และชื่อ `environment.preset` ที่ไม่รองรับ
+- เอา Presentation override ออกจากค่าใช้งานจริงใน Output Template เพื่อไม่ให้บทเรียนใหม่ทุกบทบังคับฉาก `day`; คงตัวอย่างแบบ optional ไว้ให้ค้นพบ
+- เพิ่ม `lesson-presentation.mjs` ใน EduSDK runtime preflight เพื่อจับ deployment ที่อัปโหลดไฟล์ไม่ครบก่อนเปิดบทเรียน
+- เพิ่ม `meta.presentation.mascot.enabled` สำหรับปิดระบบ Mascot เฉพาะบทเรียนทั้งตัวละคร ฐานยืน การเคลื่อนไหว บับเบิล ป้ายแจ้งเตือน ข้อความ `howto[].option` และ Mascot ในหน้าสรุป Quiz
 - เพิ่ม `meta.presentation.environment.preset` สำหรับเลือกฉากเริ่มต้น `standard`, `day` หรือ `night`; ฉาก `standard` เป็นฉากเรียบ และผู้เรียนยังเปลี่ยนฉากระหว่างเรียนได้
 - sync runtime snapshot, contract/schema, template, Public API reference, types, capabilities และ source manifest สำหรับ AI ภายนอก
 
